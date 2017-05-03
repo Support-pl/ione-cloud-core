@@ -1,0 +1,526 @@
+[
+    {
+        "name": "ircmaxell/security-lib",
+        "version": "1.0.0",
+        "version_normalized": "1.0.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/ircmaxell/SecurityLib.git",
+            "reference": "80934de3c482dcafb46b5756e59ebece082b6dc7"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/ircmaxell/SecurityLib/zipball/80934de3c482dcafb46b5756e59ebece082b6dc7",
+            "reference": "80934de3c482dcafb46b5756e59ebece082b6dc7",
+            "shasum": ""
+        },
+        "require": {
+            "php": ">=5.3.2"
+        },
+        "require-dev": {
+            "mikey179/vfsstream": "1.1.*"
+        },
+        "time": "2013-04-30 18:00:34",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "psr-0": {
+                "SecurityLib": "lib"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Anthony Ferrara",
+                "email": "ircmaxell@ircmaxell.com",
+                "homepage": "http://blog.ircmaxell.com"
+            }
+        ],
+        "description": "A Base Security Library",
+        "homepage": "https://github.com/ircmaxell/PHP-SecurityLib"
+    },
+    {
+        "name": "ircmaxell/random-lib",
+        "version": "v1.1.0",
+        "version_normalized": "1.1.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/ircmaxell/RandomLib.git",
+            "reference": "13efa4368bb2ac88bb3b1459b487d907de4dbf7c"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/ircmaxell/RandomLib/zipball/13efa4368bb2ac88bb3b1459b487d907de4dbf7c",
+            "reference": "13efa4368bb2ac88bb3b1459b487d907de4dbf7c",
+            "shasum": ""
+        },
+        "require": {
+            "ircmaxell/security-lib": "1.0.*@dev",
+            "php": ">=5.3.2"
+        },
+        "require-dev": {
+            "mikey179/vfsstream": "1.1.*",
+            "phpunit/phpunit": "3.7.*"
+        },
+        "time": "2015-01-15 16:31:45",
+        "type": "library",
+        "extra": {
+            "branch-alias": {
+                "dev-master": "1.0.x-dev"
+            }
+        },
+        "installation-source": "dist",
+        "autoload": {
+            "psr-0": {
+                "RandomLib": "lib"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Anthony Ferrara",
+                "email": "ircmaxell@ircmaxell.com",
+                "homepage": "http://blog.ircmaxell.com"
+            }
+        ],
+        "description": "A Library For Generating Secure Random Numbers",
+        "homepage": "https://github.com/ircmaxell/RandomLib",
+        "keywords": [
+            "cryptography",
+            "random",
+            "random-numbers",
+            "random-strings"
+        ]
+    },
+    {
+        "name": "symfony/polyfill-mbstring",
+        "version": "v1.2.0",
+        "version_normalized": "1.2.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/symfony/polyfill-mbstring.git",
+            "reference": "dff51f72b0706335131b00a7f49606168c582594"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/dff51f72b0706335131b00a7f49606168c582594",
+            "reference": "dff51f72b0706335131b00a7f49606168c582594",
+            "shasum": ""
+        },
+        "require": {
+            "php": ">=5.3.3"
+        },
+        "suggest": {
+            "ext-mbstring": "For best performance"
+        },
+        "time": "2016-05-18 14:26:46",
+        "type": "library",
+        "extra": {
+            "branch-alias": {
+                "dev-master": "1.2-dev"
+            }
+        },
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "Symfony\\Polyfill\\Mbstring\\": ""
+            },
+            "files": [
+                "bootstrap.php"
+            ]
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Nicolas Grekas",
+                "email": "p@tchwork.com"
+            },
+            {
+                "name": "Symfony Community",
+                "homepage": "https://symfony.com/contributors"
+            }
+        ],
+        "description": "Symfony polyfill for the Mbstring extension",
+        "homepage": "https://symfony.com",
+        "keywords": [
+            "compatibility",
+            "mbstring",
+            "polyfill",
+            "portable",
+            "shim"
+        ]
+    },
+    {
+        "name": "ircmaxell/password-compat",
+        "version": "v1.0.4",
+        "version_normalized": "1.0.4.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/ircmaxell/password_compat.git",
+            "reference": "5c5cde8822a69545767f7c7f3058cb15ff84614c"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/ircmaxell/password_compat/zipball/5c5cde8822a69545767f7c7f3058cb15ff84614c",
+            "reference": "5c5cde8822a69545767f7c7f3058cb15ff84614c",
+            "shasum": ""
+        },
+        "require-dev": {
+            "phpunit/phpunit": "4.*"
+        },
+        "time": "2014-11-20 16:49:30",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "files": [
+                "lib/password.php"
+            ]
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Anthony Ferrara",
+                "email": "ircmaxell@php.net",
+                "homepage": "http://blog.ircmaxell.com"
+            }
+        ],
+        "description": "A compatibility library for the proposed simplified password hashing algorithm: https://wiki.php.net/rfc/password_hash",
+        "homepage": "https://github.com/ircmaxell/password_compat",
+        "keywords": [
+            "hashing",
+            "password"
+        ]
+    },
+    {
+        "name": "symfony/polyfill-php55",
+        "version": "v1.2.0",
+        "version_normalized": "1.2.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/symfony/polyfill-php55.git",
+            "reference": "bf2ff9ad6be1a4772cb873e4eea94d70daa95c6d"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/symfony/polyfill-php55/zipball/bf2ff9ad6be1a4772cb873e4eea94d70daa95c6d",
+            "reference": "bf2ff9ad6be1a4772cb873e4eea94d70daa95c6d",
+            "shasum": ""
+        },
+        "require": {
+            "ircmaxell/password-compat": "~1.0",
+            "php": ">=5.3.3"
+        },
+        "time": "2016-05-18 14:26:46",
+        "type": "library",
+        "extra": {
+            "branch-alias": {
+                "dev-master": "1.2-dev"
+            }
+        },
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "Symfony\\Polyfill\\Php55\\": ""
+            },
+            "files": [
+                "bootstrap.php"
+            ]
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Nicolas Grekas",
+                "email": "p@tchwork.com"
+            },
+            {
+                "name": "Symfony Community",
+                "homepage": "https://symfony.com/contributors"
+            }
+        ],
+        "description": "Symfony polyfill backporting some PHP 5.5+ features to lower PHP versions",
+        "homepage": "https://symfony.com",
+        "keywords": [
+            "compatibility",
+            "polyfill",
+            "portable",
+            "shim"
+        ]
+    },
+    {
+        "name": "symfony/polyfill-php54",
+        "version": "v1.2.0",
+        "version_normalized": "1.2.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/symfony/polyfill-php54.git",
+            "reference": "34d761992f6f2cc6092cc0e5e93f38b53ba5e4f1"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/symfony/polyfill-php54/zipball/34d761992f6f2cc6092cc0e5e93f38b53ba5e4f1",
+            "reference": "34d761992f6f2cc6092cc0e5e93f38b53ba5e4f1",
+            "shasum": ""
+        },
+        "require": {
+            "php": ">=5.3.3"
+        },
+        "time": "2016-05-18 14:26:46",
+        "type": "library",
+        "extra": {
+            "branch-alias": {
+                "dev-master": "1.2-dev"
+            }
+        },
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "Symfony\\Polyfill\\Php54\\": ""
+            },
+            "files": [
+                "bootstrap.php"
+            ],
+            "classmap": [
+                "Resources/stubs"
+            ]
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Nicolas Grekas",
+                "email": "p@tchwork.com"
+            },
+            {
+                "name": "Symfony Community",
+                "homepage": "https://symfony.com/contributors"
+            }
+        ],
+        "description": "Symfony polyfill backporting some PHP 5.4+ features to lower PHP versions",
+        "homepage": "https://symfony.com",
+        "keywords": [
+            "compatibility",
+            "polyfill",
+            "portable",
+            "shim"
+        ]
+    },
+    {
+        "name": "iddqdby/phponeapi",
+        "version": "v1.1.1",
+        "version_normalized": "1.1.1.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/iddqdby/phponeapi.git",
+            "reference": "89b10f00be2e0880369859fc1da27e67c1f9c600"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/iddqdby/phponeapi/zipball/89b10f00be2e0880369859fc1da27e67c1f9c600",
+            "reference": "89b10f00be2e0880369859fc1da27e67c1f9c600",
+            "shasum": ""
+        },
+        "require": {
+            "phpxmlrpc/phpxmlrpc": "^4.0"
+        },
+        "time": "2016-06-16 20:43:07",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "PHPOneAPI\\": "src"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Sergey Protasevich",
+                "email": "sergey.p@gmx.com"
+            }
+        ],
+        "description": "OpenNebula XML-RPC API Client",
+        "homepage": "https://github.com/iddqdby/phponeapi",
+        "keywords": [
+            "OpenNebula",
+            "api",
+            "client",
+            "xml-rpc"
+        ]
+    },
+    {
+        "name": "iddqdby/tinyapp",
+        "version": "v1.2.1",
+        "version_normalized": "1.2.1.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/iddqdby/tinyapp.git",
+            "reference": "6385d157041b9a23f57adefa0b714b240f0056da"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/iddqdby/tinyapp/zipball/6385d157041b9a23f57adefa0b714b240f0056da",
+            "reference": "6385d157041b9a23f57adefa0b714b240f0056da",
+            "shasum": ""
+        },
+        "require": {
+            "php": "^5.4 || ^7.0"
+        },
+        "require-dev": {
+            "phpunit/phpunit": "~4.8.23-stable"
+        },
+        "time": "2016-08-07 00:55:32",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "TinyApp\\": "src"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Sergey Protasevich",
+                "email": "sergey.p@gmx.com"
+            }
+        ],
+        "description": "Microframework for small command line applications.",
+        "homepage": "https://github.com/iddqdby/tinyapp",
+        "keywords": [
+            "cli",
+            "command line",
+            "framework"
+        ]
+    },
+    {
+        "name": "symfony/http-foundation",
+        "version": "v2.8.9",
+        "version_normalized": "2.8.9.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/symfony/http-foundation.git",
+            "reference": "f20bea598906c990eebe3c70a63ca5ed18cdbc11"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/symfony/http-foundation/zipball/f20bea598906c990eebe3c70a63ca5ed18cdbc11",
+            "reference": "f20bea598906c990eebe3c70a63ca5ed18cdbc11",
+            "shasum": ""
+        },
+        "require": {
+            "php": ">=5.3.9",
+            "symfony/polyfill-mbstring": "~1.1",
+            "symfony/polyfill-php54": "~1.0",
+            "symfony/polyfill-php55": "~1.0"
+        },
+        "require-dev": {
+            "symfony/expression-language": "~2.4|~3.0.0"
+        },
+        "time": "2016-07-30 07:20:35",
+        "type": "library",
+        "extra": {
+            "branch-alias": {
+                "dev-master": "2.8-dev"
+            }
+        },
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "Symfony\\Component\\HttpFoundation\\": ""
+            },
+            "exclude-from-classmap": [
+                "/Tests/"
+            ]
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Fabien Potencier",
+                "email": "fabien@symfony.com"
+            },
+            {
+                "name": "Symfony Community",
+                "homepage": "https://symfony.com/contributors"
+            }
+        ],
+        "description": "Symfony HttpFoundation Component",
+        "homepage": "https://symfony.com"
+    },
+    {
+        "name": "phpxmlrpc/phpxmlrpc",
+        "version": "4.1.0",
+        "version_normalized": "4.1.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/gggeek/phpxmlrpc.git",
+            "reference": "6a87bde9d1b40ea8d249d47ddac367d9ed944b32"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/gggeek/phpxmlrpc/zipball/6a87bde9d1b40ea8d249d47ddac367d9ed944b32",
+            "reference": "6a87bde9d1b40ea8d249d47ddac367d9ed944b32",
+            "shasum": ""
+        },
+        "require": {
+            "ext-xml": "*",
+            "php": ">=5.3.0"
+        },
+        "require-dev": {
+            "codeclimate/php-test-reporter": "dev-master",
+            "docbook/docbook-xsl": "~1.78",
+            "ext-curl": "*",
+            "ext-mbstring": "*",
+            "indeyets/pake": "~1.99",
+            "phpunit/phpunit": ">=4.0.0",
+            "phpunit/phpunit-selenium": "*",
+            "sami/sami": "~3.1"
+        },
+        "suggest": {
+            "ext-curl": "Needed for HTTPS and HTTP 1.1 support, NTLM Auth etc...",
+            "ext-mbstring": "Needed to allow reception of requests/responses in character sets other than ASCII,LATIN-1,UTF-8",
+            "ext-zlib": "Needed for sending compressed requests and receiving compressed responses, if cURL is not available"
+        },
+        "time": "2016-06-26 20:01:01",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "PhpXmlRpc\\": "src/"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "BSD-3-Clause"
+        ],
+        "description": "A php library for building xmlrpc clients and servers",
+        "homepage": "http://gggeek.github.io/phpxmlrpc/",
+        "keywords": [
+            "webservices",
+            "xmlrpc"
+        ]
+    }
+]
