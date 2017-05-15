@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo "There are some parameters that require user input. Use the string <<EDITOR>> to launch an editor (e.g. for multi-line inputs)"
+echo "  * (CPU)"
+echo "    Fixed value of (1). Cannot be changed"
+echo "  * (MEMORY)"
+echo "    Fixed value of (1024). Cannot be changed"
+echo " * (VCPU)"
+echo "    Fixed value of (1). Cannot be changed"
+echo "VM ID: 128"
