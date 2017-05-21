@@ -1,13 +1,9 @@
-def NewQuota(login, vmquota, specs)
-    quota = "/tmp/#{login}_quota.txt"
-    File.open(quota, 'w'){ |file| file.puts \
-    "
-        VM=[
-            CPU=\"#{specs[0]}\",
-            MEMORY=\"#{specs[1]}\",
-            SYSTEM_DISK_SIZE=\"#{specs[2]}\",
-            VMS=\"#{vmquota}\",
-    "
+def NewQuota(login, vmquota, disk)
+    quota = "VM=[
+            CPU=\"-2\",
+            MEMORY=\"-2\",
+            SYSTEM_DISK_SIZE=\"#{disk}\",
+            VMS=\"-2\",]"
     }
     return quota
 end
