@@ -7,9 +7,9 @@ ip, vmid = client.NewAccount("23411231", "nick.iwanowski@support.by", "Nhb500Gzn
 puts("IP: #{ip}")
 puts("VMID: #{vmid}")
 
-result = client.RmAccount("nick.iwanowski@support.by", [126])
+result = client.Terminate("nick.iwanowski@support.by", [126])
 puts(result)
-result = client.RmAccount("nick.iwanowski@support.by", [123, 254])
+result = client.Terminate("nick.iwanowski@support.by", [123, 254])
 puts(result)
 
 ip, vmid = client.AddVM(6666666, "nick.iwanowski@support.by", 2, "debian8", 2, 2048, 16384)
