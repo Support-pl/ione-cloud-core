@@ -2,9 +2,8 @@ require 'rubygems'
 require 'zmqjsonrpc'
 require './service/quotagen.rb'
 # require 'passgen'
-require './service/VMData.rb'
+# require './service/VMData.rb'
 require './service/template_helper.rb'
-require './service/ON_API/main.rb'
 
 ###########################################
 # Setting up Enviroment                   #
@@ -25,6 +24,7 @@ CREDENTIALS = "oneadmin:Nhb500Gznmcjn"
 ENDPOINT    = "http://localhost:2633/RPC2"
 client = Client.new(CREDENTIALS, ENDPOINT)
 
+require './service/ON_API/main.rb'
 
 class WHMHandler
     def initialize(client)
