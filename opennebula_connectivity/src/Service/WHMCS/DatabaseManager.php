@@ -9,7 +9,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 /**
  * Wrapper for Laravel's database manager.
  */
-class DatabaseManager {
+class DatabaseManager { 
 
 
     /**
