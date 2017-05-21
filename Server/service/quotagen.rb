@@ -4,6 +4,5 @@ def NewQuota(login, vmquota, disk)
             MEMORY=\"-2\",
             SYSTEM_DISK_SIZE=\"#{disk}\",
             VMS=\"-2\",]"
-    }
     return quota
 end
