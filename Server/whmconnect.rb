@@ -2,9 +2,8 @@ require 'rubygems'
 require 'zmqjsonrpc'
 require './service/quotagen.rb'
 # require 'passgen'
-require './service/VMData.rb'
+# require './service/VMData.rb'
 require './service/template_helper.rb'
-require './service/ON_API/main.rb'
 
 ###########################################
 # Setting up Enviroment                   #
@@ -25,6 +24,7 @@ CREDENTIALS = "oneadmin:Nhb500Gznmcjn"
 ENDPOINT    = "http://localhost:2633/RPC2"
 client = Client.new(CREDENTIALS, ENDPOINT)
 
+require './service/ON_API/main.rb'
 
 class WHMHandler
     def initialize(client)
@@ -45,10 +45,10 @@ class WHMHandler
         puts "Generating Quota"
         quota = NewQuota(login, vmquota, disk) # Генерирование квоты для нового пользователя
         puts "Creating new user - #{login}"
-        userid = UserCreate(login, pass, quota, @client)
-        puts "Creating VM for #{login}"
-        vmid = VMCreate(login, userid, 43, cpu, memory) # Получение vmid только что созданной машины
-        return ip = 0, vmid, userid # Возврат в WHMCS IP-адреса и VMID машины
+        userid, errors = UserCreate(login, pass, quota, @client)
+        # puts "Creating VM for #{login}"
+        # vmid = VMCreate(login, userid, 43, cpu, memory) # Получение vmid только что созданной машины
+        return ip = 0, vmid = 0, userid, errors # Возврат в WHMCS IP-адреса и VMID машины, ID пользователя ON и массив ошибок
     end
     
 end
