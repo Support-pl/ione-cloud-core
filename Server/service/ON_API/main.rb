@@ -17,12 +17,26 @@ def UserCreate(login, pass, quota, client)
     return user.id, errors
 end
 
-# def VMCreate(login, userid, os, client, cpu = 2, memory = 1024)  
-#     vmtempl = Template.new(Template.build_xml(), client)
-#     puts vmtempl.id
-#     begin
-#         vmid = # Или разобрать client.call или завести Template.instantiate!
-#     rescue => exc
-#         return exc.message
-#     end
-# end
+def VMCreate(login, userid, os, client, cpu = 2, memory = 1024)
+    errors = Array.new(0, String)
+    template = Template.new(Template.build_xml(os), client) # os - номер шаблона
+    begin
+        vmid = template.instantiate(login + "_" + os, true) # деплой машины из шаблона №os, true означает, что машина не будет деплоится сразу, а создасться в состоянии HOLD
+    rescue => exception
+        return exception.message
+    end
+    begin
+        puts vmid.message
+    rescue => e
+    end
+
+    vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), client)
+    chown_result = vm.chown(userid, 157) # Убедиться что срабатывает + настроить группы
+    if chown_result != nil then errors.insert(0, chown_result.message) end
+    vm.resize( # Надо тестить
+        "CPU=\"#{cpu}\"
+        MEMORY=\"#{memory}\"
+        VCPU=\"1\""
+    )
+    return vmid, errors
+end
