@@ -51,7 +51,23 @@ class WHMHandler
         vmid = VMCreate(login, userid, "debian8", @client, cpu, memory) # Получение vmid только что созданной машины
         return ip = 0, vmid, userid, errors # Возврат в WHMCS IP-адреса и VMID машины, ID пользователя ON и массив ошибок
     end
-    
+    def Suspend(vmid)
+        puts "New Suspend query Accepted!"
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        vm.chown(.......) # Пользователем будет админ группы Suspended Users, соответсвенно группа Suspended Users
+        vm.suspend
+    end
+    def Reboot(vmid)
+        puts "New Reboot Query Accepted!"
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        vm.reboot
+    end
+    def Terminate(vmid)
+        puts "New Terminate Query Accepted!"
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        vm.recover(3) # 3 - значит recover with delete
+    end
+            
 end
 
 WHMCS = WHMHandler.new(client) # Создание экземпляра хэндлер-сервера

@@ -38,5 +38,6 @@ def VMCreate(login, userid, os, client, cpu = 2, memory = 1024)
         MEMORY=\"#{memory}\"
         VCPU=\"1\""
     )
+    vm.release # Непосредственно деплой, т.н. смена состояния с HOLD на ACTIVE
     return vmid, errors
 end
