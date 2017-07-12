@@ -4,6 +4,12 @@ require './service/quotagen.rb'
 # require 'passgen'
 # require './service/VMData.rb'
 require './service/template_helper.rb'
+require './service/time.rb'
+
+$stderr = File.open("log/errors.txt", "a")
+$stdout = File.open("log/activities.txt", "a")
+puts "-----------------------------------------------------------"
+ROOT = "/root/Server/"
 
 ###########################################
 # Setting up Enviroment                   #
@@ -25,51 +31,10 @@ ENDPOINT    = "http://localhost:2633/RPC2"
 client = Client.new(CREDENTIALS, ENDPOINT)
 
 require './service/ON_API/main.rb'
+require './service/handlers/WHMCS.rb'
 
-class WHMHandler
-    def initialize(client)
-        @client = client
-    end
-    def Test(msg)
-        puts "Your message: #{msg}"
-    end
-
-    def NewAccount(clientid, login, pass, vmquota, os, cpu, memory, disk) # Хэндлер создания нового аккаунта PaaS и деплой машины в него
-        puts "New Account Order Accepted!"
-        # login = String.new()
-        #pass = Passgen::generate( :length => 12, :symbols => true)
-        # for i in 0..logb.size do # Создание логина на основе почты
-        #     if logb[i] == "@" then break end
-        #     login += logb[i]
-        # end
-
-        puts "Generating Quota"
-        quota = NewQuota(login, vmquota, disk) # Генерирование квоты для нового пользователя
-        puts "Creating new user - #{login}"
-        userid, errors = UserCreate(login, pass, quota, @client)
-        puts "Creating VM for #{login}"
-        vmid = VMCreate(login, userid, "debian8", @client, cpu, memory) # Получение vmid только что созданной машины
-        return ip = 0, vmid, userid, errors # Возврат в WHMCS IP-адреса и VMID машины, ID пользователя ON и массив ошибок
-    end
-    def Suspend(vmid)
-        puts "New Suspend query Accepted!"
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.chown(.......) # Пользователем будет админ группы Suspended Users, соответсвенно группа Suspended Users
-        vm.suspend
-    end
-    def Reboot(vmid)
-        puts "New Reboot Query Accepted!"
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.reboot
-    end
-    def Terminate(vmid)
-        puts "New Terminate Query Accepted!"
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.recover(3) # 3 - значит recover with delete
-    end
-            
-end
-
+puts "[ #{time()} ] Initializing JSON-RPC Server..."
 WHMCS = WHMHandler.new(client) # Создание экземпляра хэндлер-сервера
-server = ZmqJsonRpc::Server.new(WHMCS, "tcp://*:8080") # Создание экземпляра сервера
+server = ZmqJsonRpc::Server.new(WHMCS, "tcp://*:8008") # Создание экземпляра сервера
+puts "[ #{time()} ] Server initialized"
 server.server_loop # Запуск сервера
