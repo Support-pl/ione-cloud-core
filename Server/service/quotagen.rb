@@ -1,8 +1,8 @@
-def NewQuota(login, vmquota, disk)
+def NewQuota(login, vmquota, cpu, memory, disk)
     quota = "VM=[
-            CPU=\"-2\",
-            MEMORY=\"-2\",
+            CPU=\"#{cpu}\",
+            MEMORY=\"#{memory}\",
             SYSTEM_DISK_SIZE=\"#{disk}\",
-            VMS=\"-2\" ]"
+            VMS=\"#{vmquota}\" ]"
     return quota
 end
