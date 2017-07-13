@@ -24,11 +24,13 @@ class WHMHandler
         if buff != nil then errors += buff end
         return ip, vmid, userid, errors # Возврат в WHMCS IP-адреса и VMID машины, ID пользователя ON и массив ошибок
     end
-    def Suspend(vmid)
+    def Suspend(userid, vmid)
         puts "[ #{time()} ] Suspending VM#{vmid}"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.chown(4, 0) # Пользователем будет админ группы Suspended Users, соответсвенно группа Suspended Users
         vm.suspend
+        puts "[ #{time()} ] Changing group of user #{userid} to SuspendedUsers"
+        user = User.new(User.build_xml(userid), @client)
+        user.chgrp(3) # Поправить число на номер группы SuspendedUsers
     end
     def Reboot(vmid)
         puts "[ #{time()} ] Rebooting VM#{vmid}"
