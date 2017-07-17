@@ -59,12 +59,12 @@ class WHMHandler
         user = User.new(User.build_xml(userid), @client)
         user.delete
     end
-    def StopServer(passwd)
-        if(passwd == "Jago322==") then
-            puts "[ #{time()} ] Server Stopped Manualy"
-            Kernel.abort("[ #{time()} ] Server Stopped Remotely")
-        end
-    end
+    # def StopServer(passwd)
+    #     if(passwd == "Jago322==") then
+    #         puts "[ #{time()} ] Server Stopped Manualy"
+    #         Kernel.abort("[ #{time()} ] Server Stopped Remotely")
+    #     end
+    # end
     def VM_XML(vmid)
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.monitoring_xml
