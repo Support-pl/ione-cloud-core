@@ -27,6 +27,16 @@ class WHMHandler
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.suspend
     end
+    def Unsuspend(userid, vmid = nil)
+        puts "Resume query for User##{userid} Accepted!"
+        if vmid == nil then
+            return nil
+        end
+        puts "[ #{time()} ] Resuming VM#{vmid}"
+        Resume(vmid)
+        puts "[ #{time()} ] Changing group of user #{userid} to PaaS"
+        user = User.new(User.build_xml(userid), @client)
+        user.chgrp(100)
     def Reboot(vmid)
         puts "[ #{time()} ] Rebooting VM#{vmid}"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
