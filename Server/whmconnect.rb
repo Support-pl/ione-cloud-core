@@ -7,9 +7,9 @@ require './service/template_helper.rb'
 require './service/time.rb'
 
 $stderr = File.open("log/errors.txt", "a")
-$stdout = File.open("log/activities.txt", "a")
+$stdout = File.open("log/activities.log", "a")
 puts "-----------------------------------------------------------"
-ROOT = "/root/Server/"
+ROOT = `pwd`.to_s
 
 ###########################################
 # Setting up Enviroment                   #
