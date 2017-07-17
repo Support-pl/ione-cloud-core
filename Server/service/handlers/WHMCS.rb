@@ -39,10 +39,11 @@ class WHMHandler
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.reboot
     end
-    def Terminate(vmid)
+    def Terminate(userid, vmid)
         puts "[ #{time()} ] Terminating VM#{vmid}"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.shutdown
+        Delete(userid)
     end
     def Shutdown(vmid)
         puts "[ #{time()} ] Shutting down VM#{vmid}"

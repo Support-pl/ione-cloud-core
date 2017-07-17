@@ -81,10 +81,6 @@ end
 #     return vmid
 # end
 
-# доки
 # id группы из whmcs
-# добавить unsuspend
-# объединить delete и terminate
 # защиту от дебилов
 # запрет на удаление
-# 
