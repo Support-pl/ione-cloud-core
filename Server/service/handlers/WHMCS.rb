@@ -6,17 +6,26 @@ class WHMHandler
         puts "[ #{time()} ] Test message received, text: #{msg}"
     end
 
-    def NewAccount(billingid, login, pass, vmquota, os, cpu, memory, disk) # Хэндлер создания нового аккаунта PaaS и деплой машины в него
-        puts "[ #{time()} ] New Account for #{billingid} Order Accepted!"
-        puts "[ #{time()} ] Generating Quota for #{billingid}"
-        quota = NewQuota(login, vmquota, cpu, memory, disk) # Генерирование квоты для нового пользователя
-        puts "[ #{time()} ] Creating new user for #{billingid} - #{login}"
-        userid = UserCreate(login, pass, quota, @client)
-        puts "[ #{time()} ] Creating VM for #{billingid}"
-        vmid = VMCreate(login, billingid, userid, os, @client, cpu, memory) # Получение vmid только что созданной машины
+    def NewAccount(login, pass, templateid, groupid)
+        puts "[ #{time()} ] New Account for #{login} Order Accepted!"
+        puts "[ #{time()} ] Creating new user for #{login}"
+        userid = UserCreate(login, pass, groupid, @client)
+        puts "[ #{time()} ] Creating VM for #{login}"
+        vmid = VMCreate(login, userid, templateid, groupid, @client, false) # Получение vmid только что созданной машины
         ip = GetIP(vmid)
-        return ip, vmid, userid # Возврат в WHMCS IP-адреса и VMID машины, ID пользователя ON
+        return ip, vmid, userid
     end
+    # def NewAccount(billingid, login, pass, vmquota, os, cpu, memory, disk) # Хэндлер создания нового аккаунта PaaS и деплой машины в него
+    #     puts "[ #{time()} ] New Account for #{billingid} Order Accepted!"
+    #     puts "[ #{time()} ] Generating Quota for #{billingid}"
+    #     quota = NewQuota(login, vmquota, cpu, memory, disk) # Генерирование квоты для нового пользователя
+    #     puts "[ #{time()} ] Creating new user for #{billingid} - #{login}"
+    #     userid = UserCreate(login, pass, quota, @client)
+    #     puts "[ #{time()} ] Creating VM for #{billingid}"
+    #     vmid = VMCreate(login, billingid, userid, os, @client, cpu, memory) # Получение vmid только что созданной машины
+    #     ip = GetIP(vmid)
+    #     return ip, vmid, userid # Возврат в WHMCS IP-адреса и VMID машины, ID пользователя ON
+    # end
     def Suspend(userid, vmid)
         puts "[ #{time()} ] Suspending VM#{vmid}"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)

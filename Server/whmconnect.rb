@@ -10,6 +10,7 @@ $stderr = File.open("log/errors.txt", "a")
 $stdout = File.open("log/activities.log", "a")
 puts "-----------------------------------------------------------"
 ROOT = `pwd`.to_s
+USERS_GROUP = 100
 
 ###########################################
 # Setting up Enviroment                   #
