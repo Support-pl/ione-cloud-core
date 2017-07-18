@@ -21,9 +21,9 @@ class WHMHandler
             puts "[ #{time()} ] Suspend query rejected! 2 of 2 params are nilClass!"
             return nil
         end
-        puts "[ #{time()} ] Changing group of user #{userid} to SuspendedUsers"
+        puts "[ #{time()} ] Changing AuthDriver of user #{userid} to 'public'"        
         user = User.new(User.build_xml(userid), @client)
-        user.chgrp(103) # Поправить число на номер группы SuspendedUsers
+        user.chauth("public")
         if vmid == nil then
             return nil
         end
@@ -37,14 +37,15 @@ class WHMHandler
             puts "[ #{time()} ] Resume query rejected! 2 of 2 params are nilClass!"
             return nil
         end
-        puts "[ #{time()} ] Changing group of user #{userid} to PaaS"
+        puts "[ #{time()} ] Changing AuthDriver of user #{userid} to 'core'"
         user = User.new(User.build_xml(userid), @client)
-        user.chgrp(100)
+        user.chauth("core")
         if vmid == nil then
             return nil
         end
         puts "[ #{time()} ] Resuming VM#{vmid}"
         Resume(vmid)
+    end
     def Reboot(vmid)
         puts "[ #{time()} ] Rebooting VM#{vmid}"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
