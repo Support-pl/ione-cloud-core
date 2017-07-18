@@ -16,7 +16,11 @@ class WHMHandler
         return ip, vmid, userid
     end
     def Suspend(userid, vmid = nil)
-        puts "Suspend query for User##{userid} Accepted!"
+        puts "[ #{time()} ] Suspend query for User##{userid} Accepted!"
+        if userid == nil && vmid == nil then
+            puts "[ #{time()} ] Suspend query rejected! 2 of 2 params are nilClass!"
+            return nil
+        end
         puts "[ #{time()} ] Changing group of user #{userid} to SuspendedUsers"
         user = User.new(User.build_xml(userid), @client)
         user.chgrp(103) # Поправить число на номер группы SuspendedUsers
@@ -28,21 +32,29 @@ class WHMHandler
         vm.suspend
     end
     def Unsuspend(userid, vmid = nil)
-        puts "Resume query for User##{userid} Accepted!"
+        puts "[ #{time()} ] Resume query for User##{userid} Accepted!"
+        if userid == nil && vmid == nil then
+            puts "[ #{time()} ] Resume query rejected! 2 of 2 params are nilClass!"
+            return nil
+        end
+        puts "[ #{time()} ] Changing group of user #{userid} to PaaS"
+        user = User.new(User.build_xml(userid), @client)
+        user.chgrp(100)
         if vmid == nil then
             return nil
         end
         puts "[ #{time()} ] Resuming VM#{vmid}"
         Resume(vmid)
-        puts "[ #{time()} ] Changing group of user #{userid} to PaaS"
-        user = User.new(User.build_xml(userid), @client)
-        user.chgrp(100)
     def Reboot(vmid)
         puts "[ #{time()} ] Rebooting VM#{vmid}"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.reboot
     end
     def Terminate(userid, vmid)
+        if userid == nil || vmid == nil then
+            puts "[ #{time()} ] Terminate query rejected! one of 2 params are nilClass!"
+            return nil
+        end
         puts "[ #{time()} ] Terminating VM#{vmid}"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.shutdown
