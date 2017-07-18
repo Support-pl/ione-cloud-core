@@ -1,1 +1,0 @@
-<?=$data?>|<?=isset( $this ) ? 'object' : 'null'?>
