@@ -79,6 +79,9 @@ case "$1" in
             ruby /usr/lib/ontools/stop.rb $password
         fi
         ;;
+    "info" | "-i"       )
+        ruby /usr/lib/ontools/vmxml.rb $2
+        ;;
     *                   )
         echo "You may use this keys:"
         echo -e " \t-h, hello\t -- printing 'Hello, World!' to server logs"

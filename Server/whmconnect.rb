@@ -1,10 +1,6 @@
 require 'rubygems'
 require 'zmqjsonrpc'
-require './service/quotagen.rb'
 # require 'passgen'
-# require './service/VMData.rb'
-require './service/template_helper.rb'
-require './service/time.rb'
 
 $stderr = File.open("log/errors.txt", "a")
 $stdout = File.open("log/activities.log", "a")
@@ -31,8 +27,9 @@ CREDENTIALS = "oneadmin:Nhb500Gznmcjn"
 ENDPOINT    = "http://localhost:2633/RPC2"
 client = Client.new(CREDENTIALS, ENDPOINT)
 
-require './service/ON_API/main.rb'
-require './service/handlers/WHMCS.rb'
+require "#{ROOT.chomp}/service/time.rb"
+require "#{ROOT.chomp}/service/ON_API/main.rb"
+require "#{ROOT.chomp}/service/handlers/WHMCS.rb"
 
 puts "[ #{time()} ] Initializing JSON-RPC Server..."
 WHMCS = WHMHandler.new(client) # Создание экземпляра хэндлер-сервера

@@ -82,7 +82,7 @@ class WHMHandler
     end
     def activity_log()
         puts "[ #{time()} ] Log file content has been copied remotely"
-        log = File.open("#{ROOT.chomp!}/log/activities.log", "rb") { |line| line.read }
+        log = File.read("#{ROOT.chomp!}/log/activities.log")
         return log
     end
     def Resume(vmid)
@@ -92,8 +92,15 @@ class WHMHandler
     def GetIP(vmid)
         doc = Nokogiri::XML(VM_XML(vmid))
         address = ""
-        doc.xpath('//GUEST_IP').each do |content| address = content.text.to_s end
+        doc.xpath('//GUEST_IP').each do |content| 
+            address = content.text.to_s 
+        end
         return address
+    end
+    def RMSnapshot(vmid, snapid)
+        puts "[ #{time()} ] Deleting snapshot(ID: #{snapid}) for VM#{vmid}"
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        vm.snapshot_delete(snapid)
     end
     # def NewAccount(billingid, login, pass, vmquota, os, cpu, memory, disk) # Хэндлер создания нового аккаунта PaaS и деплой машины в него
     #     puts "[ #{time()} ] New Account for #{billingid} Order Accepted!"

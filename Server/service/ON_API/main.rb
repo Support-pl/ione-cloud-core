@@ -25,13 +25,15 @@ def UserCreate(login, pass, groupid, client)
         return 0
     end
 
-    if allocation_result != nil then puts allocation_result.message end # В случае неудачного размещения будет ошибка, при удачном nil
+    if allocation_result != nil then 
+        puts allocation_result.message # В случае неудачного размещения будет ошибка, при удачном nil
+    end
     return user.id
 end
 
 def VMCreate(login, userid, templateid, groupid, client, release = true)
     template = Template.new(Template.build_xml(templateid), client) # os - номер шаблона
-     begin
+    begin
         vmid = template.instantiate(login + "_" + userid.to_s, true) # деплой машины из шаблона №os, true означает, что машина не будет деплоится сразу, а создасться в состоянии HOLD
     rescue => exception
         raise exception.message
@@ -43,13 +45,13 @@ def VMCreate(login, userid, templateid, groupid, client, release = true)
     end
     vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), client)
     chown_result = vm.chown(userid, groupid) # Убедиться что срабатывает + настроить группы
-    if chown_result != nil
+    if chown_result != nil then
         raise chown_result.message
     end
 
     if release then
-        vm.release 
-    end # Непосредственно деплой, т.н. смена состояния с HOLD на ACTIVE
+        vm.release # Непосредственно деплой, т.н. смена состояния с HOLD на ACTIVE
+    end
     return vmid
 end
 # def VMCreate(login, billingid, userid, os, client, cpu = 2, memory = 1024, release = true)
