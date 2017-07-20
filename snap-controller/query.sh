@@ -1,0 +1,1 @@
+mysql opennebula -BNe "SELECT body FROM vm_pool WHERE body LIKE '%snapshot%' ORDER BY oid DESC" > tmp/result.txt
