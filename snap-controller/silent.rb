@@ -4,7 +4,6 @@ require 'zmqjsonrpc'
 
 `sh query.sh`
 
-client = ZmqJsonRpc::Client.new("tcp://localhost:8008")
 
 def time_limit(time)
     return (Time.now().to_i - time.to_i) / 60.0 / 60.0 / 24.0 >= 1
@@ -17,9 +16,11 @@ vms = file.split("</VM>").each do | item |
 end
 
 found = ""
-if ARGV[0] == "false" || ARGV[1].to_i == 5 then
+if ARGV[0] == nil then
+    found = "false"
+elsif ARGV[0] == "false" then
     Kernel.abort
-else
+elsif ARGV[0] == "true" then
     found = "false"
 end
 
@@ -32,9 +33,8 @@ vms.each do | xml |
     vmid = xml.xpath("//ID").first.content.to_i
     snapid = xml.xpath("//SNAPSHOT//SNAPSHOT_ID").first.content.to_i
     if time_limit(time.content.to_i) then
-        client.RMSnapshot(vmid, snapid)
-        found = "true"
+        puts "Snapshot of VM#{vmid} number #{snapid} should be deleted - it was created more than #{((Time.now.to_i - time.content.to_i) / 60.0 / 60.0).round 0} hours ago."
+    else
+        puts "Snapshot of VM#{vmid} number #{snapid} was created #{((Time.now.to_i - time.content.to_i) / 60.0 / 60.0).round 2} hours ago."        
     end
 end
-
-`ruby main.rb #{found} #{ARGV[1].to_i + 1}`

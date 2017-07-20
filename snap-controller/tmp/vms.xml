@@ -93,3 +93,107 @@
     </HISTORY>
   </HISTORY_RECORDS>
 </VM>
+
+
+<VM>
+    <ID>29</ID>
+    <UID>11</UID>
+    <GID>1</GID>
+    <UNAME>Testo</UNAME>
+    <GNAME>users</GNAME>
+    <NAME>nas1_lin_185.66.69.180_maksifon.support.by - vOne</NAME>
+    <PERMISSIONS>
+        <OWNER_U>1</OWNER_U>
+        <OWNER_M>1</OWNER_M>
+        <OWNER_A>0</OWNER_A>
+        <GROUP_U>0</GROUP_U>
+        <GROUP_M>0</GROUP_M>
+        <GROUP_A>0</GROUP_A>
+        <OTHER_U>0</OTHER_U>
+        <OTHER_M>0</OTHER_M>
+        <OTHER_A>0</OTHER_A>
+    </PERMISSIONS>
+    <LAST_POLL>1500559095</LAST_POLL>
+    <STATE>3</STATE>
+    <LCM_STATE>3</LCM_STATE>
+    <PREV_STATE>3</PREV_STATE>
+    <PREV_LCM_STATE>3</PREV_LCM_STATE>
+    <RESCHED>0</RESCHED>
+    <STIME>1500033989</STIME>
+    <ETIME>0</ETIME>
+    <DEPLOY_ID>4231e53b-9ffa-ec00-d120-64d1d35d4a90</DEPLOY_ID>
+    <MONITORING>
+        <CPU><![CDATA[0.00]]></CPU>
+        <ESX_HOST><![CDATA[btk-esx-e5-6.helpdesk.by]]></ESX_HOST>
+        <GUEST_IP><![CDATA[185.66.69.180]]></GUEST_IP>
+        <GUEST_IP_ADDRESSES><![CDATA[185.66.69.180,fe80::250:56ff:feb1:a27f]]></GUEST_IP_ADDRESSES>
+        <GUEST_STATE><![CDATA[running]]></GUEST_STATE>
+        <LAST_MON><![CDATA[1500559089]]></LAST_MON>
+        <MEMORY><![CDATA[302080]]></MEMORY>
+        <NETRX><![CDATA[24080000]]></NETRX>
+        <NETTX><![CDATA[620000]]></NETTX>
+        <RESOURCE_POOL><![CDATA[Resources]]></RESOURCE_POOL>
+        <STATE><![CDATA[a]]></STATE>
+        <VMWARETOOLS_RUNNING_STATUS><![CDATA[guestToolsRunning]]></VMWARETOOLS_RUNNING_STATUS>
+        <VMWARETOOLS_VERSION><![CDATA[10246]]></VMWARETOOLS_VERSION>
+        <VMWARETOOLS_VERSION_STATUS><![CDATA[guestToolsCurrent]]></VMWARETOOLS_VERSION_STATUS>
+    </MONITORING>
+    <TEMPLATE>
+        <AUTOMATIC_REQUIREMENTS><![CDATA[!(PUBLIC_CLOUD = YES) | (PUBLIC_CLOUD = YES & (HYPERVISOR = vcenter))]]></AUTOMATIC_REQUIREMENTS>
+        <CPU><![CDATA[1]]></CPU>
+        <GRAPHICS>
+            <LISTEN><![CDATA[0.0.0.0]]></LISTEN>
+            <PORT><![CDATA[5929]]></PORT>
+            <TYPE><![CDATA[VNC]]></TYPE>
+        </GRAPHICS>
+        <IMPORTED><![CDATA[YES]]></IMPORTED>
+        <MEMORY><![CDATA[4096]]></MEMORY>
+        <SNAPSHOT>
+            <HYPERVISOR_ID><![CDATA[0]]></HYPERVISOR_ID>
+            <NAME><![CDATA[test]]></NAME>
+            <SNAPSHOT_ID><![CDATA[0]]></SNAPSHOT_ID>
+            <TIME><![CDATA[1500546836]]></TIME>
+        </SNAPSHOT>
+        <SNAPSHOT>
+            <HYPERVISOR_ID><![CDATA[1]]></HYPERVISOR_ID>
+            <NAME><![CDATA[test1]]></NAME>
+            <SNAPSHOT_ID><![CDATA[1]]></SNAPSHOT_ID>
+            <TIME><![CDATA[1500555511]]></TIME>
+        </SNAPSHOT>
+        <VCPU><![CDATA[1]]></VCPU>
+        <VMID><![CDATA[29]]></VMID>
+    </TEMPLATE>
+    <USER_TEMPLATE>
+        <DESCRIPTION><![CDATA[vCenter Virtual Machine imported by OpenNebula from Cluster vOne]]></DESCRIPTION>
+        <HYPERVISOR><![CDATA[vcenter]]></HYPERVISOR>
+        <LOGO><![CDATA[images/logos/centos.png]]></LOGO>
+        <PUBLIC_CLOUD>
+            <HOST><![CDATA[vOne]]></HOST>
+            <TYPE><![CDATA[vcenter]]></TYPE>
+            <VM_TEMPLATE><![CDATA[4231e53b-9ffa-ec00-d120-64d1d35d4a90]]></VM_TEMPLATE>
+        </PUBLIC_CLOUD>
+        <SCHED_REQUIREMENTS><![CDATA[NAME="vOne"]]></SCHED_REQUIREMENTS>
+    </USER_TEMPLATE>
+    <HISTORY_RECORDS>
+        <HISTORY>
+            <OID>29</OID>
+            <SEQ>3</SEQ>
+            <HOSTNAME>vOne</HOSTNAME>
+            <HID>0</HID>
+            <CID>0</CID>
+            <STIME>1500382896</STIME>
+            <ETIME>0</ETIME>
+            <VM_MAD><![CDATA[vcenter]]></VM_MAD>
+            <TM_MAD><![CDATA[]]></TM_MAD>
+            <DS_ID>-1</DS_ID>
+            <PSTIME>0</PSTIME>
+            <PETIME>0</PETIME>
+            <RSTIME>1500382896</RSTIME>
+            <RETIME>0</RETIME>
+            <ESTIME>0</ESTIME>
+            <EETIME>0</EETIME>
+            <REASON>0</REASON>
+            <ACTION>0</ACTION>
+        </HISTORY>
+    </HISTORY_RECORDS>
+</VM>
