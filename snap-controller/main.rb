@@ -3,6 +3,7 @@ require 'rubygems'
 require 'zmqjsonrpc'
 
 $client = ZmqJsonRpc::Client.new("tcp://localhost:8008")
+StartTime = Time.now().to_i
 
 def time_limit(time)
     return (Time.now().to_i - time.to_i) / 60.0 / 60.0 / 24.0 >= 1
@@ -35,7 +36,11 @@ def SnapshotCleaner()
     return found
 end
 
-while SnapshotCleaner() do 
+while SnapshotCleaner() do
+    if (Time.now().to_i - StartTime) / 60.0 > 50 then
+        puts "Scripts time to life is more than 50 minutes. It will be stopped automatically!"
+        Kernel.abort
+    end
     puts "Sleeping..."
     sleep 300
     puts "Continue!"
