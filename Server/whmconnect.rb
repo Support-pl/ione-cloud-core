@@ -2,10 +2,11 @@ require 'rubygems'
 require 'zmqjsonrpc'
 # require 'passgen'
 
-$stderr = File.open("log/errors.txt", "a")
-$stdout = File.open("log/activities.log", "a")
+$stderr = File.open("#{File.expand_path(File.dirname(__FILE__))}/log/errors.txt", "a")
+$stdout = File.open("#{File.expand_path(File.dirname(__FILE__))}/log/activities.log", "a")
+STDOUT.sync = true
 puts "-----------------------------------------------------------"
-ROOT = `pwd`.to_s
+ROOT = File.expand_path(File.dirname(__FILE__))
 USERS_GROUP = 100
 
 ###########################################
@@ -27,12 +28,12 @@ CREDENTIALS = "oneadmin:Nhb500Gznmcjn"
 ENDPOINT    = "http://localhost:2633/RPC2"
 client = Client.new(CREDENTIALS, ENDPOINT)
 
-require "#{ROOT.chomp}/service/time.rb"
-require "#{ROOT.chomp}/service/ON_API/main.rb"
-require "#{ROOT.chomp}/service/handlers/WHMCS.rb"
+require "#{ROOT}/service/time.rb"
+require "#{ROOT}/service/ON_API/main.rb"
+require "#{ROOT}/service/handlers/WHMCS.rb"
 
-puts "[ #{time()} ] Initializing JSON-RPC Server..."
+`echo "[ #{time()} ] Initializing JSON-RPC Server..." >> #{ROOT}/log/activities.log`
 WHMCS = WHMHandler.new(client) # Создание экземпляра хэндлер-сервера
 server = ZmqJsonRpc::Server.new(WHMCS, "tcp://*:8008") # Создание экземпляра сервера
-puts "[ #{time()} ] Server initialized"
+`echo "[ #{time()} ] Server initialized" >> #{ROOT}/log/activities.log`
 server.server_loop # Запуск сервера
