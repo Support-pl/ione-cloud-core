@@ -1,0 +1,12 @@
+
+*.log
+
+main\.js
+
+server/errors\.txt
+
+server/log/
+
+*.save
+
+user\.xml
