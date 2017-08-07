@@ -6,7 +6,10 @@ class WHMHandler
     end
     def Test(msg)
         LOG "Test message received, text: #{msg}"
-	return "DONE"
+        if msg == "PING" then
+            return "PONG"
+        end
+        return "DONE"
     end
 
     def NewAccount(login, pass, templateid, groupid)
