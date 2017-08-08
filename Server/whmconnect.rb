@@ -34,7 +34,7 @@ at_exit do
     LOG("Server was stoppped")
 end
 
-LOG("-----------------------------------------------------------", false)
+LOG("-----------------------------------------------------------", "", false)
 LOG "Initializing JSON-RPC Server..."
 WHMCS = WHMHandler.new(client) # Создание экземпляра хэндлер-сервера
 server = ZmqJsonRpc::Server.new(WHMCS, "tcp://*:8008") # Создание экземпляра сервера

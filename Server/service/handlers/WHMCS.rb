@@ -5,7 +5,7 @@ class WHMHandler
         @client = client
     end
     def Test(msg)
-        LOG "Test message received, text: #{msg}"
+        LOG "Test message received, text: #{msg}", "Test"
         if msg == "PING" then
             return "PONG"
         end
@@ -13,75 +13,84 @@ class WHMHandler
     end
 
     def NewAccount(login, pass, templateid, groupid)
-        LOG "New Account for #{login} Order Accepted!"
-        LOG "Creating new user for #{login}"
+        LOG "New Account for #{login} Order Accepted!", "NewAccount"
+        LOG "Creating new user for #{login}", "NewAccount"
         login, pass, templateid, groupid = login.to_s, pass.to_s, templateid.to_i, groupid.to_i
         userid = UserCreate(login, pass, groupid, @client)
-        LOG "Creating VM for #{login}"
+        LOG "Creating VM for #{login}", "NewAccount"
         vmid = VMCreate(userid, templateid, @client, false) # Получение vmid только что созданной машины
         ip = GetIP(vmid)
-        LOG "VM#{vmid} received the next IP: #{ip}"
+        LOG "VM#{vmid} received the next IP: #{ip}", "NewAccount"
         return ip, vmid, userid
     end
     def Suspend(userid, vmid = nil)
-        LOG "Suspend query for User##{userid} Accepted!"
+        LOG "Suspend query for User##{userid} Accepted!", "Suspend"
         if userid == nil && vmid == nil then
-            LOG "Suspend query rejected! 2 of 2 params are nilClass!"
-            return nil
+            LOG "Suspend query rejected! 2 of 2 params are nilClass!", "Suspend"
+            return 1
+        elsif userid == 0 then
+            LOG "Suspend query rejected! Tryed to block root-user(oneadmin)", "Suspend"
+            return 1
         end
-        LOG "Changing AuthDriver of user #{userid} to 'public'"        
+        LOG "Changing AuthDriver of user #{userid} to 'public'", "Suspend"
         user = User.new(User.build_xml(userid), @client)
         user.chauth("public")
         if vmid == nil then
             return nil
         end
-        LOG "Suspending VM#{vmid}"
+        LOG "Suspending VM#{vmid}", "Suspend"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.suspend
+        return nil
     end
     def Unsuspend(userid, vmid = nil)
-        LOG "Resume query for User##{userid} Accepted!"
+        LOG "Resume query for User##{userid} Accepted!", "Unsuspend"
         if userid == nil && vmid == nil then
-            LOG "Resume query rejected! 2 of 2 params are nilClass!"
-            return nil
+            LOG "Resume query rejected! 2 of 2 params are nilClass!", "Unsuspend"
+            return 1
         end
-        LOG "Changing AuthDriver of user #{userid} to 'core'"
+        LOG "Changing AuthDriver of user #{userid} to 'core'", "Unsuspend"
         user = User.new(User.build_xml(userid), @client)
         user.chauth("core")
         if vmid == nil then
             return nil
         end
-        LOG "Resuming VM#{vmid}"
+        LOG "Resuming VM#{vmid}", "Unsuspend"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.resume
     end
     def Reboot(vmid)
-        LOG "Rebooting VM#{vmid}"
+        LOG "Rebooting VM#{vmid}", "Reboot"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.reboot
     end
-    def Terminate(userid, vmid)
+    def Terminate(userid, vmid = nil)
         if userid == nil || vmid == nil then
-            LOG "Terminate query rejected! one of 2 params is nilClass!"
-            return nil
+            LOG "Terminate query rejected! 1 of 2 params is nilClass!", "Terminate"
+            return 1
+        elsif userid == 0 then
+            LOG "Terminate query rejected! Tryed to delete root-user(oneadmin)", "Terminate"
         end
-        LOG "Terminating VM#{vmid}"
+        Delete(userid)
+        LOG "Terminating VM#{vmid}", "Terminate"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.shutdown
-        Delete(userid)
     end
     def Shutdown(vmid)
-        LOG "Shutting down VM#{vmid}"
+        LOG "Shutting down VM#{vmid}", "Shutdown"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.poweroff
     end
     def Release(vmid)
-        LOG "New Release Order Accepted!"
+        LOG "New Release Order Accepted!", "Release"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.release # <- Release
     end
     def Delete(userid)
-        LOG "Deleting User ##{userid}"
+        if userid == 0 then
+            LOG "Delete query rejected! Tryed to delete root-user(oneadmin)", "Delete"
+        end
+        LOG "Deleting User ##{userid}", "Delete"
         user = User.new(User.build_xml(userid), @client)
         user.delete
     end
@@ -90,7 +99,7 @@ class WHMHandler
         return vm.monitoring_xml
     end
     def activity_log()
-        LOG "Log file content has been copied remotely"
+        LOG "Log file content has been copied remotely", "activity_log"
         log = File.read("#{ROOT}/log/activities.log")
         return log
     end
@@ -107,18 +116,18 @@ class WHMHandler
         return address
     end
     def RMSnapshot(vmid, snapid)
-        LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}"
+        LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}", "RMSnapshot"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.snapshot_delete(snapid)
     end
     def test()
-        LOG("kjasjhfjasb")
+        LOG("kjasjhfjasb", "test")
 	return "YEP!"
     end
     def stop(passwd)
-        LOG "Trying to stop server manually"
+        LOG "Trying to stop server manually", "stop"
         if(passwd.crypt == "keLa9zoht45RY") then
-            LOG "Server Stopped Manualy"
+            LOG "Server Stopped Manualy", "stop"
             Kernel.abort("[ #{time()} ] Server Stopped Remotely")
         end
         return nil
