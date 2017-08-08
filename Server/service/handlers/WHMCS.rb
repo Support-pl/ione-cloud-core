@@ -18,7 +18,7 @@ class WHMHandler
         login, pass, templateid, groupid = login.to_s, pass.to_s, templateid.to_i, groupid.to_i
         userid = UserCreate(login, pass, groupid, @client)
         LOG "Creating VM for #{login}", "NewAccount"
-        vmid = VMCreate(userid, templateid, @client, false) # Получение vmid только что созданной машины
+        vmid = VMCreate(userid, templateid, @client, true) # Получение vmid только что созданной машины
         ip = GetIP(vmid)
         LOG "VM#{vmid} received the next IP: #{ip}", "NewAccount"
         return ip, vmid, userid
