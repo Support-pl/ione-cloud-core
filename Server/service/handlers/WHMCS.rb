@@ -1,4 +1,6 @@
+require 'rubygems'
 require 'json'
+require 'nori'
 
 class WHMHandler
     def initialize(client)
@@ -12,16 +14,13 @@ class WHMHandler
         return "DONE"
     end
 
-    def NewAccount(login, pass, templateid, groupid)
+    def NewAccount(login, pass, templateid, groupid, passwd, deploy = false) # PARAMS: Логин и пароль для личного кабинета в ON, ID шаблона, ID группы тарифа, root-пароль для VM
         LOG "New Account for #{login} Order Accepted!", "NewAccount"
         LOG "Creating new user for #{login}", "NewAccount"
         login, pass, templateid, groupid = login.to_s, pass.to_s, templateid.to_i, groupid.to_i
-        userid = UserCreate(login, pass, groupid, @client)
+        userid = UserCreate(login+"_test", pass, groupid, @client)
         LOG "Creating VM for #{login}", "NewAccount"
-        vmid = VMCreate(userid, templateid, @client, true) # Получение vmid только что созданной машины
-        ip = GetIP(vmid)
-        LOG "VM#{vmid} received the next IP: #{ip}", "NewAccount"
-        return ip, vmid, userid
+        return vmid = VMCreate(userid, templateid, passwd, @client, deploy), userid, ip = GetIP(vmid)
     end
     def Suspend(userid, vmid = nil)
         LOG "Suspend query for User##{userid} Accepted!", "Suspend"
@@ -34,6 +33,10 @@ class WHMHandler
         end
         LOG "Changing AuthDriver of user #{userid} to 'public'", "Suspend"
         user = User.new(User.build_xml(userid), @client)
+        if user.id == 0 then
+            LOG "FUCK YOU"
+            return 666
+        end
         user.chauth("public")
         if vmid == nil then
             return nil
@@ -96,7 +99,8 @@ class WHMHandler
     end
     def VM_XML(vmid)
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        return vm.monitoring_xml
+        vm.info
+        return vm.to_xml
     end
     def activity_log()
         LOG "Log file content has been copied remotely", "activity_log"
@@ -108,20 +112,16 @@ class WHMHandler
         vm.resume
     end
     def GetIP(vmid)
-        doc = Nokogiri::XML(VM_XML(vmid))
-        address = ""
-        doc.xpath('//GUEST_IP').each do |content| 
-            address = content.text.to_s 
-        end
-        return address
+        doc_hash = Nori.new.parse(VM_XML(vmid))
+        return doc_hash['VM']['TEMPLATE']['CONTEXT']['ETH0_IP']
     end
     def RMSnapshot(vmid, snapid)
         LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}", "RMSnapshot"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.snapshot_delete(snapid)
     end
-    def test()
-        LOG("kjasjhfjasb", "test")
+    def log(msg)
+        LOG(msg, "log")
 	return "YEP!"
     end
     def stop(passwd)
@@ -131,6 +131,22 @@ class WHMHandler
             Kernel.abort("[ #{time()} ] Server Stopped Remotely")
         end
         return nil
+    end
+    def STATE(vmid)
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.state
+    end
+    def STATE_STR(vmid)
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.state_str
+    end
+    def LCM_STATE(vmid)
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.lcm_state
+    end
+    def LCM_STATE_STR(vmid)
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.lcm_state_str
     end
     # def NewAccount(billingid, login, pass, vmquota, os, cpu, memory, disk) # Хэндлер создания нового аккаунта PaaS и деплой машины в него
     #     puts "[ #{time()} ] New Account for #{billingid} Order Accepted!"

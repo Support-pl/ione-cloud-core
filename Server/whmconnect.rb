@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'zmqjsonrpc'
 # require 'passgen'
-
+`echo > log/errors.txt`
 
 ROOT = File.expand_path(File.dirname(__FILE__))
 USERS_GROUP = 1
