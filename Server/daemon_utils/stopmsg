@@ -1,3 +1,32 @@
-#!/bin/bash
-
-echo "Ticket {server has been stopeed} created"
+#!/usr/bin/ruby
+require 'rubygems'
+require 'net/smtp'
+from = 'opennebula@support.by'
+to = 'monitoring@support.by'
+subject = 'whmcs_connector server has been stopped'
+text = "WHMCS-Connector Server был остановлен демоном /scripts/server/daemon_whm.rb\n\n"
+text << "------\n"
+text << "Last 20 lines of /scripts/server/log/activities.log:\n"
+log = IO.read("log/activities.log").split("\n")
+for i in (log.length - 20)..(log.length) do
+        if log[i] == nil then
+                break
+        end
+        text << log[i] << "\n"
+end
+text << "/scripts/server/log/errors.txt file:\n"
+err = IO.read("log/errors.txt").split("\n")
+for i in 0..(err.length) do
+        if err[i] == nil then
+                break
+        end
+        text << err[i] << "\n"
+end
+message = ""
+message << "From: <#{from}>\n"
+message << "To: #{to}\n"
+message << "Subject: #{subject}\n"
+message << text
+Net::SMTP.new('localhost', 25).start('mail.support.by') do |smtp|
+    smtp.send_message message, from, to
+end 

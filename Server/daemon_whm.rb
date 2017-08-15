@@ -1,27 +1,5 @@
 require 'daemons'
 
-at_exit do
- 
-    case ARGV[0]
- 
-        when "start"
- 
-            `sh /scripts/server/daemon_utils/startmsg`
- 
-        when "restart"
- 
-            `sh /scripts/server/daemon_utils/restartmsg`
- 
-        when "stop"
- 
-            `sh /scripts/server/daemon_utils/stopmsg`
- 
-    end
- 
-end
- 
-
- 
 Daemons.run('whmconnect.rb') do
  
     loop do
@@ -30,4 +8,13 @@ Daemons.run('whmconnect.rb') do
  
     end
  
+end
+
+case ARGV[0]
+    when "start"
+        `ruby /scripts/server/daemon_utils/startmsg`
+    when "restart"
+        `ruby /scripts/server/daemon_utils/restartmsg`
+    when "stop"
+        `ruby /scripts/server/daemon_utils/stopmsg`
 end
