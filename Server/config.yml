@@ -1,0 +1,22 @@
+OpenNebula:
+  credentials: 'oneadmin:Nhb500Gznmcjn'
+  endpoint: 'http://localhost:2633/RPC2'
+  users-group: 1
+  users-vms-ssh-port: 52222
+  default-node-id: 0
+
+AnsibleServer:
+  ip: '185.66.69.101'
+  port: 52222
+  user: 'root'
+  password: 'So8ghgOdQFpcecE'
+  default-data:
+    email: 'example@example.org'
+    password: 'secret'
+
+WHMCS:
+  uri: 'https://my.support.by/includes/api.php'
+  username: 'hell_api'
+  password: '3924105f27ca00fd90a08aadddfb65e9'
+  listen-port: '8008'
+  trial-suspend-delay: 14400
