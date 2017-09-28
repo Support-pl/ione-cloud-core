@@ -1,17 +1,20 @@
 require 'rubygems'
 require 'zmqjsonrpc'
 
-client = ZmqJsonRpc::Client.new("tcp://185.66.68.238:8008")
+client = ZmqJsonRpc::Client.new("tcp://185.66.68.238:8088")
 
-puts("login")
-login = gets.to_s.chomp
-begin
-    vmid, userid, ip = client.NewAccount(login, "Jago322==", 0, 112, false) # login, pass, templateid, groupid, deploy = false
-rescue => e
-    puts e.message
-end
+indata = {
+    'login' => 'user_7375',
+    'password' => 'Jago322==',
+    'passwd' => 'Jago644==++',
+    'templateid' => 16,
+    'groupid' => 103,
+    'release' => true,
+    'trial' => false,
+    'ansible' => true,
+    'ansible-service' => ARGV[0],
+    'test' => false
+}
 
-
-puts("VMID: #{vmid}")
-puts("UserID: #{userid}")
-puts("IP: #{ip}")
+hash = client.NewAccount(indata)
+puts hash.inspect

@@ -7,7 +7,7 @@ subject = 'whmcs_connector server has been started'
 text = "WHMCS-Connector Server был запущен демоном /scripts/server/daemon_whm.rb\n\n"
 text << "------\n"
 text << "Last 20 lines of /scripts/server/log/activities.log:\n"
-log = IO.read("log/activities.log").split("\n")
+log = IO.read("/scripts/server/log/activities.log").split("\n")
 for i in (log.length - 20)..(log.length) do
         if log[i] == nil then
                 break
@@ -15,7 +15,7 @@ for i in (log.length - 20)..(log.length) do
         text << log[i] << "\n"
 end
 text << "/scripts/server/log/errors.txt file:\n"
-err = IO.read("log/errors.txt").split("\n")
+err = IO.read("/scripts/server/log/errors.txt").split("\n")
 for i in 0..(err.length) do
         if err[i] == nil then
                 break
