@@ -39,11 +39,17 @@ def VMCreate(userid, user_login, templateid, passwd, client, release)
     if Win? templateid, client then
         vm.updateconf(
             "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{passwd}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\", USERNAME = \"Administrator\" ]"
-            )
+        )
+        vm.updateconf(
+            "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{CONF['OpenNebula']['base-vnc-port'] + vmid}\", TYPE=\"VNC\" ]"
+        )
     else
         vm.updateconf(
             "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{passwd}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\" ]"
         ) # Настройка контекста: изменение root-пароля на заданный
+        vm.updateconf(
+            "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{CONF['OpenNebula']['base-vnc-port'] + vmid}\", TYPE=\"VNC\" ]"
+        ) # Настройка порта для VNC
     end
     if release then
         vm.release # Смена состояния с HOLD на Pending
