@@ -1,8 +1,6 @@
-require 'rubygems'
 require 'json'
 require 'nori'
 require 'net/ssh'
-require 'yaml'
 
 class WHMHandler
     def initialize(client)
@@ -30,11 +28,15 @@ class WHMHandler
             'service' => '%Задает имя сервиса, который будет установлен => ex. vesta, bitrix-env, zabbix, etc. | строка(String) %',
             ...
             %Другие параметры в зависимости от сервиса%
-        }
+        },
+        'release' => %Параметр определяет нужно ли создавать машину на диске, или только ее прототип | логическая переменная(Bool)%
     }
 =end
     def NewAccount(params)
+        # LOG params.inspect, "NewAccount"
+        # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
         LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "NewAccount"
+        return {'error' => "TemplateLoadError"} if params['templateid'].nil?
         LOG "Creating new user for #{params['login']}", "NewAccount"
         userid = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client) if params['test'].nil?
         return {'error' => "UserAllocateError"} if userid == 0
@@ -51,38 +53,43 @@ class WHMHandler
         end
         #endTrialController
         #AnsibleController
-        if params['ansible'] then
-            LOG "Here is some ansible script for VM##{vmid}", "NewAccount -> AnsibleController"
-            service, ip = params['ansible-service'].chomp, GetIP(vmid)
+        if params['ansible'] && params['release'] then
             Thread.new do
                 until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
                     sleep(15)
                 end
                 sleep(60)
-                begin
-                    Net::SSH.start(ANSIBLE_HOST, ANSIBLE_HOST_USER, :password => ANSIBLE_HOST_PASSWORD, :port => ANSIBLE_HOST_PORT) do | host |
-                        ansible_hosts = host.exec!('cat /etc/ansible/hosts').split(/\n/) # Получение списка хостов и групп установки
-                        ansible_hosts[ansible_hosts.index("[install#{service}clients]") + 1] = "#{ip}:#{USERS_VMS_SSH_PORT} ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=#{params['passwd']}"
-                        #^ Запись в требуемую группу установки(прим. installvestaclients) данных доступа хоста
-                        host.exec!("echo '#{ansible_hosts.join("\n")}' > /etc/ansible/hosts") # Обновление файла
-                        playbook = host.exec!("cat /etc/ansible/#{service}/clients/#{service}_pattern.yml") # Получение содержимого шаблонного файла playbook
-                        whmcs_data = GetWHMCSData(params['login'], params) # Получение пользовательских данных из WHMCS
-                        YAML.load(playbook)[0]['vars'].keys.each do | var | # Запись пользовательских данных в плейбук
-                            playbook.gsub!(ANSIBLE_DEFAULT_DATA[var], whmcs_data[var])
-                        end if !YAML.load(playbook)[0]['vars'].nil?
-                        host.exec!("echo '#{playbook}' > /etc/ansible/#{service}/clients/#{service}.yml") # Запись обновленного плейбука в файл
-                        host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml") # Запуск установки
-                    end
-                rescue => e # Хэндлер ошибки в коде или отсутсвия файлов на сервере Ansible
-                    LOG "An Error occured, while installing #{service} on #{ip}", "NewAccount -> AnsibleController"
-                    Thread.exit
-                end
-                LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
+                AnsibleController(params)
             end
             LOG "Install-thread started, you should wait until the #{service} will be installed", 'NewAccount -> AnsibleController'
         end
         #endAnsibleController
+        LOG "New User account and vm created", "NewAccount"
         return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
+    end
+    def AnsibleController(params)
+        LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "NewAccount -> AnsibleController"
+        service, ip, vmid, = params['ansible-service'].chomp, GetIP(params['vmid']), params['vmid']
+
+        begin
+            Net::SSH.start(ANSIBLE_HOST, ANSIBLE_HOST_USER, :password => ANSIBLE_HOST_PASSWORD, :port => ANSIBLE_HOST_PORT) do | host |
+                ansible_hosts = host.exec!('cat /etc/ansible/hosts').split(/\n/) # Получение списка хостов и групп установки
+                ansible_hosts[ansible_hosts.index("[install#{service}clients]") + 1] = "#{ip}:#{USERS_VMS_SSH_PORT} ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=#{params['passwd']}"
+                #^ Запись в требуемую группу установки(прим. installvestaclients) данных доступа хоста
+                host.exec!("echo '#{ansible_hosts.join("\n")}' > /etc/ansible/hosts") # Обновление файла
+                playbook = host.exec!("cat /etc/ansible/#{service}/clients/#{service}_pattern.yml") # Получение содержимого шаблонного файла playbook
+                whmcs_data = GetWHMCSData(params['login'], params) # Получение пользовательских данных из WHMCS
+                YAML.load(playbook)[0]['vars'].keys.each do | var | # Запись пользовательских данных в плейбук
+                    playbook.gsub!(ANSIBLE_DEFAULT_DATA[var], whmcs_data[var])
+                end if !YAML.load(playbook)[0]['vars'].nil?
+                host.exec!("echo '#{playbook}' > /etc/ansible/#{service}/clients/#{service}.yml") # Запись обновленного плейбука в файл
+                host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml") # Запуск установки
+            end
+        rescue => e # Хэндлер ошибки в коде или отсутсвия файлов на сервере Ansible
+            LOG "An Error occured, while installing #{service} on #{ip}", "NewAccount -> AnsibleController"
+            Thread.exit
+        end
+        LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
     end
     def Suspend(params, log = true)
         if !params['force'] then
@@ -115,11 +122,11 @@ class WHMHandler
     def Reboot(vmid)
         LOG "Rebooting VM#{vmid}", "Reboot"
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.reboot
+        vm.reboot(true) # true означает, что будет вызвана функция reboot-hard
     end
     def Terminate(userid, vmid, force = false)
-        # LOG "Terminate query call params: {\"userid\" => #{userid}, \"vmid\" => #{vmid}}", "Terminate"
-        # return nil if !force
+        LOG "Terminate query call params: {\"userid\" => #{userid}, \"vmid\" => #{vmid}}", "Terminate"
+        return nil if !force
         if userid == nil || vmid == nil then
             LOG "Terminate query rejected! 1 of 2 params is nilClass!", "Terminate"
             return 1
@@ -230,6 +237,43 @@ class WHMHandler
         user = User.new(User.build_xml(userid), @client)
         user.info!
         return user.to_xml
+    end
+    def Reinstall(params)
+        LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
+        vmid = params['vmid']
+        ip, vm = GetIP(vmid), VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
+        vm.terminate(true)
+        vn = VirtualNetwork.new(VirtualNetwork.build_xml(vm_xml['VM']['TEMPLATE']['NIC']['NETWORK_ID'].to_i), @client)
+        vn.hold(ip)
+        vmid = VMCreate(params['userid'], params['login'], params['templateid'].to_i, params['passwd'], @client, params['release'])
+        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        
+        Thread.new do
+            until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
+                LOG "Waiting for VM#{vmid} be deployed", 'META'
+                sleep(60)
+            end
+            sleep(30)
+            vn.release(ip)
+            vm.nic_attach(
+            "NIC = [ AR_ID=\"#{vm_xml['VM']['TEMPLATE']['NIC']['AR_ID']}\",
+                    BRIDGE=\"#{vm_xml['VM']['TEMPLATE']['NIC']['BRIDGE']}\",
+                    CLUSTER_ID=\"#{vm_xml['VM']['TEMPLATE']['NIC']['CLUSTER_ID']}\",
+                    IP=\"#{vm_xml['VM']['TEMPLATE']['NIC']['IP']}\",
+                    MAC=\"#{vm_xml['VM']['TEMPLATE']['NIC']['MAC']}\",
+                    NETWORK=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK']}\",
+                    NETWORK_ID=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK_ID']}\",
+                    NETWORK_UNAME=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK_UNAME']}\",
+                    SECURITY_GROUPS=\"#{vm_xml['VM']['TEMPLATE']['NIC']['SECURITY_GROUPS']}\",
+                    TARGET=\"#{vm_xml['VM']['TEMPLATE']['NIC']['TARGET']}\",
+                    VN_MAD=\"#{vm_xml['VM']['TEMPLATE']['NIC']['VN_MAD']}\"
+                ]"
+            )
+            LOG "VM#{vmid} has been reinstalled", "Reinstall"
+            vm.nic_detach 0
+        end
+        return { 'vmid' => vmid, 'ip' => ip }
     end
     def test(vmid)
         LOG LCM_STATE(vmid)

@@ -7,5 +7,7 @@ def LOG(msg, method = "none", _time = true)
         `echo "#{msg}" >> #{ROOT}/log/activities.log`
     elsif _time == false then
         `echo "#{msg}  [ #{method} ]" >> #{ROOT}/log/activities.log`
+    elsif method == "META" then
+        `echo "#{msg}" >> #{ROOT}/log/meta.log`        
     end
 end

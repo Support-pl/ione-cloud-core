@@ -15,4 +15,5 @@ if ARGV[1] == 'loop' then
         puts "#{client.LCM_STATE_STR(vmid)} -- #{client.LCM_STATE(vmid)}"
         sleep(10)
     end
+    puts "VM#{vmid} is active and running now"
 end
