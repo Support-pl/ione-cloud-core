@@ -1,6 +1,9 @@
 require 'json'
 require 'nori'
 require 'net/ssh'
+require 'gyoku'
+
+$thread_locks = Hash.new { |hash, key| hash[key] = false }
 
 class WHMHandler
     def initialize(client)
@@ -240,43 +243,65 @@ class WHMHandler
     end
     def Reinstall(params)
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
+        params.each do | item |
+            return "ReinstallError - some params are nil", params if item.nil?
+        end
         vmid = params['vmid']
         ip, vm = GetIP(vmid), VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
         vm.terminate(true)
-        vn = VirtualNetwork.new(VirtualNetwork.build_xml(vm_xml['VM']['TEMPLATE']['NIC']['NETWORK_ID'].to_i), @client)
-        vn.hold(ip)
-        vmid = VMCreate(params['userid'], params['login'], params['templateid'].to_i, params['passwd'], @client, params['release'])
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        
-        Thread.new do
-            until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                LOG "Waiting for VM#{vmid} be deployed", 'META'
-                sleep(60)
-            end
-            sleep(30)
-            vn.release(ip)
-            vm.nic_attach(
-            "NIC = [ AR_ID=\"#{vm_xml['VM']['TEMPLATE']['NIC']['AR_ID']}\",
-                    BRIDGE=\"#{vm_xml['VM']['TEMPLATE']['NIC']['BRIDGE']}\",
-                    CLUSTER_ID=\"#{vm_xml['VM']['TEMPLATE']['NIC']['CLUSTER_ID']}\",
-                    IP=\"#{vm_xml['VM']['TEMPLATE']['NIC']['IP']}\",
-                    MAC=\"#{vm_xml['VM']['TEMPLATE']['NIC']['MAC']}\",
-                    NETWORK=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK']}\",
-                    NETWORK_ID=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK_ID']}\",
-                    NETWORK_UNAME=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK_UNAME']}\",
-                    SECURITY_GROUPS=\"#{vm_xml['VM']['TEMPLATE']['NIC']['SECURITY_GROUPS']}\",
-                    TARGET=\"#{vm_xml['VM']['TEMPLATE']['NIC']['TARGET']}\",
-                    VN_MAD=\"#{vm_xml['VM']['TEMPLATE']['NIC']['VN_MAD']}\"
-                ]"
-            )
-            LOG "VM#{vmid} has been reinstalled", "Reinstall"
-            vm.nic_detach 0
+        until vm.state_str != 'DONE' do
+            sleep(1)
         end
-        return { 'vmid' => vmid, 'ip' => ip }
+
+        if $thread_locks[ :reinstall ] then
+            while $thread_locks[ :reinstall ] do
+                sleep(3)
+            end
+        end
+        $thread_locks[ :reinstall ] = true
+        old_template = Template.new(Template.build_xml(params['templateid'].to_i), @client)
+        old_template = Nori.new.parse(old_template.info! || old_template.to_xml)['VMTEMPLATE']['TEMPLATE']
+        new_template = Template.new(Template.build_xml(REINSTALL_TEMPLATE_ID), @client)
+        new_template.update(
+            "NIC = [
+                IP=\"#{ip}\",
+                MAC=\"#{vm_xml['VM']['TEMPLATE']['NIC']['MAC']}\",
+                NETWORK=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK']}\",
+                NETWORK_UNAME=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK_UNAME']}\",
+                SECURITY_GROUPS=\"#{vm_xml['VM']['TEMPLATE']['NIC']['SECURITY_GROUPS']}\" ]
+            CPU = \"#{old_template['CPU']}\"
+            MEMORY = \"#{old_template['MEMORY']}\"
+            VCPU = \"#{old_template['VCPU']}\"
+            DESCRIPTION = \"#{old_template['DESCRIPTION']}\"
+            PUBLIC_CLOUD = [
+                TYPE=\"vcenter\",
+                VM_TEMPLATE=\"#{old_template['PUBLIC_CLOUD']['VM_TEMPLATE']}\" ]
+            VCENTER_DATASTORE = \"#{old_template['VCENTER_DATASTORE']}\"
+            CONTEXT = [
+                NETWORK = \"YES\",
+                PASSWORD = \"$PASSWORD\",
+                SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{Win?(params['templateid'], @client) ? ", USERNAME = \"$USERNAME\" " : " "}]
+            USER_INPUTS = [
+                CPU = \"#{old_template['USER_INPUTS']['CPU']}\",
+                VCPU = \"#{old_template['USER_INPUTS']['VCPU']}\",
+                MEMORY = \"#{old_template['USER_INPUTS']['MEMORY']}\",
+                PASSWORD = \"M|password|RootPassword\"#{Win?(params['templateid'], @client) ? ", USERNAME = \"M|text|USERNAME\" " : " "}]
+            ",
+            true
+        )
+        
+        vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
+        $thread_locks[ :reinstall ] = false
+
+        LOG "VM#{vmid} has been reinstalled", "Reinstall"
+        return { 'vmid' => vmid, 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
-    def test(vmid)
-        LOG LCM_STATE(vmid)
-        LOG STATE(vmid)
+    def test()
+        user = User.new(User.build_xml(448), @client)
+        return user.info! || user.to_xml
+    end
+    def locks_stat()
+        return $thread_locks
     end
 end

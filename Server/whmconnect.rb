@@ -13,6 +13,8 @@ ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
 ANSIBLE_HOST_PASSWORD = CONF['AnsibleServer']['password']
 
 USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port']
+DEFAULT_HOST = CONF['OpenNebula']['default-node-id']
+REINSTALL_TEMPLATE_ID = CONF['OpenNebula']['reinstall-template-id']
 
 ###########################################
 # Setting up Enviroment                   #
