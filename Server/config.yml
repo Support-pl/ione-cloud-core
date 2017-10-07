@@ -6,6 +6,7 @@ OpenNebula:
   default-node-id: 0 # ID of the node, vms to deploy by default
   base-vnc-port: 5900 # Base VNC-port number. VMs will get port for VNC by formula: {{ base-vnc-port }} + {{ vmid }}
   reinstall-template-id: 35
+
 AnsibleServer: # Credentials for Ansible Server
   ip: '185.66.69.101'
   port: 52222
@@ -24,3 +25,6 @@ WHMCS: # Credentials for connection with WHMCS
   listen-port: '8008'
   # Delay value for trial VMs in seconds
   trial-suspend-delay: 14400
+
+Other:
+  debug: true # If 'true' all incoming params will be written to log

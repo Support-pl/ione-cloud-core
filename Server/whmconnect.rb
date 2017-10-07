@@ -5,6 +5,7 @@ require 'yaml'
 
 ROOT = File.expand_path(File.dirname(__FILE__))
 CONF = YAML.load(File.read("#{ROOT}/config.yml"))
+# DEBUG = CONF['Other']['debug']
 USERS_GROUP = CONF['OpenNebula']['users-group']
 TRIAL_SUSPEND_DELAY = CONF['WHMCS']['trial-suspend-delay']
 ANSIBLE_HOST = CONF['AnsibleServer']['ip']

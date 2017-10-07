@@ -4,12 +4,12 @@ require 'zmqjsonrpc'
 client = ZmqJsonRpc::Client.new("tcp://185.66.68.238:8008")
 
 args = {
-    'vmid' => 530,
-    'userid' => 427,
-    'login' => 'dev_machine_3.0',
-    'passwd' => 'Y+eQ+zHZiw3bHQts',
-    'templateid' => 16,
-    'release' => true
+    'vmid' => 598,
+    'userid' => 449,
+    'login' => 'user_7447',
+    'passwd' => 'CGoFBsZ,,a1OeaLN',
+    'templateid' => 18,
+    'release' => false
 }
 
 puts client.Reinstall(args)

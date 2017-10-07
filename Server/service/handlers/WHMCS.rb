@@ -39,9 +39,12 @@ class WHMHandler
         # LOG params.inspect, "NewAccount"
         # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
         LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "NewAccount"
+        LOG "Params: #{params.inspect}", 'NewAccount' if DEBUG
+        LOG "Error: TemplateLoadError", 'NewAccount' if params['templateid'].nil?
         return {'error' => "TemplateLoadError"} if params['templateid'].nil?
         LOG "Creating new user for #{params['login']}", "NewAccount"
         userid = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client) if params['test'].nil?
+        LOG "Error: UserAllocateError" if userid == 0
         return {'error' => "UserAllocateError"} if userid == 0
         LOG "Creating VM for #{params['login']}", "NewAccount"
         vmid = VMCreate(userid, params['login'], params['templateid'].to_i, params['passwd'], @client, params['release']) if params['test'].nil?
@@ -99,6 +102,7 @@ class WHMHandler
             LOG "Suspend query call params: #{params.inspect}", "Suspend" if !params['force']
             return nil if !params['force']
         end
+        LOG "Params: #{params.inspect} | log = #{log}", "Suspend" if DEBUG
         LOG "Suspend query for User##{params['userid']} Accepted!", "Suspend" if log
         return "Poshel nahuj so svoimi nulami!!!" if params['userid'].to_i == 0
         Delete(params['userid'])
@@ -111,6 +115,7 @@ class WHMHandler
             LOG "Unsuspend query call params: #{params.inspect}", "Unuspend" if !params['force']
             return nil if !params['force']
         end
+        LOG "Params: #{params.inspect} | log = #{log}", "Unsuspend" if DEBUG
         LOG "Unuspending User #{params['login']} and VM ##{params['vmid']}", "Unsuspend"
         userid = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client)
         vm = VirtualMachine.new(VirtualMachine.build_xml(params['vmid']), @client)
@@ -124,6 +129,7 @@ class WHMHandler
     end
     def Reboot(vmid)
         LOG "Rebooting VM#{vmid}", "Reboot"
+        LOG "Params: vmid = #{vmid}", "Reboot" if DEBUG        
         vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm.reboot(true) # true означает, что будет вызвана функция reboot-hard
     end
@@ -242,28 +248,29 @@ class WHMHandler
         return user.to_xml
     end
     def Reinstall(params)
+        LOG params.inspect, 'META'
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
-        params.each do | item |
-            return "ReinstallError - some params are nil", params if item.nil?
-        end
+        # params.each do | item |
+        #     return "ReinstallError - some params are nil", params if item.nil?
+        # end
         vmid = params['vmid']
         ip, vm = GetIP(vmid), VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
         vm.terminate(true)
-        until vm.state_str != 'DONE' do
+        while STATE_STR(vmid) != 'DONE' do
             sleep(1)
         end
 
-        if $thread_locks[ :reinstall ] then
-            while $thread_locks[ :reinstall ] do
-                sleep(3)
-            end
-        end
-        $thread_locks[ :reinstall ] = true
+        # if $thread_locks[ :reinstall ] then
+        #     while $thread_locks[ :reinstall ] do
+        #         sleep(3)
+        #     end
+        # end
+        # $thread_locks[ :reinstall ] = true
         old_template = Template.new(Template.build_xml(params['templateid'].to_i), @client)
         old_template = Nori.new.parse(old_template.info! || old_template.to_xml)['VMTEMPLATE']['TEMPLATE']
         new_template = Template.new(Template.build_xml(REINSTALL_TEMPLATE_ID), @client)
-        new_template.update(
+        LOG new_template.update(
             "NIC = [
                 IP=\"#{ip}\",
                 MAC=\"#{vm_xml['VM']['TEMPLATE']['NIC']['MAC']}\",
@@ -289,17 +296,20 @@ class WHMHandler
                 PASSWORD = \"M|password|RootPassword\"#{Win?(params['templateid'], @client) ? ", USERNAME = \"M|text|USERNAME\" " : " "}]
             ",
             true
-        )
+        ), 'META'
         
         vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
-        $thread_locks[ :reinstall ] = false
+        # $thread_locks[ :reinstall ] = false
 
         LOG "VM#{vmid} has been reinstalled", "Reinstall"
         return { 'vmid' => vmid, 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
     def test()
-        user = User.new(User.build_xml(448), @client)
-        return user.info! || user.to_xml
+        vm = VirtualMachine.new(VirtualMachine.build_xml(595), @client)
+        out = []
+        out << vm.resize('MEMORY = 4096', false)
+        out << vm.resize('CPU = 3', false)
+        out << vm.resize('VCPU = 2', false)
     end
     def locks_stat()
         return $thread_locks
