@@ -8,13 +8,12 @@ OpenNebula:
   reinstall-template-id: 35
 
 AnsibleServer: # Credentials for Ansible Server
-  ip: '185.66.69.101'
+  active: true
+  data-getters-url: '/scripts/server/service/ansible/getters.rb'
+  host: '185.66.69.101'
   port: 52222
   user: 'root'
   password: 'So8ghgOdQFpcecE'
-  default-data: # Default values for variables in the playbooks: variable -- default value
-    email: 'example@example.org'
-    password: 'secret'
 
 WHMCS: # Credentials for connection with WHMCS
   uri: 'https://my.support.by/includes/api.php' # API script

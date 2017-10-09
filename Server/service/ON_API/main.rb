@@ -53,9 +53,17 @@ def VMCreate(userid, user_login, templateid, passwd, client, release = true)
     end
 
     user = User.new(User.build_xml(userid), client)
-    used = Nori.new.parse(template.info! || template.to_xml)['VMTEMPLATE']['TEMPLATE']
-    user_quota = Nori.new.parse(user.info! || user.to_xml)['USER']['VM_QUOTA']['VM']
-    user.set_quota("VM=[ CPU=\"#{(used['CPU'].to_i + user_quota['CPU_USED'].to_i).to_s}\", MEMORY=\"#{(used['MEMORY'].to_i + user_quota['MEMORY_USED'].to_i).to_s}\", SYSTEM_DISK_SIZE=\"-1\", VMS=\"#{(user_quota['VMS_USED'].to_i + 1).to_s}\" ]")
+    used = (template.info! || template.to_hash)['VMTEMPLATE']['TEMPLATE']
+    user_quota = (user.info! || user.to_hash)['USER']['VM_QUOTA']
+    if user_quota.nil? then
+        user_quota = user_quota['VM']
+        user_quota = Hash.new
+    end
+    user.set_quota("VM=[
+                    CPU=\"#{(used['CPU'].to_i + user_quota['CPU_USED'].to_i).to_s}\", 
+                    MEMORY=\"#{(used['MEMORY'].to_i + user_quota['MEMORY_USED'].to_i).to_s}\", 
+                    SYSTEM_DISK_SIZE=\"-1\", 
+                    VMS=\"#{(user_quota['VMS_USED'].to_i + 1).to_s}\" ]")
 
     chown_result = vm.chown(userid, USERS_GROUP)
     raise chown_result.message if chown_result != nil

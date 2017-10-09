@@ -65,7 +65,7 @@ class WHMHandler
                     sleep(15)
                 end
                 sleep(60)
-                AnsibleController(params)
+                AnsibleController(params.merge({'super' => "NewAccount ->", 'ip' => GetIP(vmid)}))
             end
             LOG "Install-thread started, you should wait until the #{service} will be installed", 'NewAccount -> AnsibleController'
         end
@@ -73,29 +73,51 @@ class WHMHandler
         LOG "New User account and vm created", "NewAccount"
         return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
     end
+=begin
+    Обязательные параметры для AnsibleController:{
+        'ansible-service' => % Имя сервиса, например, vesta %,
+        'vmid' => % VM ID машины %,
+        'ip' => % IP машины %,
+        'super' => % Имя метода вызывающего данный, если таковой имеется %
+        >.. => % Специфические параметры для получения данных и сторонних источников, пример: %
+        'serviceid' => % ID сервиса в биллинге %
+        'passwd' => % Пароль для ВМ % 
+    }
+=end
     def AnsibleController(params)
-        LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "NewAccount -> AnsibleController"
-        service, ip, vmid, = params['ansible-service'].chomp, GetIP(params['vmid']), params['vmid']
-
-        begin
-            Net::SSH.start(ANSIBLE_HOST, ANSIBLE_HOST_USER, :password => ANSIBLE_HOST_PASSWORD, :port => ANSIBLE_HOST_PORT) do | host |
-                ansible_hosts = host.exec!('cat /etc/ansible/hosts').split(/\n/) # Получение списка хостов и групп установки
-                ansible_hosts[ansible_hosts.index("[install#{service}clients]") + 1] = "#{ip}:#{USERS_VMS_SSH_PORT} ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=#{params['passwd']}"
-                #^ Запись в требуемую группу установки(прим. installvestaclients) данных доступа хоста
-                host.exec!("echo '#{ansible_hosts.join("\n")}' > /etc/ansible/hosts") # Обновление файла
-                playbook = host.exec!("cat /etc/ansible/#{service}/clients/#{service}_pattern.yml") # Получение содержимого шаблонного файла playbook
-                whmcs_data = GetWHMCSData(params['login'], params) # Получение пользовательских данных из WHMCS
-                YAML.load(playbook)[0]['vars'].keys.each do | var | # Запись пользовательских данных в плейбук
-                    playbook.gsub!(ANSIBLE_DEFAULT_DATA[var], whmcs_data[var])
-                end if !YAML.load(playbook)[0]['vars'].nil?
-                host.exec!("echo '#{playbook}' > /etc/ansible/#{service}/clients/#{service}.yml") # Запись обновленного плейбука в файл
-                host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml") # Запуск установки
+        LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController"
+        LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "#{params['super']}AnsibleController"
+        service, ip, vmid, = params['ansible-service'].chomp, params['ip'], params['vmid']
+        Thread.new do
+            begin
+                # Запуск SSH сессии с сервером на котором находится Ansible
+                Net::SSH.start(ANSIBLE_HOST, ANSIBLE_HOST_USER, :password => ANSIBLE_HOST_PASSWORD, :port => ANSIBLE_HOST_PORT) do | host |
+                    # Получение списка хостов для установки
+                    ansible_hosts = host.exec!('cat /etc/ansible/hosts').split(/\n/)
+                    # Запись в требуемую группу установки(прим. installvestaclients) данных доступа хоста
+                    ansible_hosts[ansible_hosts.index("[install#{service}clients]") + 1] = "#{ip}:#{USERS_VMS_SSH_PORT} ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=#{params['passwd']}"
+                    # Запись хостов обратно в файл hosts
+                    host.exec!("echo '#{ansible_hosts.join("\n")}' > /etc/ansible/hosts")
+                    # Получение содержимого шаблонного файла playbook
+                    playbook = host.exec!("cat /etc/ansible/#{service}/clients/#{service}_pattern.yml")
+                    # Создание объекта класса AnsibleDataGetter для получения данных из сторонних источников
+                    getter = AnsibleDataGetter.new
+                    # В случае наличия переменных, получение значений для них с помощью одноименных функций в AnsibleDataGetter
+                    playbook[0]['vars'].each_key { | key | puts playbook[0]['vars'][key] = getter.send(key, params) } if !YAML.load(playbook)[0]['vars'].nil?
+                    # Конвертация хэша в YAML строку
+                    playbook = YAML.dump playbook
+                    # Запись плейбука в основной файл плейбука
+                    host.exec!("echo '#{playbook}' > /etc/ansible/#{service}/clients/#{service}.yml")
+                    # Запуск плейбука
+                    host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml")
+                    # Вот тут будет проверка итогов работы ansible
+                end
+            rescue => e # Хэндлер ошибки в коде или отсутсвия файлов на сервере Ansible
+                LOG "An Error occured, while installing #{service} on #{ip}", "NewAccount -> AnsibleController"
+                Thread.exit
             end
-        rescue => e # Хэндлер ошибки в коде или отсутсвия файлов на сервере Ansible
-            LOG "An Error occured, while installing #{service} on #{ip}", "NewAccount -> AnsibleController"
-            Thread.exit
+            LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
         end
-        LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
     end
     def Suspend(params, log = true)
         if !params['force'] then
@@ -104,10 +126,14 @@ class WHMHandler
         end
         LOG "Params: #{params.inspect} | log = #{log}", "Suspend" if DEBUG
         LOG "Suspend query for User##{params['userid']} Accepted!", "Suspend" if log
+        # Обработка ошибки нулевого пользователя, удалять root как-то некрасиво
         return "Poshel nahuj so svoimi nulami!!!" if params['userid'].to_i == 0
+        # Удаление пользователя
         Delete(params['userid'])
         LOG "Suspending VM#{params['vmid']}", "Suspend" if log
-        VirtualMachine.new(VirtualMachine.build_xml(params['vmid']), @client).suspend
+        # Приостановление виртуальной машины
+        get_pool_element(VirtualMachine, params['vmid'], @client).suspend
+        # VirtualMachine.new(VirtualMachine.build_xml(params['vmid']), @client).suspend
         return nil
     end
     def Unsuspend(params)
@@ -117,58 +143,66 @@ class WHMHandler
         end
         LOG "Params: #{params.inspect} | log = #{log}", "Unsuspend" if DEBUG
         LOG "Unuspending User #{params['login']} and VM ##{params['vmid']}", "Unsuspend"
+        # Создание копии удаленного(приостановленного) аккаунта
         userid = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client)
-        vm = VirtualMachine.new(VirtualMachine.build_xml(params['vmid']), @client)
+        vm = get_pool_element(VirtualMachine, params['vmid'], @client)
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(params['vmid']), @client)
+        # Отдаем машину новой учетке
         vm.chown(userid, USERS_GROUP)
+        # Запускаем машину
         vm.resume
-        user = User.new(User.build_xml(userid), @client)
-        user.info!
-        used = Nori.new.parse(user.to_xml)['USER']['VM_QUOTA']['VM']
+        user = get_pool_element(User, userid, @client)
+        # user = User.new(User.build_xml(userid), @client)
+        # Получение информации о квотах пользователя
+        used = (user.info! || user.to_hash)['USER']['VM_QUOTA']['VM']
+        # Установление квот на уровень количества ресурсов выданных пользователю
         user.set_quota("VM=[ CPU=\"#{used['CPU_USED']}\", MEMORY=\"#{used['MEMORY_USED']}\", SYSTEM_DISK_SIZE=\"-1\", VMS=\"#{used['VMS_USED']}\" ]")    
         return { 'userid' => userid }
     end
     def Reboot(vmid)
         LOG "Rebooting VM#{vmid}", "Reboot"
-        LOG "Params: vmid = #{vmid}", "Reboot" if DEBUG        
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.reboot(true) # true означает, что будет вызвана функция reboot-hard
+        LOG "Params: vmid = #{vmid}", "Reboot" if DEBUG
+        get_pool_element(VirtualMachine, vmid, @client).reboot(true) # true означает, что будет вызвана функция reboot-hard
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).reboot(true)
     end
     def Terminate(userid, vmid, force = false)
         LOG "Terminate query call params: {\"userid\" => #{userid}, \"vmid\" => #{vmid}}", "Terminate"
         return nil if !force
+        # Пробуем НЕ удалить корень
         if userid == nil || vmid == nil then
             LOG "Terminate query rejected! 1 of 2 params is nilClass!", "Terminate"
             return 1
         elsif userid == 0 then
             LOG "Terminate query rejected! Tryed to delete root-user(oneadmin)", "Terminate"
         end
+        # Удаляем пользователя
         Delete(userid)
         LOG "Terminating VM#{vmid}", "Terminate"
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.recover(3)
+        get_pool_element(VirtualMachine, vmid, @client).recover 3 # recover с параметром 3 означает полное удаление с диска
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).recover(3)
     end
-    def Shutdown(vmid)
+    def Shutdown(vmid) # Выключение машины
         LOG "Shutting down VM#{vmid}", "Shutdown"
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.poweroff
+        get_pool_element(VirtualMachine, vmid, @client).poweroff
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).poweroff
     end
     def Release(vmid)
         LOG "New Release Order Accepted!", "Release"
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.release # <- Release
+        get_pool_element(VirtualMachine, vmid, @client).release
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).release # <- Release
     end
-    def Delete(userid)
+    def Delete(userid) # Удаление пользователя
         if userid == 0 then
             LOG "Delete query rejected! Tryed to delete root-user(oneadmin)", "Delete"
         end
         LOG "Deleting User ##{userid}", "Delete"
-        user = User.new(User.build_xml(userid), @client)
-        user.delete
+        get_pool_element(User, userid, @client).delete
+        # user = User.new(User.build_xml(userid), @client).delete
     end
     def VM_XML(vmid)
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.info
-        return vm.to_xml
+        vm = get_pool_element(VirtualMachine, vmid, @client)
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.info! || vm.to_xml
     end
     def activity_log()
         LOG "Log file content has been copied remotely", "activity_log"
@@ -176,8 +210,8 @@ class WHMHandler
         return log
     end
     def Resume(vmid)
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.resume
+        get_pool_element(VirtualMachine, vmid, @client).resume
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).resume
     end
     def GetIP(vmid)
         doc_hash = Nori.new.parse(VM_XML(vmid))
@@ -186,12 +220,12 @@ class WHMHandler
 
     def RMSnapshot(vmid, snapid, log = false)
         LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}", "RMSnapshot" if log
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.snapshot_delete(snapid)
+        get_pool_element(VirtualMachine. vmid, @client).snapshot_delete(snapid)
+        # VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).snapshot_delete(snapid)
     end
     def log(msg)
         LOG(msg, "log")
-	return "YEP!"
+	    return "YEP!"
     end
     def stop(passwd)
         LOG "Trying to stop server manually", "stop"
@@ -202,24 +236,24 @@ class WHMHandler
         return nil
     end
     def STATE(vmid)
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.info!        
-        return vm.state
+        vm = get_pool_element(VirtualMachine, vmid, @client)
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.info! || vm.state
     end
     def STATE_STR(vmid)
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.info!
-        return vm.state_str
+        vm = get_pool_element(VirtualMachine, vmid, @client)
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.info! || vm.state_str
     end
     def LCM_STATE(vmid)
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.info!
-        return vm.lcm_state
+        vm = get_pool_element(VirtualMachine, vmid, @client)
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.info! || vm.lcm_state
     end
     def LCM_STATE_STR(vmid)
-        vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
-        vm.info!
-        return vm.lcm_state_str
+        vm = get_pool_element(VirtualMachine, vmid, @client)
+        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        return vm.info! || vm.lcm_state_str
     end
     def compare_info()
         def get_name(uid)
@@ -243,33 +277,33 @@ class WHMHandler
         return info.to_json
     end
     def GetUserInfo(userid)
-        user = User.new(User.build_xml(userid), @client)
-        user.info!
-        return user.to_xml
+        user = get_pool_element(User, userid, @client)
+        # user = User.new(User.build_xml(userid), @client)
+        return user.info! || user.to_xml
     end
     def Reinstall(params)
         LOG params.inspect, 'META'
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
-        # params.each do | item |
-        #     return "ReinstallError - some params are nil", params if item.nil?
-        # end
+        params.each do | item |
+            return "ReinstallError - some params are nil", params if item.nil?
+        end
         vmid = params['vmid']
-        ip, vm = GetIP(vmid), VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
+        ip, vm = GetIP(vmid), get_pool_element(VirtualMachine, vmid, @client)
         vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
         vm.terminate(true)
         while STATE_STR(vmid) != 'DONE' do
             sleep(1)
         end
 
-        # if $thread_locks[ :reinstall ] then
-        #     while $thread_locks[ :reinstall ] do
-        #         sleep(3)
-        #     end
-        # end
-        # $thread_locks[ :reinstall ] = true
-        old_template = Template.new(Template.build_xml(params['templateid'].to_i), @client)
-        old_template = Nori.new.parse(old_template.info! || old_template.to_xml)['VMTEMPLATE']['TEMPLATE']
-        new_template = Template.new(Template.build_xml(REINSTALL_TEMPLATE_ID), @client)
+        if $thread_locks[ :reinstall ] then
+            while $thread_locks[ :reinstall ] do
+                sleep(3)
+            end
+        end
+        $thread_locks[ :reinstall ] = true
+        old_template = get_pool_element(Template, params['templateid'].to_i, @client)
+        old_template = (old_template.info! || old_template.to_hash)['VMTEMPLATE']['TEMPLATE']
+        new_template = get_pool_element(Template, REINSTALL_TEMPLATE_ID, @client)
         LOG new_template.update(
             "NIC = [
                 IP=\"#{ip}\",
@@ -299,17 +333,14 @@ class WHMHandler
         ), 'META'
         
         vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
-        # $thread_locks[ :reinstall ] = false
+        $thread_locks[ :reinstall ] = false
 
         LOG "VM#{vmid} has been reinstalled", "Reinstall"
         return { 'vmid' => vmid, 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
     def test()
-        vm = VirtualMachine.new(VirtualMachine.build_xml(595), @client)
-        out = []
-        out << vm.resize('MEMORY = 4096', false)
-        out << vm.resize('CPU = 3', false)
-        out << vm.resize('VCPU = 2', false)
+        user = get_pool_element(User, 443, @client)
+        return user.info! || user.to_hash, Nori.new.parse(user.info! || user.to_xml)  
     end
     def locks_stat()
         return $thread_locks
