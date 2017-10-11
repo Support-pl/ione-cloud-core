@@ -1,9 +1,22 @@
 require 'json'
 require 'nori'
 require 'net/ssh'
-require 'gyoku'
 
-$thread_locks = Hash.new { |hash, key| hash[key] = false }
+# Очередь выполнения для методов
+# На каждый метод, создается ключ(прим. thread_locks[:NewAccount]) под которым есть массив объектов класса MethodThread
+# Этот массив реализует очередь выполнения
+$thread_locks = Hash.new { |hash, key| hash[key] = Array.new }
+# ThreadKiller
+# Завершает потоки, время выполнения которых превышает таймаут и которые были запущены
+Thread.new do
+    while true do
+        $thread_locks.each_value do |value|
+            Thread.kill(value[0].thread) && LOG("#{value[0].method} thread killed(ID: #{value[0].id})", 'ThreadKiller') && value.delete_at(0) if (value[0].timeout? && value[0].active?)
+            value[0].kill_if_wait if !value.nil?
+        end
+        sleep(3)
+    end
+end
 
 class WHMHandler
     def initialize(client)
@@ -88,36 +101,42 @@ class WHMHandler
         LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController"
         LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "#{params['super']}AnsibleController"
         service, ip, vmid, = params['ansible-service'].chomp, params['ip'], params['vmid']
-        Thread.new do
-            begin
-                # Запуск SSH сессии с сервером на котором находится Ansible
-                Net::SSH.start(ANSIBLE_HOST, ANSIBLE_HOST_USER, :password => ANSIBLE_HOST_PASSWORD, :port => ANSIBLE_HOST_PORT) do | host |
-                    # Получение списка хостов для установки
-                    ansible_hosts = host.exec!('cat /etc/ansible/hosts').split(/\n/)
-                    # Запись в требуемую группу установки(прим. installvestaclients) данных доступа хоста
-                    ansible_hosts[ansible_hosts.index("[install#{service}clients]") + 1] = "#{ip}:#{USERS_VMS_SSH_PORT} ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=#{params['passwd']}"
-                    # Запись хостов обратно в файл hosts
-                    host.exec!("echo '#{ansible_hosts.join("\n")}' > /etc/ansible/hosts")
-                    # Получение содержимого шаблонного файла playbook
-                    playbook = host.exec!("cat /etc/ansible/#{service}/clients/#{service}_pattern.yml")
-                    # Создание объекта класса AnsibleDataGetter для получения данных из сторонних источников
-                    getter = AnsibleDataGetter.new
-                    # В случае наличия переменных, получение значений для них с помощью одноименных функций в AnsibleDataGetter
-                    playbook[0]['vars'].each_key { | key | puts playbook[0]['vars'][key] = getter.send(key, params) } if !YAML.load(playbook)[0]['vars'].nil?
-                    # Конвертация хэша в YAML строку
-                    playbook = YAML.dump playbook
-                    # Запись плейбука в основной файл плейбука
-                    host.exec!("echo '#{playbook}' > /etc/ansible/#{service}/clients/#{service}.yml")
-                    # Запуск плейбука
-                    host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml")
-                    # Вот тут будет проверка итогов работы ansible
+        
+        obj, id = MethodThread.new(:method => __method__).with_id # Получение объекта MethodThread и его ID
+        $thread_locks[:ansiblecontroller] << obj.thread_obj( # Запись в объект объекта потока
+            Thread.new do
+                begin
+                    # Запуск SSH сессии с сервером на котором находится Ansible
+                    Net::SSH.start(ANSIBLE_HOST, ANSIBLE_HOST_USER, :password => ANSIBLE_HOST_PASSWORD, :port => ANSIBLE_HOST_PORT) do | host |
+                        # Получение списка хостов для установки
+                        ansible_hosts = host.exec!('cat /etc/ansible/hosts').split(/\n/)
+                        # Запись в требуемую группу установки(прим. installvestaclients) данных доступа хоста
+                        ansible_hosts[ansible_hosts.index("[install#{service}clients]") + 1] = "#{ip}:#{USERS_VMS_SSH_PORT} ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=#{params['passwd']}"
+                        # Запись хостов обратно в файл hosts
+                        host.exec!("echo '#{ansible_hosts.join("\n")}' > /etc/ansible/hosts")
+                        # Получение содержимого шаблонного файла playbook
+                        playbook = host.exec!("cat /etc/ansible/#{service}/clients/#{service}_pattern.yml")
+                        # Создание объекта класса AnsibleDataGetter для получения данных из сторонних источников
+                        getter = AnsibleDataGetter.new
+                        # В случае наличия переменных, получение значений для них с помощью одноименных функций в AnsibleDataGetter
+                        playbook[0]['vars'].each_key { | key | puts playbook[0]['vars'][key] = getter.send(key, params) } if !YAML.load(playbook)[0]['vars'].nil?
+                        # Конвертация хэша в YAML строку
+                        playbook = YAML.dump playbook
+                        # Запись плейбука в основной файл плейбука
+                        host.exec!("echo '#{playbook}' > /etc/ansible/#{service}/clients/#{service}.yml")
+                        # Запуск плейбука
+                        host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml")
+                        # Вот тут будет проверка итогов работы ansible
+                    end
+                rescue => e # Хэндлер ошибки в коде или отсутсвия файлов на сервере Ansible
+                    LOG "An Error occured, while installing #{service} on #{ip}", "NewAccount -> AnsibleController"
+                    Thread.exit
+                    $thread_locks[:ansiblecontroller].delete_at 0 # Удаление себя из очереди на выполнение
                 end
-            rescue => e # Хэндлер ошибки в коде или отсутсвия файлов на сервере Ansible
-                LOG "An Error occured, while installing #{service} on #{ip}", "NewAccount -> AnsibleController"
-                Thread.exit
+                LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
+                $thread_locks[:ansiblecontroller].delete_at 0
             end
-            LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
-        end
+        )
     end
     def Suspend(params, log = true)
         if !params['force'] then
@@ -287,6 +306,14 @@ class WHMHandler
         params.each do | item |
             return "ReinstallError - some params are nil", params if item.nil?
         end
+
+        obj, id = MethodThread.new(:method => __method__).with_id
+        $thread_locks[:reinstall] << obj.thread_obj(Thread.current)
+        until $thread_locks[:reinstall][0].id == id || $thread_locks[:reinstall].empty? do
+            sleep(5)
+        end
+        $thread_locks[:reinstall][0].start
+
         vmid = params['vmid']
         ip, vm = GetIP(vmid), get_pool_element(VirtualMachine, vmid, @client)
         vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
@@ -295,12 +322,6 @@ class WHMHandler
             sleep(1)
         end
 
-        if $thread_locks[ :reinstall ] then
-            while $thread_locks[ :reinstall ] do
-                sleep(3)
-            end
-        end
-        $thread_locks[ :reinstall ] = true
         old_template = get_pool_element(Template, params['templateid'].to_i, @client)
         old_template = (old_template.info! || old_template.to_hash)['VMTEMPLATE']['TEMPLATE']
         new_template = get_pool_element(Template, REINSTALL_TEMPLATE_ID, @client)
@@ -333,16 +354,37 @@ class WHMHandler
         ), 'META'
         
         vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
-        $thread_locks[ :reinstall ] = false
-
+        if params['ansible'] && params['release'] then
+            Thread.new do
+                until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
+                    sleep(15)
+                end
+                sleep(60)
+                AnsibleController(params.merge({'super' => "Reinstall ->", 'ip' => GetIP(vmid)}))
+            end
+            LOG "Install-thread started, you should wait until the #{service} will be installed", 'NewAccount -> AnsibleController'
+        end
+        $thread_locks[:reinstall][0].delete_at 0
         LOG "VM#{vmid} has been reinstalled", "Reinstall"
         return { 'vmid' => vmid, 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
-    def test()
-        user = get_pool_element(User, 443, @client)
-        return user.info! || user.to_hash, Nori.new.parse(user.info! || user.to_xml)  
-    end
-    def locks_stat()
+    def test(delay)
+        obj, id = MethodThread.new(:timeout => 30, :method => __method__).with_id
+        $thread_locks[:test] << obj.thread_obj(
+            Thread.new do
+                until $thread_locks[:test][0].id == id || $thread_locks[:test].empty? do
+                    sleep(5)
+                end
+                $thread_locks[:test][0].start
+                LOG "START#{id.to_s}", 'META'
+                sleep(delay)
+                LOG "END__#{id.to_s}", 'META'
+                $thread_locks[:test].delete_at 0
+            end
+        )
+        return $thread_locks[:test]
+    end        
+    def locks_stat(key = nil)
         return $thread_locks
     end
 end

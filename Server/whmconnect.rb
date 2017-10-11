@@ -41,6 +41,7 @@ client = Client.new(CREDENTIALS, ENDPOINT)
 
 require "#{ROOT}/service/time.rb"
 require "#{ROOT}/service/log.rb"
+require "#{ROOT}/service/handlers/thread_lock_handler.rb"
 require "#{ROOT}/service/on_helper.rb"
 require "#{ROOT}/service/ON_API/main.rb"
 require "#{ROOT}/service/handlers/WHMCS.rb"
