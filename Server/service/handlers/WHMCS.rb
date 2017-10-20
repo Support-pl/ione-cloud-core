@@ -325,7 +325,7 @@ class WHMHandler
         old_template = get_pool_element(Template, params['templateid'].to_i, @client)
         old_template = (old_template.info! || old_template.to_hash)['VMTEMPLATE']['TEMPLATE']
         new_template = get_pool_element(Template, REINSTALL_TEMPLATE_ID, @client)
-        LOG new_template.update(
+        new_template.update(
             "NIC = [
                 IP=\"#{ip}\",
                 MAC=\"#{vm_xml['VM']['TEMPLATE']['NIC']['MAC']}\",
@@ -337,7 +337,7 @@ class WHMHandler
             VCPU = \"#{old_template['VCPU']}\"
             DESCRIPTION = \"#{old_template['DESCRIPTION']}\"
             PUBLIC_CLOUD = [
-                TYPE=\"vcenter\",
+                TYPE=\"#{old_template['PUBLIC_CLOUD']['TYPE']}\",
                 VM_TEMPLATE=\"#{old_template['PUBLIC_CLOUD']['VM_TEMPLATE']}\" ]
             VCENTER_DATASTORE = \"#{old_template['VCENTER_DATASTORE']}\"
             CONTEXT = [
@@ -351,9 +351,15 @@ class WHMHandler
                 PASSWORD = \"M|password|RootPassword\"#{Win?(params['templateid'], @client) ? ", USERNAME = \"M|text|USERNAME\" " : " "}]
             ",
             true
-        ), 'META'
+        )
         
-        vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
+        begin
+            vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
+        rescue => e
+            LOG e, 'META'
+            LOG e.message, 'META'
+        end
+
         if params['ansible'] && params['release'] then
             Thread.new do
                 until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
@@ -364,9 +370,9 @@ class WHMHandler
             end
             LOG "Install-thread started, you should wait until the #{service} will be installed", 'NewAccount -> AnsibleController'
         end
-        $thread_locks[:reinstall][0].delete_at 0
+        $thread_locks[:reinstall].delete_at 0
         LOG "VM#{vmid} has been reinstalled", "Reinstall"
-        return { 'vmid' => vmid, 'ip' => GetIP(vmid), 'ip_old' => ip }
+        return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
     def test(delay)
         obj, id = MethodThread.new(:timeout => 30, :method => __method__).with_id
