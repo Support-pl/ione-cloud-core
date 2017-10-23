@@ -152,12 +152,11 @@ class WHMHandler
         LOG "Suspending VM#{params['vmid']}", "Suspend" if log
         # Приостановление виртуальной машины
         get_pool_element(VirtualMachine, params['vmid'], @client).suspend
-        # VirtualMachine.new(VirtualMachine.build_xml(params['vmid']), @client).suspend
         return nil
     end
     def Unsuspend(params)
         if !params['force'] then            
-            LOG "Unsuspend query call params: #{params.inspect}", "Unuspend" if !params['force']
+            LOG "Unsuspend query call params: #{params.inspect}", "Unsuspend" if !params['force']
             return nil if !params['force']
         end
         LOG "Params: #{params.inspect} | log = #{log}", "Unsuspend" if DEBUG
@@ -165,7 +164,6 @@ class WHMHandler
         # Создание копии удаленного(приостановленного) аккаунта
         userid = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client)
         vm = get_pool_element(VirtualMachine, params['vmid'], @client)
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(params['vmid']), @client)
         # Отдаем машину новой учетке
         vm.chown(userid, USERS_GROUP)
         # Запускаем машину
@@ -182,7 +180,6 @@ class WHMHandler
         LOG "Rebooting VM#{vmid}", "Reboot"
         LOG "Params: vmid = #{vmid}", "Reboot" if DEBUG
         get_pool_element(VirtualMachine, vmid, @client).reboot(true) # true означает, что будет вызвана функция reboot-hard
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).reboot(true)
     end
     def Terminate(userid, vmid, force = false)
         LOG "Terminate query call params: {\"userid\" => #{userid}, \"vmid\" => #{vmid}}", "Terminate"
@@ -198,17 +195,14 @@ class WHMHandler
         Delete(userid)
         LOG "Terminating VM#{vmid}", "Terminate"
         get_pool_element(VirtualMachine, vmid, @client).recover 3 # recover с параметром 3 означает полное удаление с диска
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).recover(3)
     end
     def Shutdown(vmid) # Выключение машины
         LOG "Shutting down VM#{vmid}", "Shutdown"
         get_pool_element(VirtualMachine, vmid, @client).poweroff
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).poweroff
     end
     def Release(vmid)
         LOG "New Release Order Accepted!", "Release"
         get_pool_element(VirtualMachine, vmid, @client).release
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).release # <- Release
     end
     def Delete(userid) # Удаление пользователя
         if userid == 0 then
@@ -216,11 +210,9 @@ class WHMHandler
         end
         LOG "Deleting User ##{userid}", "Delete"
         get_pool_element(User, userid, @client).delete
-        # user = User.new(User.build_xml(userid), @client).delete
     end
     def VM_XML(vmid)
         vm = get_pool_element(VirtualMachine, vmid, @client)
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.to_xml
     end
     def activity_log()
@@ -230,7 +222,6 @@ class WHMHandler
     end
     def Resume(vmid)
         get_pool_element(VirtualMachine, vmid, @client).resume
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).resume
     end
     def GetIP(vmid)
         doc_hash = Nori.new.parse(VM_XML(vmid))
@@ -240,19 +231,10 @@ class WHMHandler
     def RMSnapshot(vmid, snapid, log = false)
         LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}", "RMSnapshot" if log
         get_pool_element(VirtualMachine. vmid, @client).snapshot_delete(snapid)
-        # VirtualMachine.new(VirtualMachine.build_xml(vmid), @client).snapshot_delete(snapid)
     end
     def log(msg)
         LOG(msg, "log")
 	    return "YEP!"
-    end
-    def stop(passwd)
-        LOG "Trying to stop server manually", "stop"
-        if(passwd.crypt == "keLa9zoht45RY") then
-            LOG "Server Stopped Manualy", "stop"
-            Kernel.abort("[ #{time()} ] Server Stopped Remotely")
-        end
-        return nil
     end
     def STATE(vmid)
         vm = get_pool_element(VirtualMachine, vmid, @client)
@@ -271,12 +253,20 @@ class WHMHandler
     end
     def LCM_STATE_STR(vmid)
         vm = get_pool_element(VirtualMachine, vmid, @client)
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.lcm_state_str
     end
     def compare_info()
         def get_name(uid)
             return `mysql opennebula -BNe "select name from user_pool where oid = #{uid}"`.chomp
+        end
+        def getLease(vn)
+            vn = get_pool_element(VirtualNetwork, vn['ID'].to_i, @client)
+            vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"]
+            pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
+            vn['LEASES']['LEASE'].each do | addr |
+                pool.delete addr
+            end if !vn['LEASES']['LEASE'].nil?
+            $free << pool
         end
         
         all_active_vms = `mysql opennebula -BNe "select oid from vm_pool where state = 3 or state = 8"`.split(/\n/)
@@ -293,11 +283,18 @@ class WHMHandler
             }
         end
         
-        return info.to_json
+        vn_pool, $free = VirtualNetworkPool.new(@client), []
+        vn_pool = vn_pool.info_all! || vn_pool.to_hash['VNET_POOL']['VNET']
+        vn_pool.each do | vn |
+            break if vn.nil?
+            getLease vn
+        end if vn_pool.class == Array
+        getLease vn_pool if vn_pool.class == Hash
+
+        return info, $free
     end
     def GetUserInfo(userid)
         user = get_pool_element(User, userid, @client)
-        # user = User.new(User.build_xml(userid), @client)
         return user.info! || user.to_xml
     end
     def Reinstall(params)
@@ -374,21 +371,24 @@ class WHMHandler
         LOG "VM#{vmid} has been reinstalled", "Reinstall"
         return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
-    def test(delay)
-        obj, id = MethodThread.new(:timeout => 30, :method => __method__).with_id
-        $thread_locks[:test] << obj.thread_obj(
-            Thread.new do
-                until $thread_locks[:test][0].id == id || $thread_locks[:test].empty? do
-                    sleep(5)
-                end
-                $thread_locks[:test][0].start
-                LOG "START#{id.to_s}", 'META'
-                sleep(delay)
-                LOG "END__#{id.to_s}", 'META'
-                $thread_locks[:test].delete_at 0
-            end
-        )
-        return $thread_locks[:test]
+    def test()
+        vn_pool, $free = VirtualNetworkPool.new(@client), []
+        vn_pool = vn_pool.info_all! || vn_pool.to_hash['VNET_POOL']['VNET']
+        def getLease(vn)
+            vn = get_pool_element(VirtualNetwork, vn['ID'].to_i, @client)
+            vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"]
+            pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
+            vn['LEASES']['LEASE'].each do | addr |
+                pool.delete addr
+            end if !vn['LEASES']['LEASE'].nil?
+            $free << pool
+        end
+        vn_pool.each do | vn |
+            break if vn.nil?
+            getLease vn
+        end if vn_pool.class == Array
+        getLease vn_pool if vn_pool.class == Hash
+        return $free
     end        
     def locks_stat(key = nil)
         return $thread_locks
