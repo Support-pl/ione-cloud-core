@@ -4,12 +4,22 @@ require 'zmqjsonrpc'
 client = ZmqJsonRpc::Client.new("tcp://185.66.68.238:8008")
 
 args = {
-    'vmid' => 537,
-    'userid' => 428,
-    'login' => 'reinstall_test_user',
-    'passwd' => 'Nhb500Gznmcjn',
-    'release' => true,
+    'vmid' => 598,
+    'userid' => 449,
+    'login' => 'user_7447',
+    'passwd' => 'CGoFBsZ,,a1OeaLN',
     'templateid' => 18,
+    'release' => false
 }
 
 puts client.Reinstall(args)
+
+# puts "==========VM-TEMPLATE=========="
+# puts vm_xml#['VM']['TEMPLATE']['NIC'].inspect
+# puts "==============================="
+# puts "===========TEMPLATE============"
+# puts temp#['VMTEMPLATE']['TEMPLATE']['NIC'].inspect
+# puts "==============================="
+# puts "============EDITED============="
+# puts tempn.inspect
+# puts "==============================="

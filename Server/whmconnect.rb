@@ -5,14 +5,20 @@ require 'yaml'
 
 ROOT = File.expand_path(File.dirname(__FILE__))
 CONF = YAML.load(File.read("#{ROOT}/config.yml"))
+DEBUG = CONF['Other']['debug']
 USERS_GROUP = CONF['OpenNebula']['users-group']
 TRIAL_SUSPEND_DELAY = CONF['WHMCS']['trial-suspend-delay']
-ANSIBLE_HOST = CONF['AnsibleServer']['ip']
-ANSIBLE_HOST_PORT = CONF['AnsibleServer']['port']
-ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
-ANSIBLE_HOST_PASSWORD = CONF['AnsibleServer']['password']
+if ANSIBLE_INCLUDED = CONF['AnsibleServer']['active'] then
+    ANSIBLE_HOST = CONF['AnsibleServer']['host']
+    ANSIBLE_HOST_PORT = CONF['AnsibleServer']['port']
+    ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
+    ANSIBLE_HOST_PASSWORD = CONF['AnsibleServer']['password']
+    require "#{CONF['AnsibleServer']['data-getters-url']}"
+end
 
 USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port']
+DEFAULT_HOST = CONF['OpenNebula']['default-node-id']
+REINSTALL_TEMPLATE_ID = CONF['OpenNebula']['reinstall-template-id']
 
 ###########################################
 # Setting up Enviroment                   #
@@ -35,9 +41,10 @@ client = Client.new(CREDENTIALS, ENDPOINT)
 
 require "#{ROOT}/service/time.rb"
 require "#{ROOT}/service/log.rb"
+require "#{ROOT}/service/handlers/thread_lock_handler.rb"
+require "#{ROOT}/service/on_helper.rb"
 require "#{ROOT}/service/ON_API/main.rb"
 require "#{ROOT}/service/handlers/WHMCS.rb"
-require "#{ROOT}/service/handlers/WHMCS_api.rb"
 
 
 at_exit do
