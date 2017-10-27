@@ -240,7 +240,7 @@ class WHMHandler
 
     def RMSnapshot(vmid, snapid, log = false)
         LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}", "RMSnapshot" if log
-        get_pool_element(VirtualMachine. vmid, @client).snapshot_delete(snapid)
+        get_pool_element(VirtualMachine, vmid, @client).snapshot_delete(snapid)
     end
     def log(msg)
         LOG(msg, "log")
@@ -300,7 +300,6 @@ class WHMHandler
             getLease vn
         end if vn_pool.class == Array
         getLease vn_pool if vn_pool.class == Hash
-        LOG $free
         return info, $free
     end
     def GetUserInfo(userid)
@@ -308,7 +307,8 @@ class WHMHandler
         return user.info! || user.to_xml
     end
     def Reinstall(params)
-        LOG params.inspect, 'META'
+        LOG params.inspect, 'DEBUG' if DEBUG
+        # return if DEBUG
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
         params.each do | item |
             return "ReinstallError - some params are nil", params if item.nil?
@@ -321,11 +321,10 @@ class WHMHandler
         end
         $thread_locks[:reinstall][0].start
 
-        vmid = params['vmid']
-        ip, vm = GetIP(vmid), get_pool_element(VirtualMachine, vmid, @client)
+        ip, vm = GetIP(vmid), get_pool_element(VirtualMachine, params['vmid'], @client)
         vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
         vm.terminate(true)
-        while STATE_STR(vmid) != 'DONE' do
+        while STATE_STR(params['vmid']) != 'DONE' do
             sleep(1)
         end
 
@@ -363,7 +362,7 @@ class WHMHandler
         begin
             vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
         rescue => e
-            LOG e, 'META'
+            LOG e, 'DEBUG'
         end
         $thread_locks[:reinstall].delete_at 0
         
