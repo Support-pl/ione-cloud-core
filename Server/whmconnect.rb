@@ -1,9 +1,9 @@
 require 'zmqjsonrpc'
 require 'yaml'
-`echo > log/errors.txt`
-# `echo > log/activities.log`
 ROOT = File.expand_path(File.dirname(__FILE__))
 require "#{ROOT}/service/log.rb"
+`echo > #{ROOT}/log/errors.txt`
+`echo > #{ROOT}/log/activities.log` if File.read("#{ROOT}/log/activities.log").split("\n").size >= 1000
 
 CONF = YAML.load(File.read("#{ROOT}/config.yml"))
 DEBUG = CONF['Other']['debug']

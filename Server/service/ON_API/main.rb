@@ -66,6 +66,7 @@ def VMCreate(userid, user_login, templateid, passwd, client, release = true)
                     VMS=\"#{(user_quota['VMS_USED'].to_i + 1).to_s}\" ]")
 
     chown_result = vm.chown(userid, USERS_GROUP)
-    raise chown_result.message if chown_result != nil
+    LOG chown_result.message if chown_result != nil
+    raise if chown_result != nil
     return vmid
 end
