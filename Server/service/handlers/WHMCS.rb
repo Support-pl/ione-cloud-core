@@ -307,12 +307,15 @@ class WHMHandler
         return user.info! || user.to_xml
     end
     def Reinstall(params)
+        # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
         LOG params.inspect, 'DEBUG' if DEBUG
         # return if DEBUG
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
         params.each do | item |
             return "ReinstallError - some params are nil", params if item.nil?
         end
+
+        params['vmid'], params['groupid'], params['userid'], params['templateid'] = params['vmid'].to_i, params['groupid'].to_i, params['userid'].to_i, params['templateid'].to_i
 
         obj, id = MethodThread.new(:method => __method__).with_id
         $thread_locks[:reinstall] << obj.thread_obj(Thread.current)
@@ -321,14 +324,14 @@ class WHMHandler
         end
         $thread_locks[:reinstall][0].start
 
-        ip, vm = GetIP(vmid), get_pool_element(VirtualMachine, params['vmid'], @client)
+        ip, vm = GetIP(params['vmid']), get_pool_element(VirtualMachine, params['vmid'], @client)
         vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
         vm.terminate(true)
         while STATE_STR(params['vmid']) != 'DONE' do
             sleep(1)
         end
 
-        old_template = get_pool_element(Template, params['templateid'].to_i, @client)
+        old_template = get_pool_element(Template, params['templateid'], @client)
         old_template = (old_template.info! || old_template.to_hash)['VMTEMPLATE']['TEMPLATE']
         new_template = get_pool_element(Template, REINSTALL_TEMPLATE_ID, @client)
         new_template.update(
