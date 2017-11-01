@@ -98,9 +98,17 @@ class WHMHandler
     }
 =end
     def AnsibleController(params)
-        # LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController"
+        # LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController" if ANSIBLE_HOST && ANSIBLE_HOST_USER == nil
         LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "#{params['super']}AnsibleController"
         service, ip, vmid, err = params['ansible-service'].chomp, params['ip'], params['vmid'], nil
+        WHM.new.LogtoTicket(
+            "#{service.capitalize} install started on #{ip}",
+            "VMID: #{vmid}
+            VM IP: #{ip}
+            Service for install: #{service.capitalize}
+            Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}",
+            __method__.to_s
+        )
         
         obj, id = MethodThread.new(:method => __method__).with_id # Получение объекта MethodThread и его ID
         $thread_locks[:ansiblecontroller] << obj.thread_obj( # Запись в объект объекта потока
@@ -135,15 +143,38 @@ class WHMHandler
                         host.exec!("echo '#{playbook}' > /etc/ansible/#{service}/clients/#{service}.yml")
                         # Запуск плейбука
                         err = "Error while ansible-playbook init"
-                        LOG host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml")
+                        $playbookexec = host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml").split(/\n/)
+                        def status(regexp)
+                            return $playbookexec.last[regexp].split(/=/).last.to_i
+                        end
+                        WHM.new.LogtoTicket(
+                            "#{service.capitalize} install on #{ip} was finished #{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'successful' : 'broken'}",
+                            "VMID: #{vmid}
+                            VM IP: #{ip}
+                            Service for install: #{service.capitalize}
+                            Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}
+                            Log: \n\t#{$playbookexec.join("\n\t")}",
+                            "AnsibleController",
+                            "#{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'Low' : 'High'}"
+                        )
+                        LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
                         # Вот тут будет проверка итогов работы ansible
                     end
                 rescue => e # Хэндлер ошибки в коде или отсутсвия файлов на сервере Ansible
-                    LOG "An Error occured, while installing #{service} on #{ip}: #{err}", "NewAccount -> AnsibleController"
                     $thread_locks[:ansiblecontroller].delete_at 0 # Удаление себя из очереди на выполнение
+                    LOG "An Error occured, while installing #{service} on #{ip}: #{err}, Code: #{e.message}", "NewAccount -> AnsibleController"
+                    WHM.new.LogtoTicket(
+                        "#{service.capitalize} install on #{ip} was finished broken",
+                        "VMID: #{vmid}
+                        VM IP: #{ip}
+                        Service for install: #{service.capitalize}
+                        Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}
+                        Error: Method-inside error
+                        Log: #{err}, code: #{e.message}",
+                        __method__.to_s
+                    )
                     Thread.exit
                 end
-                LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
                 $thread_locks[:ansiblecontroller].delete_at 0
             end
         )
@@ -382,24 +413,31 @@ class WHMHandler
         LOG "VM#{vmid} has been reinstalled", "Reinstall"
         return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
-    def test()
-        vn_pool, $free = VirtualNetworkPool.new(@client), []
-        vn_pool = vn_pool.info_all! || vn_pool.to_hash['VNET_POOL']['VNET']
-        def getLease(vn)
-            vn = get_pool_element(VirtualNetwork, vn['ID'].to_i, @client)
-            vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"]
-            pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
-            vn['LEASES']['LEASE'].each do | addr |
-                pool.delete addr
-            end if !vn['LEASES']['LEASE'].nil?
-            $free << pool
+    def test(params)
+        LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "#{params['super']}AnsibleController"
+        service, ip, vmid, err = params['ansible-service'].chomp, params['ip'], params['vmid'], nil
+        WHM.new.LogtoTicket(
+            "#{service.capitalize} install started on #{ip}",
+            "VMID: #{vmid}
+            VM IP: #{ip}
+            Service for install: #{service.capitalize}
+            Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}",
+            __method__.to_s
+        )
+        $playbookexec = params['result'].split(/\n/)
+        def status(regexp)
+            return $playbookexec.last[regexp].split(/=/).last.to_i
         end
-        vn_pool.each do | vn |
-            break if vn.nil?
-            getLease vn
-        end if vn_pool.class == Array
-        getLease vn_pool if vn_pool.class == Hash
-        return $free
+        WHM.new.LogtoTicket(
+            "#{service.capitalize} install on #{ip} was finished #{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'successful' : 'broken'}",
+            "VMID: #{vmid}
+            VM IP: #{ip}
+            Service for install: #{service.capitalize}
+            Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}
+            Log: #{$playbookexec.join("\n\t")}",
+            __method__.to_s,
+            "#{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'Low' : 'High'}"
+        )
     end        
     def locks_stat(key = nil)
         return $thread_locks

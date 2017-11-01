@@ -2,7 +2,7 @@ require 'zmqjsonrpc'
 
 client = ZmqJsonRpc::Client.new("tcp://185.66.68.238:8008")
 indata = {
-    'login' => 'tesing',
+    'login' => 'user_7589',
     'password' => 'Jago322==',
     'passwd' => 'Jago644==++',
     'templateid' => 18,
@@ -11,9 +11,9 @@ indata = {
     'trial' => false,
     'ansible' => true,
     'ansible-service' => 'vesta',#ARGV[0],
-    'serviceid' => 7199,
-    'vmid' => 655,
-    'ip' => '185.66.68.37'
+    'serviceid' => 7589,
+    'vmid' => 676,
+    'ip' => '185.66.68.18'
 }
 
 # {"userid"=>476, "vmid"=>656, "ip"=>"185.66.68.37"}
