@@ -101,14 +101,15 @@ class WHMHandler
         # LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController" if ANSIBLE_HOST && ANSIBLE_HOST_USER == nil
         LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "#{params['super']}AnsibleController"
         service, ip, vmid, err = params['ansible-service'].chomp, params['ip'], params['vmid'], nil
-        WHM.new.LogtoTicket(
-            "#{service.capitalize} install started on #{ip}",
-            "VMID: #{vmid}
+        tid = WHM.new.LogtoTicket(
+            subject: "#{ip}: #{service.capitalize} install",
+            message: "VMID: #{vmid}
             VM IP: #{ip}
             Service for install: #{service.capitalize}
             Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}",
-            __method__.to_s
-        )
+            method: __method__.to_s,
+            priority: 'Low'
+        )['id']
         
         obj, id = MethodThread.new(:method => __method__).with_id # Получение объекта MethodThread и его ID
         $thread_locks[:ansiblecontroller] << obj.thread_obj( # Запись в объект объекта потока
@@ -144,18 +145,19 @@ class WHMHandler
                         # Запуск плейбука
                         err = "Error while ansible-playbook init"
                         $playbookexec = host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml").split(/\n/)
+
                         def status(regexp)
                             return $playbookexec.last[regexp].split(/=/).last.to_i
                         end
                         WHM.new.LogtoTicket(
-                            "#{service.capitalize} install on #{ip} was finished #{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'successful' : 'broken'}",
-                            "VMID: #{vmid}
+                            message: "VMID: #{vmid}
                             VM IP: #{ip}
                             Service for install: #{service.capitalize}
                             Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}
-                            Log: \n\t#{$playbookexec.join("\n\t")}",
-                            "AnsibleController",
-                            "#{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'Low' : 'High'}"
+                            Log: \n    #{$playbookexec.join("\n    ")}",
+                            method: "AnsibleController",
+                            priority: "#{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'Low' : 'High'}",
+                            id: tid
                         )
                         LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
                         # Вот тут будет проверка итогов работы ansible
@@ -164,14 +166,15 @@ class WHMHandler
                     $thread_locks[:ansiblecontroller].delete_at 0 # Удаление себя из очереди на выполнение
                     LOG "An Error occured, while installing #{service} on #{ip}: #{err}, Code: #{e.message}", "NewAccount -> AnsibleController"
                     WHM.new.LogtoTicket(
-                        "#{service.capitalize} install on #{ip} was finished broken",
-                        "VMID: #{vmid}
+                        message: "VMID: #{vmid}
                         VM IP: #{ip}
                         Service for install: #{service.capitalize}
                         Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}
                         Error: Method-inside error
                         Log: #{err}, code: #{e.message}",
-                        __method__.to_s
+                        method: __method__.to_s,
+                        id: tid,
+                        priority: 'High'
                     )
                     Thread.exit
                 end
@@ -268,7 +271,6 @@ class WHMHandler
         doc_hash = Nori.new.parse(VM_XML(vmid))
         return doc_hash['VM']['TEMPLATE']['CONTEXT']['ETH0_IP']
     end
-
     def RMSnapshot(vmid, snapid, log = false)
         LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}", "RMSnapshot" if log
         get_pool_element(VirtualMachine, vmid, @client).snapshot_delete(snapid)
@@ -441,5 +443,8 @@ class WHMHandler
     end        
     def locks_stat(key = nil)
         return $thread_locks
+    end
+    def version
+        return VERSION
     end
 end
