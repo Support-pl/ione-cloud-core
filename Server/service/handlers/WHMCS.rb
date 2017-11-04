@@ -99,8 +99,20 @@ class WHMHandler
 =end
     def AnsibleController(params)
         # LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController" if ANSIBLE_HOST && ANSIBLE_HOST_USER == nil
-        LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "#{params['super']}AnsibleController"
         service, ip, vmid, err = params['ansible-service'].chomp, params['ip'], params['vmid'], nil
+        if service == nil || !params['ansible'] then
+            WHM.new.LogtoTicket(
+                subject: "#{ip}: #{service.capitalize} install",
+                message: "VMID: #{vmid}
+                VM IP: #{ip}
+                Service for install: Did not sent into AnsibleController, try again with correct params,
+                Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}",
+                method: __method__.to_s,
+                priority: 'High'
+            )
+            return {'error' => 'ServiceError'}
+        end
+        LOG "#{service} should be installed on VM##{vmid}", "#{params['super']}AnsibleController"
         tid = WHM.new.LogtoTicket(
             subject: "#{ip}: #{service.capitalize} install",
             message: "VMID: #{vmid}
@@ -114,6 +126,7 @@ class WHMHandler
         obj, id = MethodThread.new(:method => __method__).with_id # Получение объекта MethodThread и его ID
         $thread_locks[:ansiblecontroller] << obj.thread_obj( # Запись в объект объекта потока
             Thread.new do
+                until $thread_locks[:ansiblecontroller][0].id == id do sleep(10) end
                 begin
                     # Запуск SSH сессии с сервером на котором находится Ansible
                     err = "Error while connecting to Ansible-server"
@@ -446,5 +459,8 @@ class WHMHandler
     end
     def version
         return VERSION
+    end
+    def conf
+        return CONF.privatise.out
     end
 end

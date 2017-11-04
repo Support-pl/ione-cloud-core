@@ -25,5 +25,7 @@ WHMCS: # Credentials for connection with WHMCS
   # Delay value for trial VMs in seconds
   trial-suspend-delay: 14400
 
+Include:
+  - 'std++'
 Other:
   debug: true
