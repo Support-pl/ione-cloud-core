@@ -357,11 +357,13 @@ class WHMHandler
         LOG params.inspect, 'DEBUG' if DEBUG
         # return if DEBUG
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
-        params.each do | item |
-            return "ReinstallError - some params are nil", params if item.nil?
-        end
 
         params['vmid'], params['groupid'], params['userid'], params['templateid'] = params['vmid'].to_i, params['groupid'].to_i, params['userid'].to_i, params['templateid'].to_i
+
+        if params['vmid'] & params['groupid'] & params['userid'] & params['templateid'] == 0 then
+            LOG "ReinstallError - some params are nil", 'Reinstall'
+            return "ReinstallError - some params are nil"
+        end
 
         obj, id = MethodThread.new(:method => __method__).with_id
         $thread_locks[:reinstall] << obj.thread_obj(Thread.current)
