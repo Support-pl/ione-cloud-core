@@ -1,9 +1,11 @@
 require 'zmqjsonrpc'
-# require 'passgen'
 require 'yaml'
-`echo > log/errors.txt`
-
 ROOT = File.expand_path(File.dirname(__FILE__))
+require "#{ROOT}/service/log.rb"
+`echo > #{ROOT}/log/errors.txt`
+`echo > #{ROOT}/log/activities.log` if File.read("#{ROOT}/log/activities.log").split("\n").size >= 1000
+
+VERSION = File.read("#{ROOT}/version.txt")
 CONF = YAML.load(File.read("#{ROOT}/config.yml"))
 DEBUG = CONF['Other']['debug']
 USERS_GROUP = CONF['OpenNebula']['users-group']
@@ -40,7 +42,6 @@ ENDPOINT = CONF['OpenNebula']['endpoint']
 client = Client.new(CREDENTIALS, ENDPOINT)
 
 require "#{ROOT}/service/time.rb"
-require "#{ROOT}/service/log.rb"
 require "#{ROOT}/service/handlers/thread_lock_handler.rb"
 require "#{ROOT}/service/on_helper.rb"
 require "#{ROOT}/service/ON_API/main.rb"

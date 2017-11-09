@@ -78,9 +78,9 @@ class WHMHandler
                     sleep(15)
                 end
                 sleep(60)
-                AnsibleController(params.merge({'super' => "NewAccount ->", 'ip' => GetIP(vmid)}))
+                AnsibleController(params.merge({'super' => "NewAccount ->", 'ip' => GetIP(vmid), 'vmid' => vmid}))
             end
-            LOG "Install-thread started, you should wait until the #{service} will be installed", 'NewAccount -> AnsibleController'
+            LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
         end
         #endAnsibleController
         LOG "New User account and vm created", "NewAccount"
@@ -98,42 +98,86 @@ class WHMHandler
     }
 =end
     def AnsibleController(params)
-        LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController"
+        # LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController" if ANSIBLE_HOST && ANSIBLE_HOST_USER == nil
         LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "#{params['super']}AnsibleController"
-        service, ip, vmid, = params['ansible-service'].chomp, params['ip'], params['vmid']
+        service, ip, vmid, err = params['ansible-service'].chomp, params['ip'], params['vmid'], nil
+        tid = WHM.new.LogtoTicket(
+            subject: "#{ip}: #{service.capitalize} install",
+            message: "VMID: #{vmid}
+            VM IP: #{ip}
+            Service for install: #{service.capitalize}
+            Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}",
+            method: __method__.to_s,
+            priority: 'Low'
+        )['id']
         
         obj, id = MethodThread.new(:method => __method__).with_id # Получение объекта MethodThread и его ID
         $thread_locks[:ansiblecontroller] << obj.thread_obj( # Запись в объект объекта потока
             Thread.new do
                 begin
                     # Запуск SSH сессии с сервером на котором находится Ansible
+                    err = "Error while connecting to Ansible-server"
                     Net::SSH.start(ANSIBLE_HOST, ANSIBLE_HOST_USER, :password => ANSIBLE_HOST_PASSWORD, :port => ANSIBLE_HOST_PORT) do | host |
                         # Получение списка хостов для установки
+                        err = "Error while getting hosts list"
                         ansible_hosts = host.exec!('cat /etc/ansible/hosts').split(/\n/)
                         # Запись в требуемую группу установки(прим. installvestaclients) данных доступа хоста
+                        err = "Error while changing hosts list"
                         ansible_hosts[ansible_hosts.index("[install#{service}clients]") + 1] = "#{ip}:#{USERS_VMS_SSH_PORT} ansible_connection=ssh ansible_ssh_user=root ansible_ssh_pass=#{params['passwd']}"
                         # Запись хостов обратно в файл hosts
+                        err = "Errot while writing hosts list"
                         host.exec!("echo '#{ansible_hosts.join("\n")}' > /etc/ansible/hosts")
                         # Получение содержимого шаблонного файла playbook
-                        playbook = host.exec!("cat /etc/ansible/#{service}/clients/#{service}_pattern.yml")
+                        err = "Error while getting playbook template"
+                        playbook = YAML.load host.exec!("cat /etc/ansible/#{service}/clients/#{service}_pattern.yml")
                         # Создание объекта класса AnsibleDataGetter для получения данных из сторонних источников
+                        err = "Error while AnsibleDataGetter init"
                         getter = AnsibleDataGetter.new
                         # В случае наличия переменных, получение значений для них с помощью одноименных функций в AnsibleDataGetter
-                        playbook[0]['vars'].each_key { | key | puts playbook[0]['vars'][key] = getter.send(key, params) } if !YAML.load(playbook)[0]['vars'].nil?
+                        err = "Error while writing data to playbook hash"
+                        playbook[0]['vars'].each_key { | key | playbook[0]['vars'][key] = getter.send(key, params) } if !playbook[0]['vars'].nil?
                         # Конвертация хэша в YAML строку
+                        err = "Error while generating YAML from hash"
                         playbook = YAML.dump playbook
                         # Запись плейбука в основной файл плейбука
+                        err = "Error while writing playbook to file #{service}.yml"
                         host.exec!("echo '#{playbook}' > /etc/ansible/#{service}/clients/#{service}.yml")
                         # Запуск плейбука
-                        host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml")
+                        err = "Error while ansible-playbook init"
+                        $playbookexec = host.exec!("ansible-playbook /etc/ansible/#{service}/clients/#{service}.yml").split(/\n/)
+
+                        def status(regexp)
+                            return $playbookexec.last[regexp].split(/=/).last.to_i
+                        end
+                        WHM.new.LogtoTicket(
+                            message: "VMID: #{vmid}
+                            VM IP: #{ip}
+                            Service for install: #{service.capitalize}
+                            Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}
+                            Log: \n    #{$playbookexec.join("\n    ")}",
+                            method: "AnsibleController",
+                            priority: "#{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'Low' : 'High'}",
+                            id: tid
+                        )
+                        LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
                         # Вот тут будет проверка итогов работы ansible
                     end
                 rescue => e # Хэндлер ошибки в коде или отсутсвия файлов на сервере Ansible
-                    LOG "An Error occured, while installing #{service} on #{ip}", "NewAccount -> AnsibleController"
-                    Thread.exit
                     $thread_locks[:ansiblecontroller].delete_at 0 # Удаление себя из очереди на выполнение
+                    LOG "An Error occured, while installing #{service} on #{ip}: #{err}, Code: #{e.message}", "NewAccount -> AnsibleController"
+                    WHM.new.LogtoTicket(
+                        message: "VMID: #{vmid}
+                        VM IP: #{ip}
+                        Service for install: #{service.capitalize}
+                        Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}
+                        Error: Method-inside error
+                        Log: #{err}, code: #{e.message}",
+                        method: __method__.to_s,
+                        id: tid,
+                        priority: 'High'
+                    )
+                    Thread.exit
                 end
-                LOG "#{service} installed on #{ip}", "NewAccount -> AnsibleController"
                 $thread_locks[:ansiblecontroller].delete_at 0
             end
         )
@@ -227,10 +271,9 @@ class WHMHandler
         doc_hash = Nori.new.parse(VM_XML(vmid))
         return doc_hash['VM']['TEMPLATE']['CONTEXT']['ETH0_IP']
     end
-
     def RMSnapshot(vmid, snapid, log = false)
         LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}", "RMSnapshot" if log
-        get_pool_element(VirtualMachine. vmid, @client).snapshot_delete(snapid)
+        get_pool_element(VirtualMachine, vmid, @client).snapshot_delete(snapid)
     end
     def log(msg)
         LOG(msg, "log")
@@ -266,7 +309,7 @@ class WHMHandler
             vn['LEASES']['LEASE'].each do | addr |
                 pool.delete addr
             end if !vn['LEASES']['LEASE'].nil?
-            $free << pool
+            $free.push pool
         end
         
         all_active_vms = `mysql opennebula -BNe "select oid from vm_pool where state = 3 or state = 8"`.split(/\n/)
@@ -290,7 +333,6 @@ class WHMHandler
             getLease vn
         end if vn_pool.class == Array
         getLease vn_pool if vn_pool.class == Hash
-
         return info, $free
     end
     def GetUserInfo(userid)
@@ -298,11 +340,15 @@ class WHMHandler
         return user.info! || user.to_xml
     end
     def Reinstall(params)
-        LOG params.inspect, 'META'
+        # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
+        LOG params.inspect, 'DEBUG' if DEBUG
+        # return if DEBUG
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
         params.each do | item |
             return "ReinstallError - some params are nil", params if item.nil?
         end
+
+        params['vmid'], params['groupid'], params['userid'], params['templateid'] = params['vmid'].to_i, params['groupid'].to_i, params['userid'].to_i, params['templateid'].to_i
 
         obj, id = MethodThread.new(:method => __method__).with_id
         $thread_locks[:reinstall] << obj.thread_obj(Thread.current)
@@ -311,15 +357,14 @@ class WHMHandler
         end
         $thread_locks[:reinstall][0].start
 
-        vmid = params['vmid']
-        ip, vm = GetIP(vmid), get_pool_element(VirtualMachine, vmid, @client)
+        ip, vm = GetIP(params['vmid']), get_pool_element(VirtualMachine, params['vmid'], @client)
         vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
         vm.terminate(true)
-        while STATE_STR(vmid) != 'DONE' do
+        while STATE_STR(params['vmid']) != 'DONE' do
             sleep(1)
         end
 
-        old_template = get_pool_element(Template, params['templateid'].to_i, @client)
+        old_template = get_pool_element(Template, params['templateid'], @client)
         old_template = (old_template.info! || old_template.to_hash)['VMTEMPLATE']['TEMPLATE']
         new_template = get_pool_element(Template, REINSTALL_TEMPLATE_ID, @client)
         new_template.update(
@@ -353,44 +398,53 @@ class WHMHandler
         begin
             vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
         rescue => e
-            LOG e, 'META'
-            LOG e.message, 'META'
+            LOG e, 'DEBUG'
         end
-
+        $thread_locks[:reinstall].delete_at 0
+        
         if params['ansible'] && params['release'] then
             Thread.new do
                 until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
                     sleep(15)
                 end
                 sleep(60)
-                AnsibleController(params.merge({'super' => "Reinstall ->", 'ip' => GetIP(vmid)}))
+                AnsibleController(params.merge({'super' => "Reinstall ->", 'ip' => GetIP(vmid), 'vmid' => vmid}))
             end
-            LOG "Install-thread started, you should wait until the #{service} will be installed", 'NewAccount -> AnsibleController'
+            LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
         end
-        $thread_locks[:reinstall].delete_at 0
         LOG "VM#{vmid} has been reinstalled", "Reinstall"
         return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
-    def test()
-        vn_pool, $free = VirtualNetworkPool.new(@client), []
-        vn_pool = vn_pool.info_all! || vn_pool.to_hash['VNET_POOL']['VNET']
-        def getLease(vn)
-            vn = get_pool_element(VirtualNetwork, vn['ID'].to_i, @client)
-            vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"]
-            pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
-            vn['LEASES']['LEASE'].each do | addr |
-                pool.delete addr
-            end if !vn['LEASES']['LEASE'].nil?
-            $free << pool
+    def test(params)
+        LOG "#{params['ansible-service']} should be installed on VM##{params['vmid']}", "#{params['super']}AnsibleController"
+        service, ip, vmid, err = params['ansible-service'].chomp, params['ip'], params['vmid'], nil
+        WHM.new.LogtoTicket(
+            "#{service.capitalize} install started on #{ip}",
+            "VMID: #{vmid}
+            VM IP: #{ip}
+            Service for install: #{service.capitalize}
+            Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}",
+            __method__.to_s
+        )
+        $playbookexec = params['result'].split(/\n/)
+        def status(regexp)
+            return $playbookexec.last[regexp].split(/=/).last.to_i
         end
-        vn_pool.each do | vn |
-            break if vn.nil?
-            getLease vn
-        end if vn_pool.class == Array
-        getLease vn_pool if vn_pool.class == Hash
-        return $free
+        WHM.new.LogtoTicket(
+            "#{service.capitalize} install on #{ip} was finished #{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'successful' : 'broken'}",
+            "VMID: #{vmid}
+            VM IP: #{ip}
+            Service for install: #{service.capitalize}
+            Client: https://my.support.by/admin/clientsservices.php?id=#{params['serviceid']}
+            Log: #{$playbookexec.join("\n\t")}",
+            __method__.to_s,
+            "#{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'Low' : 'High'}"
+        )
     end        
     def locks_stat(key = nil)
         return $thread_locks
+    end
+    def version
+        return VERSION
     end
 end

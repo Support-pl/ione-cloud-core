@@ -11,8 +11,8 @@ $deleted = Hash.new("DELETED_SNAPSHOTS")
 
 require '/scripts/server/service/log.rb'
 
-`ruby #{LOCAL_ROOT}/cron_work/monitoring.rb` if ARGV[0].nil?
-LOG 'Monitoring job started', "WhmConnectCron" if ARGV[0] == 'log'
+# `ruby #{LOCAL_ROOT}/cron_work/monitoring.rb` if ARGV[0].nil?
+# LOG 'Monitoring job started', "WhmConnectCron" if ARGV[0] == 'log'
 
 LOG "SnapshotController-job started", "SnapshotController" if ARGV[0] == 'log'
 at_exit do
