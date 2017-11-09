@@ -10,3 +10,9 @@ server/log/
 *.save
 
 user\.xml
+
+*.pid
+
+server/daemon_whm\.rb\.txt
+
+Server/config\.yml

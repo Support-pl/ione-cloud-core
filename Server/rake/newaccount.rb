@@ -3,15 +3,17 @@ require 'zmqjsonrpc'
 
 client = ZmqJsonRpc::Client.new("tcp://185.66.68.238:8008")
 
-puts("login")
-login = gets.to_s
-begin
-    ip, vmid, userid = client.NewAccount("tester", "Jago322==", 0, 108) # (BillingID, ONLogin, Pass, VMQuota, OS, CPU, RAM, Disk)
-rescue => e
-    puts e.message
-end
+indata = {
+    'login' => 'ansible_test',
+    'password' => 'Jago322==',
+    'passwd' => 'Jago644==++',
+    'templateid' => 18,
+    'groupid' => 103,
+    'release' => true,
+    'trial' => false,
+    'ansible' => true,
+    'ansible-service' => 'vesta',#ARGV[0],
+}
 
-
-puts("IP: #{ip}")
-puts("VMID: #{vmid}")
-puts("UserID: #{userid}")
+hash = client.NewAccount(indata)
+puts hash.inspect
