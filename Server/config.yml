@@ -27,5 +27,7 @@ WHMCS: # Credentials for connection with WHMCS
 
 Include:
   - 'std++'
+  - 'freenas'
+
 Other:
   debug: true

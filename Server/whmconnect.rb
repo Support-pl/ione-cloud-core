@@ -52,8 +52,9 @@ CONF['Include'].each do | lib |
     require "#{ROOT}/lib/#{lib}/main.rb"
 end if CONF['Include'].class == Array
 
+STARTUP_TIME = Time.now().to_i
 at_exit do
-    LOG("Server was stoppped")
+    LOG("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}")
 end
 
 LOG("-----------------------------------------------------------", "", false)

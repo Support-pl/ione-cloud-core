@@ -462,6 +462,9 @@ class WHMHandler
     def version
         return VERSION
     end
+    def uptime
+        return fmt_time(Time.now.to_i - STARTUP_TIME)
+    end
     def conf
         return CONF.privatise.out
     end
