@@ -1,5 +1,4 @@
-FreeNas:
+FreeNAS:
+  hostname: freenas.support.by
   username: root
   password: 'Nhb500Gznmcjn'
-  uri: "https://freenas.mydomain/api/v1.0/account/users/"
-  hostname: freenas.support.by

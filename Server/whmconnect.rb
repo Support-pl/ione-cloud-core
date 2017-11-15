@@ -1,5 +1,9 @@
 require 'zmqjsonrpc'
 require 'yaml'
+require 'json'
+require 'nori'
+require 'net/ssh'
+
 ROOT = File.expand_path(File.dirname(__FILE__))
 require "#{ROOT}/service/log.rb"
 `echo > #{ROOT}/log/errors.txt`
@@ -10,13 +14,6 @@ CONF = YAML.load(File.read("#{ROOT}/config.yml"))
 DEBUG = CONF['Other']['debug']
 USERS_GROUP = CONF['OpenNebula']['users-group']
 TRIAL_SUSPEND_DELAY = CONF['WHMCS']['trial-suspend-delay']
-if ANSIBLE_INCLUDED = CONF['AnsibleServer']['active'] then
-    ANSIBLE_HOST = CONF['AnsibleServer']['host']
-    ANSIBLE_HOST_PORT = CONF['AnsibleServer']['port']
-    ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
-    ANSIBLE_HOST_PASSWORD = CONF['AnsibleServer']['password']
-    require "#{CONF['AnsibleServer']['data-getters-url']}"
-end
 
 USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port']
 DEFAULT_HOST = CONF['OpenNebula']['default-node-id']
@@ -55,9 +52,18 @@ end if CONF['Include'].class == Array
 STARTUP_TIME = Time.now().to_i
 at_exit do
     LOG("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}")
+    LOG "", "", false
+    LOG("       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
 end
 
-LOG("-----------------------------------------------------------", "", false)
+LOG "", "", false
+LOG("       ###########################################################", "", false)
+LOG("       ##                                                       ##", "", false)
+LOG "       ##    WHMCS -> OpenNebula Connector v#{VERSION.chomp}#{" " if VERSION.split(' ').last == 'stable'}     ##", "", false
+LOG("       ##                                                       ##", "", false)
+LOG("       ###########################################################", "", false)
+LOG "", "", false
+
 LOG "Initializing JSON-RPC Server..."
 WHMCS = WHMHandler.new(client) # Создание экземпляра хэндлер-сервера
 server = ZmqJsonRpc::Server.new(WHMCS, "tcp://*:#{CONF['WHMCS']['listen-port']}") # Создание экземпляра сервера

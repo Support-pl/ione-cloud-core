@@ -1,20 +1,19 @@
+require 'zmqjsonrpc'
 require 'yaml'
+require 'json'
+require 'nori'
+require 'net/ssh'
+
 ROOT = File.expand_path(File.dirname(__FILE__))
 require "#{ROOT}/service/log.rb"
 `echo > #{ROOT}/log/errors.txt`
 `echo > #{ROOT}/log/activities.log` if File.read("#{ROOT}/log/activities.log").split("\n").size >= 1000
 
+VERSION = File.read("#{ROOT}/version.txt")
 CONF = YAML.load(File.read("#{ROOT}/config.yml"))
 DEBUG = CONF['Other']['debug']
 USERS_GROUP = CONF['OpenNebula']['users-group']
 TRIAL_SUSPEND_DELAY = CONF['WHMCS']['trial-suspend-delay']
-if ANSIBLE_INCLUDED = CONF['AnsibleServer']['active'] then
-    ANSIBLE_HOST = CONF['AnsibleServer']['host']
-    ANSIBLE_HOST_PORT = CONF['AnsibleServer']['port']
-    ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
-    ANSIBLE_HOST_PASSWORD = CONF['AnsibleServer']['password']
-    require "#{CONF['AnsibleServer']['data-getters-url']}"
-end
 
 USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port']
 DEFAULT_HOST = CONF['OpenNebula']['default-node-id']
@@ -44,3 +43,10 @@ require "#{ROOT}/service/handlers/thread_lock_handler.rb"
 require "#{ROOT}/service/on_helper.rb"
 require "#{ROOT}/service/ON_API/main.rb"
 require "#{ROOT}/service/handlers/WHMCS.rb"
+
+CONF['Include'].each do | lib |
+    CONF.merge!(YAML.load(File.read("#{ROOT}/lib/#{lib}/config.yml"))) if File.exist?("#{ROOT}/lib/#{lib}/config.yml")
+    require "#{ROOT}/lib/#{lib}/main.rb"
+end if CONF['Include'].class == Array
+
+STARTUP_TIME = Time.now().to_i

@@ -10,4 +10,5 @@ def LOG(msg, method = "none", _time = true)
     elsif _time == false then
         `echo "#{msg}  [ #{method} ]" >> #{ROOT}/log/activities.log`
     end
+    return true
 end
