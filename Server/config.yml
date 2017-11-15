@@ -7,14 +7,6 @@ OpenNebula:
   base-vnc-port: 5900 # Base VNC-port number. VMs will get port for VNC by formula: {{ base-vnc-port }} + {{ vmid }}
   reinstall-template-id: 35
 
-AnsibleServer: # Credentials for Ansible Server
-  active: true
-  host: '185.66.69.101'
-  port: 52222
-  user: 'root'
-  password: 'So8ghgOdQFpcecE'
-  data-getters-url: '/scripts/server/service/ansible/getters.rb'
-
 WHMCS: # Credentials for connection with WHMCS
   uri: 'https://my.support.by/includes/api.php' # API script
   # Credentials
@@ -27,6 +19,10 @@ WHMCS: # Credentials for connection with WHMCS
 
 Include:
   - 'std++'
+  - 'vmcontrol'
+  - 'vminfo'
+  - 'server'
+  - 'ansible'
   - 'freenas'
 
 Other:
