@@ -24,6 +24,7 @@ Include:
   - 'server'
   - 'ansible'
   - 'freenas'
+  - 'snap-controller'
 
 Other:
   debug: true

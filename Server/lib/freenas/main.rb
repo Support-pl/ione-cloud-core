@@ -1,7 +1,3 @@
-#############################################
-#               TRY RuPy!!!                 #
-#############################################
-
 class FreeNAS
     def initialize
         @freenas = CONF['FreeNAS']
@@ -34,6 +30,10 @@ end
 
 class WHMHandler
     def FreeNASController(request)
+        # LOG request, 'META'
+        LOG "Request to FreeNAS accepted, params: #{request['method']}(#{request['params']})", 'FreeNASController'
+        # return request
+        return 'FreeNASControllerMethodError: No method sent!'if request['method'].nil?
         return FreeNAS.new.send(request['method'], request['params'])
     end
 end

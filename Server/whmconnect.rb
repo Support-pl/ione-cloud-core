@@ -36,7 +36,7 @@ include OpenNebula
 CREDENTIALS = CONF['OpenNebula']['credentials']
 # XML_RPC endpoint where OpenNebula is listening
 ENDPOINT = CONF['OpenNebula']['endpoint']
-client = Client.new(CREDENTIALS, ENDPOINT)
+$client = Client.new(CREDENTIALS, ENDPOINT)
 
 require "#{ROOT}/service/time.rb"
 require "#{ROOT}/service/handlers/thread_lock_handler.rb"
@@ -44,17 +44,7 @@ require "#{ROOT}/service/on_helper.rb"
 require "#{ROOT}/service/ON_API/main.rb"
 require "#{ROOT}/service/handlers/WHMCS.rb"
 
-CONF['Include'].each do | lib |
-    CONF.merge!(YAML.load(File.read("#{ROOT}/lib/#{lib}/config.yml"))) if File.exist?("#{ROOT}/lib/#{lib}/config.yml")
-    require "#{ROOT}/lib/#{lib}/main.rb"
-end if CONF['Include'].class == Array
-
 STARTUP_TIME = Time.now().to_i
-at_exit do
-    LOG("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}")
-    LOG "", "", false
-    LOG("       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
-end
 
 LOG "", "", false
 LOG("       ###########################################################", "", false)
@@ -64,8 +54,19 @@ LOG("       ##                                                       ##", "", fa
 LOG("       ###########################################################", "", false)
 LOG "", "", false
 
+at_exit do
+    LOG("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}")
+    LOG "", "", false
+    LOG("       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
+end
+
+CONF['Include'].each do | lib |
+    CONF.merge!(YAML.load(File.read("#{ROOT}/lib/#{lib}/config.yml"))) if File.exist?("#{ROOT}/lib/#{lib}/config.yml")
+    require "#{ROOT}/lib/#{lib}/main.rb"
+end if CONF['Include'].class == Array
+
 LOG "Initializing JSON-RPC Server..."
-WHMCS = WHMHandler.new(client) # Создание экземпляра хэндлер-сервера
+WHMCS = WHMHandler.new($client) # Создание экземпляра хэндлер-сервера
 server = ZmqJsonRpc::Server.new(WHMCS, "tcp://*:#{CONF['WHMCS']['listen-port']}") # Создание экземпляра сервера
 LOG "Server initialized"
 
