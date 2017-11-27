@@ -22,22 +22,22 @@ class WHMHandler
         return doc_hash['VM']['TEMPLATE']['CONTEXT']['ETH0_IP']
     end
     def STATE(vmid)
-        vm = get_pool_element(VirtualMachine, vmid, @client)
+        vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
         # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.state
     end
     def STATE_STR(vmid)
-        vm = get_pool_element(VirtualMachine, vmid, @client)
+        vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
         # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.state_str
     end
     def LCM_STATE(vmid)
-        vm = get_pool_element(VirtualMachine, vmid, @client)
+        vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
         # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.lcm_state
     end
     def LCM_STATE_STR(vmid)
-        vm = get_pool_element(VirtualMachine, vmid, @client)
+        vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
         return vm.info! || vm.lcm_state_str
     end
     def compare_info()

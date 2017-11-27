@@ -81,7 +81,7 @@ class WHMHandler
         get_pool_element(VirtualMachine, vmid, @client).resume
     end
     def RMSnapshot(vmid, snapid, log = false)
-        LOG "Deleting snapshot(ID: #{snapid}) for VM#{vmid}", "RMSnapshot" if log
-        get_pool_element(VirtualMachine, vmid, @client).snapshot_delete(snapid)
+        LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "RMSnapshot" if log
+        get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_delete(snapid.to_i)
     end
 end
