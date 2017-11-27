@@ -29,13 +29,13 @@ Thread.new do
                             break if snap.class == Array
                             age = ((Time.now.to_i - snap['TIME'].to_i) / 3600.0).round(1)
                             out += "\t\t\t\t|  #{age >= 24 ? 'V' : 'X'}  |  #{active_state && age >= 24 ? 'V' : 'X'}  |  #{vm.id} |   #{' ' if age < 10}#{age}  | #{snap['NAME']}\n"
-                            WHMHandler.new($client).RMSnapshot(vm.id, snap['SNAPSHOT_ID'])  || found = true if age >= 24 && active_state
+                            WHMHandler.new($client).RMSnapshot(vm.id, snap['SNAPSHOT_ID'], false)  || found = true if age >= 24 && active_state
                         end
                     else
                         snap = vm.list_snapshots
                         age = ((Time.now.to_i - snap['TIME'].to_i) / 3600.0).round(1)
                         out += "\t\t\t\t|  #{age >= 24 ? 'V' : 'X'}  |  #{active_state && age >= 24 ? 'V' : 'X'}  |  #{vm.id} |   #{' ' if age < 10}#{age}  | #{snap['NAME']}\n"
-                        WHMHandler.new($client).RMSnapshot(vm.id, snap['SNAPSHOT_ID'])  || found = true if age >= 24 && active_state
+                        WHMHandler.new($client).RMSnapshot(vm.id, snap['SNAPSHOT_ID'], false)  || found = true if age >= 24 && active_state
                     end
                 end
                 sleep(300) if found
@@ -45,5 +45,11 @@ Thread.new do
         rescue => e
             LOG "SnapController Error, code: #{e.message}\nSnapController is down now", 'SnapController'
         end
+    end
+end
+
+class WHMHandler
+    def GetSnapshotList(vmid)
+        return get_pool_element(VirtualMachine, vmid, $client).list_snapshots
     end
 end

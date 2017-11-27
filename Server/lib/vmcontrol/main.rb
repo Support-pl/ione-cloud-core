@@ -80,8 +80,16 @@ class WHMHandler
     def Resume(vmid)
         get_pool_element(VirtualMachine, vmid, @client).resume
     end
-    def RMSnapshot(vmid, snapid, log = false)
+    def RMSnapshot(vmid, snapid, log = true)
         LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "RMSnapshot" if log
         get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_delete(snapid.to_i)
+    end
+    def MKSnapshot(vmid, name, log = true)
+        LOG "Snapshot create-query accepted", 'MKSnapshot' if log
+        return get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_create(name)
+    end
+    def RevSnapshot(vmid, snapid, log = true)
+        LOG "Snapshot revert-query accepted", 'RevSnapshot' if log
+        return get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_revert(snapid.to_i)
     end
 end
