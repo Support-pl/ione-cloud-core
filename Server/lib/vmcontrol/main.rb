@@ -18,9 +18,12 @@ class WHMHandler
         Delete(params['userid'])
         LOG "Suspending VM#{params['vmid']}", "Suspend" if log
         # Приостановление виртуальной машины
-        get_pool_element(VirtualMachine, params['vmid'], @client).suspend
+        get_pool_element(VirtualMachine, params['vmid'].to_i, @client).suspend
         return nil
     end
+    def SuspendVM(vmid)
+        get_pool_element(VirtualMachine, vmid.to_i, @client).suspend
+    end        
     def Unsuspend(params)
         LOG_STAT(__method__.to_s, time())        
         if !params['force'] then            
@@ -44,11 +47,12 @@ class WHMHandler
         user.set_quota("VM=[ CPU=\"#{used['CPU_USED']}\", MEMORY=\"#{used['MEMORY_USED']}\", SYSTEM_DISK_SIZE=\"-1\", VMS=\"#{used['VMS_USED']}\" ]")    
         return { 'userid' => userid }
     end
-    def Reboot(vmid = nil)
-        LOG_STAT(__method__.to_s, time())        
+    def Reboot(vmid = nil, hard = true)
+        LOG_STAT(__method__.to_s, time())
+        return "VMID cannot be nil!" if vmid.nil?     
         LOG "Rebooting VM#{vmid}", "Reboot"
-        LOG "Params: vmid = #{vmid}", "Reboot" if DEBUG
-        get_pool_element(VirtualMachine, vmid, @client).reboot(true) # true означает, что будет вызвана функция reboot-hard
+        LOG "Params: vmid = #{vmid}, hard = #{hard}", "Reboot" if DEBUG
+        get_pool_element(VirtualMachine, vmid.to_i, @client).reboot(hard) # true означает, что будет вызвана функция reboot-hard
     end
     def Terminate(userid, vmid, force = false)
         LOG_STAT(__method__.to_s, time())        
@@ -86,7 +90,7 @@ class WHMHandler
     end
     def Resume(vmid)
         LOG_STAT(__method__.to_s, time())
-        get_pool_element(VirtualMachine, vmid, @client).resume
+        get_pool_element(VirtualMachine, vmid.to_i, @client).resume
     end
     def RMSnapshot(vmid, snapid, log = true)
         LOG_STAT(__method__.to_s, time())
