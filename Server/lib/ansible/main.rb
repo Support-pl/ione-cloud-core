@@ -20,6 +20,7 @@ class WHMHandler
     }
 =end
     def AnsibleController(params)
+        LOG_STAT(__method__.to_s, time())        
         # LOG "Query rejected: Ansible is not configured", "#{params['super']}AnsibleController" if ANSIBLE_HOST && ANSIBLE_HOST_USER == nil
         service, ip, vmid, err = params['ansible-service'].chomp, params['ip'], params['vmid'], nil
         if service == nil || !params['ansible'] then

@@ -50,6 +50,7 @@ end
 
 class WHMHandler
     def GetSnapshotList(vmid)
+        LOG_STAT(__method__.to_s, time())        
         return get_pool_element(VirtualMachine, vmid, $client).list_snapshots
     end
 end

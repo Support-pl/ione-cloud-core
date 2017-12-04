@@ -4,43 +4,52 @@
 
 class WHMHandler
     def VM_XML(vmid)
+        LOG_STAT(__method__.to_s, time())        
         vm = get_pool_element(VirtualMachine, vmid, @client)
         return vm.info! || vm.to_xml
     end
     def activity_log()
+        LOG_STAT(__method__.to_s, time())        
         LOG "Log file content has been copied remotely", "activity_log"
         log = File.read("#{ROOT}/log/activities.log")
         return log
     end
     
     def log(msg)
+        LOG_STAT(__method__.to_s, time())        
         LOG(msg, "log")
 	    return "YEP!"
     end
     def GetIP(vmid)
+        LOG_STAT(__method__.to_s, time())        
         doc_hash = Nori.new.parse(VM_XML(vmid))
         return doc_hash['VM']['TEMPLATE']['CONTEXT']['ETH0_IP']
     end
     def STATE(vmid)
+        LOG_STAT(__method__.to_s, time())        
         vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
         # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.state
     end
     def STATE_STR(vmid)
+        LOG_STAT(__method__.to_s, time())        
         vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
         # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.state_str
     end
     def LCM_STATE(vmid)
+        LOG_STAT(__method__.to_s, time())        
         vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
         # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.lcm_state
     end
     def LCM_STATE_STR(vmid)
+        LOG_STAT(__method__.to_s, time())        
         vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
         return vm.info! || vm.lcm_state_str
     end
     def compare_info()
+        LOG_STAT(__method__.to_s, time())        
         def get_name(uid)
             return `mysql opennebula -BNe "select name from user_pool where oid = #{uid}"`.chomp
         end
@@ -79,6 +88,7 @@ class WHMHandler
     end
     def GetUserInfo(userid)
         user = get_pool_element(User, userid, @client)
+        LOG_STAT(__method__.to_s, time())
         return user.info! || user.to_xml
     end
 end

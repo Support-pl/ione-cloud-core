@@ -30,10 +30,12 @@ end
 
 class WHMHandler
     def FreeNASController(request)
+        LOG_STAT(__method__.to_s, time())        
         # LOG request, 'META'
         LOG "Request to FreeNAS accepted, params: #{request['method']}(#{request['params']})", 'FreeNASController'
         # return request
-        return 'FreeNASControllerMethodError: No method sent!'if request['method'].nil?
-        return FreeNAS.new.send(request['method'], request['params'])
+        return 'FreeNASControllerMethodError: No method sent!' if request['method'].nil?
+        out = FreeNAS.new.send(request['method'], request['params'])
+        return out || LOG(out, 'FreeNASController')
     end
 end

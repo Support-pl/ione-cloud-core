@@ -1,14 +1,27 @@
 require '/scripts/server/service/time.rb'
 
+$log = []
+
+at_exit do
+    File.open("#{ROOT}/log/old.log", 'w') { |file| file.write($log.join("\n")) }
+end
+
 def LOG(msg, method = "none", _time = true)
-    if _time then
-        `echo "[ #{time(method)} ] #{msg} [ #{method} ]" >> #{ROOT}/log/activities.log`
-    elsif method == 'DEBUG' then
-        `echo "#{msg}" >> #{ROOT}/log/debug.log`        
-    elsif method == "" then
-        `echo "#{msg}" >> #{ROOT}/log/activities.log`
-    elsif _time == false then
-        `echo "#{msg}  [ #{method} ]" >> #{ROOT}/log/activities.log`
+    case method
+        when 'DEBUG'
+            destination = "#{ROOT}/log/debug.log"
+        when "SnapController"
+            destination = "#{ROOT}/log/snapshot.log"
+        else
+            destination = "#{ROOT}/log/activities.log"
     end
+
+    msg = "[ #{time(method)} ] " + msg if _time
+    msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
+
+    `echo '#{msg}' >> #{destination}`
+    $log << "#{msg} | #{destination}"
+    puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}"
+
     return true
 end

@@ -157,7 +157,7 @@ class WHMHandler
             end
             LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
         end
-        LOG "VM#{vmid} has been reinstalled", "Reinstall"
+        LOG "VM#{params['vmid']} has been reinstalled", "Reinstall"
         return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => ip }
     end
     def test(params, request)

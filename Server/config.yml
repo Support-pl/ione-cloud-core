@@ -25,6 +25,7 @@ Include:
   - 'ansible'
   - 'freenas'
   - 'snap-controller'
+  - 'stat'
 
 Other:
   debug: true
