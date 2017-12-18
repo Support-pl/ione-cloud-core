@@ -11,8 +11,10 @@ fi
 echo -n "You have 5 sec before some dangerous stuff will started..."
 echo -n '5..' && sleep 1 && echo -n '4..' && sleep 1 && echo -n '3..' && sleep 1 && echo -n '2..' && sleep 1 && echo -n '1..' && sleep 1 && echo 'Go'
 
+sed -i 's/enabled\=1/enabled\=0/g'  /etc/yum.repos.d/vonecloud.repo
 yum install -y make automake gcc gcc-c++ kernel-devel ruby-devel zeromq zeromq-devel
 gem install zmqjsonrpc
+sed -i 's/enabled\=0/enabled\=1/g'  /etc/yum.repos.d/vonecloud.repo
 
 # Creating gem-test file
 
@@ -49,6 +51,12 @@ else
     echo "+ Something went wrong, it's maybe caused by 'zmqjsonrpc' gem installing... +"
     echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 fi
+
+git clone --branch stable https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/opennebula.git
+mv opennebula/* ./
+mv Server server
+rm -rf opennebula
+bundle install --gemfile server/Gemfile
 
 rm -f ./gemtest.rb
 rm -f ./deploy.sh

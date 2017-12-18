@@ -21,7 +21,7 @@ def LOG(msg, method = "none", _time = true)
 
     `echo '#{msg}' >> #{destination}`
     $log << "#{msg} | #{destination}"
-    puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}"
+    puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
 
     return true
 end
