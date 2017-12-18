@@ -5,5 +5,10 @@ end
 
 def fmt_time(sec)
     sec = sec.to_i
-    return "#{sec / 3600 / 24}d:#{sec / 3600}h:#{sec / 60}m:#{sec % 60}s"
+    days = (sec / 86400).to_i
+    sec -= days * 86400
+    hours = (sec / 3600.0).to_i
+    sec -= hours * 3600
+    minutes = (sec / 60.0).to_i
+    return "#{days}d:#{hours}h:#{minutes}m:#{sec % 60}s"
 end

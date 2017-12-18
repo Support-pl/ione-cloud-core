@@ -1,5 +1,3 @@
-require 'nori'
-
 def UserCreate(login, pass, groupid, client)
     user = User.new(User.build_xml(0), client) # Генерирование объекта User на основе шаблонного пользователя группы PaaS
     begin

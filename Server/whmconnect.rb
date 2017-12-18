@@ -1,13 +1,18 @@
 require 'zmqjsonrpc'
 require 'yaml'
 require 'json'
-require 'nori'
-require 'net/ssh'
 
 ROOT = File.expand_path(File.dirname(__FILE__))
 require "#{ROOT}/service/log.rb"
+begin
+    `mkdir #{ROOT}/log`
+rescue
+end
 `echo > #{ROOT}/log/errors.txt`
-`echo > #{ROOT}/log/activities.log` if File.read("#{ROOT}/log/activities.log").split("\n").size >= 1000
+begin
+    `echo > #{ROOT}/log/activities.log` if File.read("#{ROOT}/log/activities.log").split("\n").size >= 1000
+rescue
+end
 
 VERSION = File.read("#{ROOT}/version.txt")
 CONF = YAML.load(File.read("#{ROOT}/config.yml"))
