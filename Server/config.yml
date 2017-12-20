@@ -26,6 +26,7 @@ Include:
   - 'freenas'
   - 'snap-controller'
   - 'stat'
+  - 'data_import_handler'
 
 Other:
   debug: true

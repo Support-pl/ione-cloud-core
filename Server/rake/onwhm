@@ -1,0 +1,109 @@
+#!/usr/bin/ruby
+require 'zmqjsonrpc'
+client = ZmqJsonRpc::Client.new('tcp://localhost:8008')
+
+case ARGV[0]
+    when 'version'
+        puts client.version
+    when 'uptime'
+        puts client.uptime
+    when 'info-table'
+        puts client.compare_info
+    when 'locks'
+        puts client.locks_stat
+    when 'reboot'
+        if ARGV[1].nil? then
+            puts 'Reboot method usage: onwhm reboot [vmid] (optional: --hard)'
+            Kernel.exit
+        end
+        client.Reboot(ARGV[1].to_i, ARGV[2].to_s == '--hard' ? true : false)
+    when 'resume'
+        if ARGV[1].nil? then
+            puts 'Resume method usage: onwhm resume [vmid]'
+            Kernel.exit
+        end
+        client.Resume(ARGV[1].to_i)        
+    when 'suspend-vm'
+        if ARGV[1].nil? then
+            puts 'Suspend method usage: onwhm suspend [vmid]'
+            Kernel.exit
+        end
+        client.SuspendVM(ARGV[1].to_i)
+    when 'snapshot'
+        if ARGV[1].nil? then
+            puts 'Snapshot method usage: onwhm snapshot [vmid] [create|delete|revert| default: list] [name|id|id| - ]'
+            Kernel.exit
+        end
+        case ARGV[2].to_s
+            when 'list'
+                puts client.GetSnapshotList ARGV[1].to_i
+            when ""
+                puts client.GetSnapshotList ARGV[1].to_i                
+            when 'create'
+                if ARGV[3].nil? then
+                    puts 'Snapshot method usage: onwhm snapshot [vmid] [create|delete|revert| default: list] [name|id|id| - ]'
+                    Kernel.exit
+                end
+                puts "New snapshot id: #{client.MKSnapshot(ARGV[1].to_i, ARGV[3])}"
+            when 'delete'
+                if ARGV[3].nil? then
+                    puts 'Snapshot method usage: onwhm snapshot [vmid] [create|delete|revert| default: list] [name|id|id| - ]'
+                    Kernel.exit
+                end
+                puts client.RMSnapshot(ARGV[1].to_i, ARGV[3].to_i)
+            when 'revert'
+                if ARGV[3].nil? then
+                    puts 'Snapshot method usage: onwhm snapshot [vmid] [create|delete|revert| default: list] [name|id|id| - ]'
+                    Kernel.exit
+                end
+                puts client.RevSnapshot(ARGV[1].to_i, ARGV[3].to_i)
+            else
+                puts 'Snapshot method usage: onwhm snapshot [vmid] [create|delete|revert| default: list] [name|id|id| - ]'
+        end
+    when 'state'
+        if ARGV[1].nil? then
+            puts 'State method usage: onwhm state [vmid] [optional: -h]'
+            Kernel.exit
+        end
+        case ARGV[2]
+            when nil
+                puts "state: #{client.STATE ARGV[1].to_i}, life-cycle state: #{client.LCM_STATE ARGV[1].to_i}"
+            when '-h'
+                puts "state: #{client.STATE_STR ARGV[1].to_i}, life-cycle state: #{client.LCM_STATE_STR ARGV[1].to_i}"
+            else
+                puts 'State method usage: onwhm state [vmid] [optional: -h]'
+        end
+    else
+        puts "
+Help page for onwhm tool:
+
+        version         -----       Checks current version of WHMConnect
+
+        uptime          -----       Checks uptime of WHMConnect server
+
+        reboot          -----       Reboots given VM
+            Usage: onwhm reboot [vmid] (optional: --hard)
+            --hard      :       Rebooting VM hard - non-guestOS reboot
+
+        resume          -----       Resuming given VM - tries to make it Running
+            Usage: onwhm resume [vmid]
+
+        suspend         -----       Suspending given VM - suspends VM-only
+            Usage: onwhm suspend [vmid]
+
+        snapshot        -----       Managing given VM's snapshots
+            Usage: onwhm snapshot [vmid] [create|delete|revert| default: list] [name|id|id| - ]
+            create      :       Creates snapshot for given VM, expects name
+                                for the new snapshot as next option
+            delete      :       Deletes snapshot for given VM, expects
+                                snapshot id as next option
+            revert      :       Reverts snapshot for given VM, expects
+                                snapshot id as next option
+            list        :       Default option, lists all snapshots
+                                for given VM
+
+        state           -----       Checks VM state and life-cycle state
+            Usage: onwhm state [vmid] (optional: -h)
+            -h          :       Returns humanreadble states
+            "
+end

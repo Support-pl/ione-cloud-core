@@ -44,9 +44,9 @@ require "#{ROOT}/service/on_helper.rb"
 require "#{ROOT}/service/ON_API/main.rb"
 require "#{ROOT}/service/handlers/WHMCS.rb"
 
-CONF['Include'].each do | lib |
-    CONF.merge!(YAML.load(File.read("#{ROOT}/lib/#{lib}/config.yml"))) if File.exist?("#{ROOT}/lib/#{lib}/config.yml")
-    require "#{ROOT}/lib/#{lib}/main.rb"
-end if CONF['Include'].class == Array
+# CONF['Include'].each do | lib |
+#     CONF.merge!(YAML.load(File.read("#{ROOT}/lib/#{lib}/config.yml"))) if File.exist?("#{ROOT}/lib/#{lib}/config.yml")
+#     require "#{ROOT}/lib/#{lib}/main.rb"
+# end if CONF['Include'].class == Array
 
 STARTUP_TIME = Time.now().to_i
