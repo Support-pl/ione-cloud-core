@@ -52,11 +52,28 @@ else
     echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 fi
 
-git clone --branch stable https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/opennebula.git
+git clone --branch testing https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/opennebula.git
 mv opennebula/* ./
 mv Server server
 rm -rf opennebula
 bundle install --gemfile server/Gemfile
+
+read -p "Do you want to add aliases for log(onlog) and snapshot-log(onsnap)[Y/n]?" -n 1 -r
+echo
+if [[ $REPLY =~ ^[Y]$ ]]
+then
+    echo "alias onlog='cat /scripts/server/log/activities.log'" >> ~/.bashrc
+    echo "alias onsnap='cat /scripts/server/log/snapshot.log'" >> ~/.bashrc
+fi
+
+read -p "Do you want to add onwhm to '/usr/bin'?[Y/n]" -n 1 -r
+echo
+if [[ $REPLY =~ ^[Y]$ ]]
+then
+    cp server/rake/onwhm /usr/bin
+    chmod +x /usr/bin/onwhm
+    echo "alias onwhm='/usr/bin/onwhm'" >> ~/.bashrc
+fi
 
 rm -f ./gemtest.rb
 rm -f ./deploy.sh

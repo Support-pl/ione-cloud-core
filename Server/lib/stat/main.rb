@@ -16,10 +16,12 @@ def LOG_STAT(method, time)
 end
 
 class WHMHandler
-    def GetStatistics(method = nil)
-        return $data if method.nil?
+    def GetStatistics(params = {})
+        return JSON.pretty_generate($data) if params['method'].nil? && params['json'] == true
+        return $data if params['method'].nil?
         begin
-            return $data['method']
+            return JSON.pretty_generate($data[params['method']]) if params['json'] == true
+            return $data[params['method']]
         rescue => e
             return e.message
         end
