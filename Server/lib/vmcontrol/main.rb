@@ -14,8 +14,9 @@ class WHMHandler
         # Удаление пользователя
         LOG "Suspending VM#{params['vmid']}", "Suspend" if log
         # Приостановление виртуальной машины
-        get_pool_element(VirtualMachine, params['vmid'].to_i, @client).suspend
-        get_pool_element(VirtualMachine, params['vmid'].to_i, @client).chmod(
+        vm = get_pool_element(VirtualMachine, params['vmid'].to_i, @client)
+        vm.suspend
+        vm.chmod(
             -1,  0, -1,
             -1, -1, -1,
             -1, -1, -1
@@ -32,8 +33,9 @@ class WHMHandler
             return nil if !params['force']
         end
         LOG "Unuspending VM ##{params['vmid']}", "Unsuspend"
-        get_pool_element(VirtualMachine, params['vmid'], @client).resume
-        get_pool_element(VirtualMachine, params['vmid'].to_i, @client).chmod(
+        vm = get_pool_element(VirtualMachine, params['vmid'].to_i, @client)
+        vm.resume
+        vm.chmod(
             -1,  1, -1,
             -1, -1, -1,
             -1, -1, -1

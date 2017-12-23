@@ -4,8 +4,8 @@ class VirtualMachine
         return !self.to_hash['VM']['TEMPLATE']['SNAPSHOT'].nil?
     end
     def list_snapshots
-        self.info!
-        return self.to_hash['VM']['TEMPLATE']['SNAPSHOT']
+        out = self.info! || self.to_hash['VM']['TEMPLATE']['SNAPSHOT']
+        return out.class == Array ? out : [ out ]
     end
 end
 
@@ -51,6 +51,6 @@ end
 class WHMHandler
     def GetSnapshotList(vmid)
         LOG_STAT(__method__.to_s, time())        
-        return get_pool_element(VirtualMachine, vmid, $client).list_snapshots
+        return get_pool_element(VirtualMachine, vmid, @client).list_snapshots
     end
 end
