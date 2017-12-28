@@ -49,7 +49,12 @@ class WHMHandler
         return vm.info! || vm.lcm_state_str
     end
     def compare_info()
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT(__method__.to_s, time())
+        installid = Time.now.to_i.to_s(16).crypt(params['login'])
+        $proc << "compare_info#{installid}"
+        at_exit do
+            $proc.delete "compare_info#{installid}"
+        end 
         def get_name(uid)
             return `mysql opennebula -BNe "select name from user_pool where oid = #{uid}"`.chomp
         end
@@ -90,5 +95,8 @@ class WHMHandler
         user = get_pool_element(User, userid, @client)
         LOG_STAT(__method__.to_s, time())
         return user.info! || user.to_xml
+    end
+    def proc
+        return $proc
     end
 end

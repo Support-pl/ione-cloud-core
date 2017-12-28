@@ -21,4 +21,7 @@ class WHMHandler
         LOG_STAT(__method__.to_s, time())
         return CONF.privatise.out
     end
+    def proc
+        return $proc
+    end
 end

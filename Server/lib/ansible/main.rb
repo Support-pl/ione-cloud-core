@@ -10,7 +10,7 @@ require 'net/ssh'
 require 'net/sftp'
 
 class WHMHandler
-    def AnsibleControllerNew(params)
+    def AnsibleController(params)
         host, playbooks = params['host'], params['services']
         LOG params.out, 'DEBUG'
         return if params['out'] == true
@@ -20,7 +20,7 @@ class WHMHandler
                 installid = Time.now.to_i.to_s(16).crypt(service[0..3])
                 LOG "#{service} should be installed on #{ip}, installation ID is: #{installid}", "AnsibleController"
                 begin
-                    LOG 'Connecting to Ansible', 'DEBUG'            
+                    LOG 'Connecting to Ansible', 'AnsibleController'            
                     err = "Error while connecting to Ansible-server"
                     Net::SSH.start(ANSIBLE_HOST, ANSIBLE_HOST_USER, :port => ANSIBLE_HOST_PORT) do | ssh |
                         err = "Error while creating temporary playbook file occurred"
@@ -31,15 +31,15 @@ class WHMHandler
                         File.open("/tmp/#{installid}.ini", 'w') { |file| file.write("[#{installid}]\n#{host}\n") }
                         err = "Error while uploading ansible-inventory occurred"
                         ssh.sftp.upload!("/tmp/#{installid}.ini", "/tmp/#{installid}.ini")
-                        LOG 'PB and hosts have been generated', 'DEBUG'
+                        LOG 'PB and hosts have been generated', 'AnsibleController' 
                         err = "Error while executing playbook occured"
-                        LOG 'Executing PB', 'DEBUG'
+                        LOG 'Executing PB', 'AnsibleController' 
                         $pbexec = ssh.exec!("ansible-playbook /tmp/#{installid}.yml -i /tmp/#{installid}.ini").split(/\n/)
-                        LOG 'PB has been Executed', 'DEBUG'
+                        LOG 'PB has been Executed', 'AnsibleController' 
                         def status(regexp)
                             return $pbexec.last[regexp].split(/=/).last.to_i
                         end
-                        LOG 'Creating log-ticket', 'DEBUG'
+                        LOG 'Creating log-ticket', 'AnsibleController' 
                         WHM.new.LogtoTicket(
                             subject: "#{ip}: #{service.capitalize} install",                    
                             message: "
@@ -50,7 +50,7 @@ class WHMHandler
                                 priority: "#{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'Low' : 'High'}",
                         )
                         LOG "#{service} installed on #{ip}", "AnsibleController"
-                        LOG 'Wiping hosts and pb files', 'DEBUG'
+                        LOG 'Wiping hosts and pb files', 'AnsibleController' 
                         ssh.sftp.remove!("/tmp/#{installid}.ini")
                         File.delete("/tmp/#{installid}.ini")
                         ssh.sftp.remove!("/tmp/#{installid}.yml")

@@ -1,9 +1,20 @@
 require '/scripts/server/service/time.rb'
 
+begin
+    `mkdir #{ROOT}/log`
+rescue
+end
+`echo > #{ROOT}/log/errors.txt`
+begin
+    `echo > #{ROOT}/log/activities.log` if File.read("#{ROOT}/log/activities.log").split("\n").size >= 1000
+rescue
+    `echo > #{ROOT}/log/activities.log`
+end
+
 $log = []
 
 at_exit do
-    File.open("#{ROOT}/log/old.log", 'w') { |file| file.write($log.join("\n")) }
+    File.open("#{ROOT}/log/old.log", 'a') { |file| file.write($log.join("\n")) }
 end
 
 def LOG(msg, method = "none", _time = true)

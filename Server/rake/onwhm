@@ -3,6 +3,15 @@ require 'zmqjsonrpc'
 client = ZmqJsonRpc::Client.new('tcp://localhost:8008')
 
 case ARGV[0]
+    when 'ping'
+        case ZmqJsonRpc::Client.new('tcp://localhost:8008', 50).Test('PING')
+        when 'PONG'
+            puts 'Ping probe - ok, service is available.'
+        else
+            puts 'Service isn\'t available.'
+        end
+    when 'proc'
+        puts client.proc
     when 'version'
         puts client.version
     when 'uptime'

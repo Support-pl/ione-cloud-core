@@ -2,6 +2,7 @@
 # На каждый метод, создается ключ(прим. thread_locks[:NewAccount]) под которым есть массив объектов класса MethodThread
 # Этот массив реализует очередь выполнения
 $thread_locks = Hash.new { |hash, key| hash[key] = Array.new }
+$proc = []
 # ThreadKiller
 # Завершает потоки, время выполнения которых превышает таймаут и которые были запущены
 Thread.new do
@@ -45,7 +46,13 @@ class WHMHandler
     }
 =end
     def NewAccount(params)
-        # LOG params.inspect, "NewAccount"
+        installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
+        $proc << "NewAccount#{installid}"
+        at_exit do
+            $proc.delete "NewAccount#{installid}"
+        end
+        LOG params.out, "DEBUG" if DEBUG
+        return nil if DEBUG
         # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
         LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "NewAccount"
         LOG "Params: #{params.inspect}", 'NewAccount' if DEBUG
@@ -83,9 +90,14 @@ class WHMHandler
         return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
     end
     def Reinstall(params)
+        installid = Time.now.to_i.to_s(16).crypt(params['login'])
+        $proc << "Reinstall#{installid}"
+        at_exit do
+            $proc.delete "Reinstall#{installid}"
+        end
         # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
-        LOG params.inspect, 'DEBUG' if DEBUG
-        # return if DEBUG
+        LOG params.out, 'DEBUG' if DEBUG
+        return if DEBUG
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
 
         params['vmid'], params['groupid'], params['userid'], params['templateid'] = params['vmid'].to_i, params['groupid'].to_i, params['userid'].to_i, params['templateid'].to_i
@@ -95,65 +107,25 @@ class WHMHandler
             return "ReinstallError - some params are nil"
         end
 
-        obj, id = MethodThread.new(:method => __method__).with_id
-        $thread_locks[:reinstall] << obj.thread_obj(Thread.current)
-        until $thread_locks[:reinstall][0].id == id || $thread_locks[:reinstall].empty? do
-            sleep(5)
-        end
-        $thread_locks[:reinstall][0].start
-
-        ip, vm = GetIP(params['vmid']), get_pool_element(VirtualMachine, params['vmid'], @client)
-        vm_xml = Nori.new.parse(vm.info! || vm.to_xml)
-        vm.terminate(true)
+        vm = get_pool_element(VirtualMachine, params['vmid'], @client)
+        nic, context = vm.info! || vm.to_hash['VM']['TEMPLATE']['NIC'], vm.to_hash['VM']['TEMPLATE']['CONTEXT']
         while STATE_STR(params['vmid']) != 'DONE' do
             sleep(1)
         end
-
-        old_template = get_pool_element(Template, params['templateid'], @client)
-        old_template = (old_template.info! || old_template.to_hash)['VMTEMPLATE']['TEMPLATE']
-        new_template = get_pool_element(Template, REINSTALL_TEMPLATE_ID, @client)
-        new_template.update(
-            "NIC = [
-                IP=\"#{ip}\",
-                MAC=\"#{vm_xml['VM']['TEMPLATE']['NIC']['MAC']}\",
-                NETWORK=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK']}\",
-                NETWORK_UNAME=\"#{vm_xml['VM']['TEMPLATE']['NIC']['NETWORK_UNAME']}\",
-                SECURITY_GROUPS=\"#{vm_xml['VM']['TEMPLATE']['NIC']['SECURITY_GROUPS']}\" ]
-            CPU = \"#{old_template['CPU']}\"
-            MEMORY = \"#{old_template['MEMORY']}\"
-            VCPU = \"#{old_template['VCPU']}\"
-            DESCRIPTION = \"#{old_template['DESCRIPTION']}\"
-            PUBLIC_CLOUD = [
-                TYPE=\"#{old_template['PUBLIC_CLOUD']['TYPE']}\",
-                VM_TEMPLATE=\"#{old_template['PUBLIC_CLOUD']['VM_TEMPLATE']}\" ]
-            VCENTER_DATASTORE = \"#{old_template['VCENTER_DATASTORE']}\"
-            CONTEXT = [
-                NETWORK = \"YES\",
-                PASSWORD = \"$PASSWORD\",
-                SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{Win?(params['templateid'], @client) ? ", USERNAME = \"$USERNAME\" " : " "}]
-            USER_INPUTS = [
-                CPU = \"#{old_template['USER_INPUTS']['CPU']}\",
-                VCPU = \"#{old_template['USER_INPUTS']['VCPU']}\",
-                MEMORY = \"#{old_template['USER_INPUTS']['MEMORY']}\",
-                PASSWORD = \"M|password|RootPassword\"#{Win?(params['templateid'], @client) ? ", USERNAME = \"M|text|USERNAME\" " : " "}]
-            ",
-            true
-        )
         
-        begin
-            vmid = VMCreate(params['userid'], params['login'], REINSTALL_TEMPLATE_ID, params['passwd'], @client, params['release'])
-        rescue => e
-            LOG e, 'DEBUG'
-        end
-        $thread_locks[:reinstall].delete_at 0
+        ip, nic = nic['IP'], "NIC = [\n\tIP=\"#{nic['IP']}\",\n\tMAC=\"#{nic['MAC']}\",\n\tNETWORK=\"#{nic['NETWORK']}\",\n\tNETWORK_UNAME=\"#{nic['NETWORK_UNAME']}\"\n]\nCONTEXT = [\n\tPASSWORD=\"#{context['PASSWORD']}\"\n]"
         
+        template = get_pool_element(Template, params['templateid'], @client)
+        vm.terminate(true)
+        vmid = template.instantiate(params['login'] + '_vm', !params['release'], nic)
+        vm = get_pool_element(VirtualMachine, vmid, @client).deploy(CONF['OpenNebula']['default-node-id'])
         if params['ansible'] && params['release'] then
             Thread.new do
                 until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
                     sleep(15)
                 end
                 sleep(60)
-                AnsibleController(params.merge({'super' => "Reinstall ->", 'ip' => GetIP(vmid), 'vmid' => vmid}))
+                AnsibleController(params.merge({'super' => "Reinstall ->", 'host' => "#{ip}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid}))
             end
             LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
         end

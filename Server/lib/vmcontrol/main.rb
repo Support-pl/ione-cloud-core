@@ -6,6 +6,11 @@
 class WHMHandler
     def Suspend(params, log = true)
         LOG_STAT(__method__.to_s, time())
+        installid = Time.now.to_i.to_s(16).crypt(params['login'])
+        $proc << "Suspend#{installid}"
+        at_exit do
+            $proc.delete "Suspend#{installid}"
+        end
         if !params['force'] then
             LOG "Suspend query call params: #{params.inspect}", "Suspend" if !params['force']
             return nil if !params['force']
@@ -27,7 +32,12 @@ class WHMHandler
         get_pool_element(VirtualMachine, vmid.to_i, @client).suspend
     end        
     def Unsuspend(params)
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT(__method__.to_s, time())
+        installid = Time.now.to_i.to_s(16).crypt(params['login'])
+        $proc << "Unsuspend#{installid}"
+        at_exit do
+            $proc.delete "Unsuspend#{installid}"
+        end     
         if !params['force'] then            
             LOG "Unsuspend query call params: #{params.inspect}", "Unsuspend" if !params['force']
             return nil if !params['force']
@@ -86,20 +96,5 @@ class WHMHandler
     def Resume(vmid)
         LOG_STAT(__method__.to_s, time())
         get_pool_element(VirtualMachine, vmid.to_i, @client).resume
-    end
-    def RMSnapshot(vmid, snapid, log = true)
-        LOG_STAT(__method__.to_s, time())
-        LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "RMSnapshot" if log
-        get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_delete(snapid.to_i)
-    end
-    def MKSnapshot(vmid, name, log = true)
-        LOG_STAT(__method__.to_s, time())
-        LOG "Snapshot create-query accepted", 'MKSnapshot' if log
-        return get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_create(name)
-    end
-    def RevSnapshot(vmid, snapid, log = true)
-        LOG_STAT(__method__.to_s, time())
-        LOG "Snapshot revert-query accepted", 'RevSnapshot' if log
-        return get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_revert(snapid.to_i)
     end
 end
