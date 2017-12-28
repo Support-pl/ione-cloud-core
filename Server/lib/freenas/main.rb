@@ -1,3 +1,4 @@
+puts 'Initializing FreeNAS class'
 class FreeNAS
     def initialize
         @freenas = CONF['FreeNAS']
@@ -28,6 +29,8 @@ class FreeNAS
     end
 end
 
+
+puts 'Extending Handler class by FreeNASController'
 class WHMHandler
     def FreeNASController(request)
         LOG_STAT(__method__.to_s, time())        

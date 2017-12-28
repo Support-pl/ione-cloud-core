@@ -10,6 +10,8 @@ def onblock(object, id)
             object = Template
         when 'host'
             object = Host
+        when 'user'
+            object = User
         else
             return 'Unknown class entered'
     end

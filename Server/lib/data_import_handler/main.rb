@@ -1,3 +1,4 @@
+puts 'Extending Handler class by IMPORT func'
 class WHMHandler
     def IMPORT(username, credentials, vmid, group)
         LOG username, 'DEBUG'

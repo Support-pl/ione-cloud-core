@@ -1,9 +1,9 @@
 ########################################################
 #   Методы для получения информации работе сервера     #
 #         и управления некоторыми функциями            #
-
 ########################################################
 
+puts 'Extending Handler class by server-info getters'
 class WHMHandler
     def locks_stat(key = nil)
         LOG_STAT(__method__.to_s, time())
@@ -22,6 +22,7 @@ class WHMHandler
         return CONF.privatise.out
     end
     def proc
+        LOG_STAT(__method__.to_s, time())        
         return $proc
     end
 end

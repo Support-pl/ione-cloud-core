@@ -1,3 +1,4 @@
+puts 'Extending VirtualMachine class for snapshot listing'
 class VirtualMachine
     def got_snapshot?
         self.info!
@@ -9,6 +10,7 @@ class VirtualMachine
     end
 end
 
+puts 'Starting SnapController Thread'
 begin
     Thread.new do 
         LOG 'Snapshot Controller has been initialized', 'SnapController'
@@ -46,6 +48,7 @@ rescue => e
     LOG "SnapController fatal error, service is crashed", 'SnapControllerThread'
 end
 
+puts 'Extending Handler class by Snapshot control-methods'
 class WHMHandler
     def GetSnapshotList(vmid)
         LOG_STAT(__method__.to_s, time())        

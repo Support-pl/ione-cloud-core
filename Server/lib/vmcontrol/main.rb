@@ -2,7 +2,7 @@
 #        Методы для управления ВМ и Аккаунтами         #
 ########################################################
 
-
+puts 'Extending Handler class by commerce-useful methods'
 class WHMHandler
     def Suspend(params, log = true)
         LOG_STAT(__method__.to_s, time())

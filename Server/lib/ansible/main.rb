@@ -2,6 +2,7 @@
 #          Функция запуска ansible-скриптов            #
 ########################################################
 
+puts 'Initializing Ansible constants'
 ANSIBLE_HOST = CONF['AnsibleServer']['host']
 ANSIBLE_HOST_PORT = CONF['AnsibleServer']['port']
 ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
@@ -9,11 +10,12 @@ require "#{CONF['AnsibleServer']['data-getters-url']}"
 require 'net/ssh'
 require 'net/sftp'
 
+puts 'Extending handler class by AnsibleController'
 class WHMHandler
     def AnsibleController(params)
         host, playbooks = params['host'], params['services']
         LOG params.out, 'DEBUG'
-        return if params['out'] == true
+        return if params['out'].nil?
         ip, err = host.split(':').first, ""
         Thread.new do
             playbooks.each do |service, playbook|

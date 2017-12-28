@@ -1,6 +1,7 @@
 require 'json'
 require 'digest/md5'
 
+puts 'Extending Hash class by out method'
 class Hash
     def out
         return JSON.pretty_generate(self).gsub("\": ", "\" => ")
@@ -28,5 +29,12 @@ class String
             result = result || self.include?(key)
         end
         return result
+    end
+end
+
+puts 'Extending NilClass by add method'
+class NilClass
+    def +(obj)
+        return obj
     end
 end

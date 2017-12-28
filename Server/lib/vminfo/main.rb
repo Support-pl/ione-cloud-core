@@ -2,6 +2,7 @@
 #   Методы для получения информации о ВМ и Аккаунтах   #
 ########################################################
 
+puts 'Extending Handler class by VM and User info getters'
 class WHMHandler
     def VM_XML(vmid)
         LOG_STAT(__method__.to_s, time())        
@@ -28,19 +29,16 @@ class WHMHandler
     def STATE(vmid)
         LOG_STAT(__method__.to_s, time())        
         vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.state
     end
     def STATE_STR(vmid)
         LOG_STAT(__method__.to_s, time())        
         vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.state_str
     end
     def LCM_STATE(vmid)
         LOG_STAT(__method__.to_s, time())        
         vm = get_pool_element(VirtualMachine, vmid.to_i, @client)
-        # vm = VirtualMachine.new(VirtualMachine.build_xml(vmid), @client)
         return vm.info! || vm.lcm_state
     end
     def LCM_STATE_STR(vmid)
@@ -50,15 +48,12 @@ class WHMHandler
     end
     def compare_info()
         LOG_STAT(__method__.to_s, time())
-        installid = Time.now.to_i.to_s(16).crypt(params['login'])
+        installid = Time.now.to_i.to_s(16).crypt('compare_info')
         $proc << "compare_info#{installid}"
         at_exit do
             $proc.delete "compare_info#{installid}"
-        end 
-        def get_name(uid)
-            return `mysql opennebula -BNe "select name from user_pool where oid = #{uid}"`.chomp
         end
-        def getLease(vn)
+        def get_lease(vn)
             vn = get_pool_element(VirtualNetwork, vn['ID'].to_i, @client)
             vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"]
             pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
@@ -68,27 +63,23 @@ class WHMHandler
             $free.push pool
         end
         
-        all_active_vms = `mysql opennebula -BNe "select oid from vm_pool where state = 3 or state = 8"`.split(/\n/)
-        all_active_vms_owners = `mysql opennebula -BNe "select uid from vm_pool where state = 3 or state = 8"`.split(/\n/)
-        
-
-        info = Array.new
-        
-        for i in 0..all_active_vms.length do
-            break if all_active_vms[i].nil?
+        vm_pool, info = VirtualMachinePool.new(@client), []
+        vm_pool.info_all!
+        vm_pool.each do |vm|
+            break if nil
+            vm = vm.to_hash['VM']
             info << {
-                :vmid => all_active_vms[i], :userid => all_active_vms_owners[i], 
-                :login => get_name(all_active_vms_owners[i])
+                :vmid => vm['ID'], :userid => vm['UID'],
+                :login => vm['UNAME'], :ip => vm['TEMPLATE']['NIC']['IP']
             }
         end
-        
         vn_pool, $free = VirtualNetworkPool.new(@client), []
-        vn_pool = vn_pool.info_all! || vn_pool.to_hash['VNET_POOL']['VNET']
+        vn_pool = vn_pool.info_all! + vn_pool.to_hash['VNET_POOL']['VNET']
         vn_pool.each do | vn |
             break if vn.nil?
-            getLease vn
+            get_lease vn
         end if vn_pool.class == Array
-        getLease vn_pool if vn_pool.class == Hash
+        get_lease vn_pool if vn_pool.class == Hash
         return info, $free
     end
     def GetUserInfo(userid)
