@@ -2,7 +2,20 @@
 # На каждый метод, создается ключ(прим. thread_locks[:NewAccount]) под которым есть массив объектов класса MethodThread
 # Этот массив реализует очередь выполнения
 $thread_locks = Hash.new { |hash, key| hash[key] = Array.new }
+
 $proc = []
+def kill_proc(id)
+    begin
+        $proc.delete id
+    rescue
+    end
+    return nil
+end
+def proc_id_gen(method)
+    id = "#{method.to_s}_" + Time.now.to_i.to_s(16).crypt(method.to_s)
+    $proc << id
+    return id
+end    
 # ThreadKiller
 # Завершает потоки, время выполнения которых превышает таймаут и которые были запущены
 Thread.new do
@@ -47,9 +60,9 @@ class WHMHandler
 =end
     def NewAccount(params)
         installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
-        $proc << "NewAccount#{installid}"
+        $proc << "NewAccount_#{installid}"
         at_exit do
-            $proc.delete "NewAccount#{installid}"
+            $proc.delete "NewAccount_#{installid}"
         end
         LOG params.out, "DEBUG" if DEBUG
         return nil if DEBUG
@@ -91,13 +104,13 @@ class WHMHandler
     end
     def Reinstall(params)
         installid = Time.now.to_i.to_s(16).crypt(params['login'])
-        $proc << "Reinstall#{installid}"
+        $proc << "Reinstall_#{installid}"
         at_exit do
-            $proc.delete "Reinstall#{installid}"
+            $proc.delete "Reinstall_#{installid}"
         end
         # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
         LOG params.out, 'DEBUG' if DEBUG
-        return if DEBUG
+        # return if DEBUG
         LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
 
         params['vmid'], params['groupid'], params['userid'], params['templateid'] = params['vmid'].to_i, params['groupid'].to_i, params['userid'].to_i, params['templateid'].to_i
@@ -107,17 +120,23 @@ class WHMHandler
             return "ReinstallError - some params are nil"
         end
 
+        LOG 'Initializing vm object', 'DEBUG'
         vm = get_pool_element(VirtualMachine, params['vmid'], @client)
+        LOG 'Collecting data from old template', 'DEBUG'
         nic, context = vm.info! || vm.to_hash['VM']['TEMPLATE']['NIC'], vm.to_hash['VM']['TEMPLATE']['CONTEXT']
+        
+        LOG 'Generating new template', 'DEBUG'
+        ip, nic = nic['IP'], "NIC = [\n\tIP=\"#{nic['IP']}\",\n\tMAC=\"#{nic['MAC']}\",\n\tNETWORK=\"#{nic['NETWORK']}\",\n\tNETWORK_UNAME=\"#{nic['NETWORK_UNAME']}\"\n]\nCONTEXT = [\n\tPASSWORD=\"#{context['PASSWORD']}\"\n]"
+        LOG 'Initializing template obj'
+        template = get_pool_element(Template, params['templateid'], @client)
+        
+        vm.terminate(true)
         while STATE_STR(params['vmid']) != 'DONE' do
             sleep(1)
         end
-        
-        ip, nic = nic['IP'], "NIC = [\n\tIP=\"#{nic['IP']}\",\n\tMAC=\"#{nic['MAC']}\",\n\tNETWORK=\"#{nic['NETWORK']}\",\n\tNETWORK_UNAME=\"#{nic['NETWORK_UNAME']}\"\n]\nCONTEXT = [\n\tPASSWORD=\"#{context['PASSWORD']}\"\n]"
-        
-        template = get_pool_element(Template, params['templateid'], @client)
-        vm.terminate(true)
+        LOG 'Creating new VM', 'DEBUG'
         vmid = template.instantiate(params['login'] + '_vm', !params['release'], nic)
+        LOG 'Deploying VM to the host', 'DEBUG'
         vm = get_pool_element(VirtualMachine, vmid, @client).deploy(CONF['OpenNebula']['default-node-id'])
         if params['ansible'] && params['release'] then
             Thread.new do
