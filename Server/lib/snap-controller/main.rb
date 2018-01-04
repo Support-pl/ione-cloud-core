@@ -16,6 +16,7 @@ begin
         LOG 'Snapshot Controller has been initialized', 'SnapController'
         while true do
             begin
+                proc_id = proc_id_gen('SnapController')                
                 vm_pool = VirtualMachinePool.new($client)
                 vm_pool.info_all
                 target_vms, out, iter, found = [], "", -1, true
@@ -38,9 +39,11 @@ begin
                     sleep(300) if found
                 end
                 LOG "Detected snapshots:\n\t\t\t\t| rm? | del | vmid |   age   |          name          \n#{out}\nDeleting snapshots, which marked with 'V'", 'SnapController'
+                kill_proc(proc_id)
                 sleep(3600 - iter * 300)
             rescue => e
                 LOG "SnapController Error, code: #{e.message}\nSnapController is down now", 'SnapController'
+                sleep(30)
             end
         end
     end
@@ -56,17 +59,17 @@ class WHMHandler
     end
     def RMSnapshot(vmid, snapid, log = true)
         LOG_STAT(__method__.to_s, time())
-        LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "RMSnapshot" if log
+        LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "SnapController" if log
         get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_delete(snapid.to_i)
     end
     def MKSnapshot(vmid, name, log = true)
         LOG_STAT(__method__.to_s, time())
-        LOG "Snapshot create-query accepted", 'MKSnapshot' if log
+        LOG "Snapshot create-query accepted", 'SnapController' if log
         return get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_create(name)
     end
     def RevSnapshot(vmid, snapid, log = true)
         LOG_STAT(__method__.to_s, time())
-        LOG "Snapshot revert-query accepted", 'RevSnapshot' if log
+        LOG "Snapshot revert-query accepted", 'SnapController' if log
         return get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_revert(snapid.to_i)
     end
 end

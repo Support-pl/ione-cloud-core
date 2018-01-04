@@ -10,7 +10,7 @@ puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
 
 puts 'Checking service version'
-VERSION = File.read("#{ROOT}/version.txt")
+VERSION = File.read("#{ROOT}/meta/version.txt")
 
 puts 'Parsing config file'
 CONF = YAML.load(File.read("#{ROOT}/config.yml"))

@@ -15,7 +15,7 @@ class WHMHandler
     def AnsibleController(params)
         host, playbooks = params['host'], params['services']
         LOG params.out, 'DEBUG'
-        return if params['out'].nil?
+        return if DEBUG
         ip, err = host.split(':').first, ""
         Thread.new do
             playbooks.each do |service, playbook|
