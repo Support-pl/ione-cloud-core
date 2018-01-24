@@ -25,14 +25,34 @@ class WHMHandler
         LOG_STAT(__method__.to_s, time())
         onblock('vm', vmid, @client) do |vm|
             vm.info!
-            vm = vm.to_hash['VM']
+            vm, ip = vm.to_hash['VM'], 'nil'
             begin
-                return vm['TEMPLATE']['NIC']['IP'] || print( 'nic')
+                ip = vm['TEMPLATE']['NIC']['IP'] if !vm['TEMPLATE']['NIC']['IP'].nil?
             rescue
-                return vm['MONITORING']['GUEST_IP'] if !vm['MONITORING']['GUEST_IP'].nil? && !vm['MONITORING']['GUEST_IP'].include?(':')
             end
-            return nil
+            begin
+                ip = vm['MONITORING']['GUEST_IP'] if !vm['MONITORING']['GUEST_IP'].nil? && !vm['MONITORING']['GUEST_IP'].include?(':')
+            rescue
+            end
+            begin
+                ip = vm['MONITORING']['GUEST_IP_ADDRESSES'].split(',').first if !vm['MONITORING']['GUEST_IP_ADDRESSES'].nil?
+            rescue
+            end
+            return 'nil' if ip.nil? || ip.include?(':')
+            return ip if !ip.include?(':')
         end
+    end
+    def GetVMIDbyIP(ip)
+        vm_pool = VirtualMachinePool.new(@client)
+        vm_pool.info_all!
+        vm_pool.each do |vm|
+            break if nil
+            begin
+                return vm.id if ip.chomp == GetIP(vm.id).chomp
+            rescue
+            end
+        end
+        return nil
     end
     def STATE(vmid)
         LOG_STAT(__method__.to_s, time())        
@@ -78,23 +98,15 @@ class WHMHandler
     def compare_info
         LOG_STAT(__method__.to_s, time())
         proc_id, info, $free = proc_id_gen(__method__), "Method-inside error", nil
-        $proc << "#{__metod__.to_s}_#{proc_id}"        
         def get_lease(vn)
-            vn = get_pool_element(VirtualNetwork, vn['ID'].to_i, @client)
-            vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"]
+            vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"][0]
+            return if (vn['IP'] && vn['SIZE']).nil?
             pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
-            vn['LEASES']['LEASE'].each do | addr |
-                pool.delete addr
-            end if !vn['LEASES']['LEASE'].nil?
-            $free.push pool
-        end
-        def get_ip(vm)
-            begin
-                return vm['TEMPLATE']['NIC']['IP'] || print( 'nic')
-            rescue
-                return vm['MONITORING']['GUEST_IP'] if !vm['MONITORING']['GUEST_IP'].nil? && !vm['MONITORING']['GUEST_IP'].include?(':')
+            leases = vn['LEASES']['LEASE'].map {|lease| lease['IP']}
+            vn['LEASES']['LEASE'].each do | lease |
+                pool.delete(lease['IP'])
             end
-            return nil
+            $free.push pool
         end
         
         vm_pool, info = VirtualMachinePool.new(@client), []
@@ -104,16 +116,15 @@ class WHMHandler
             vm = vm.to_hash['VM']
             info << {
                 :vmid => vm['ID'], :userid => vm['UID'],
-                :login => vm['UNAME'], :ip => get_ip(vm)
+                :login => vm['UNAME'], :ip => GetIP(vm['ID'])
             }
         end
         vn_pool, $free = VirtualNetworkPool.new(@client), []
-        vn_pool = vn_pool.info_all! + vn_pool.to_hash['VNET_POOL']['VNET']
+        vn_pool.info_all!
         vn_pool.each do | vn |
             break if vn.nil?
             get_lease vn
-        end if vn_pool.class == Array
-        get_lease vn_pool if vn_pool.class == Hash  
+        end
         return kill_proc(proc_id) || info, $free 
     end
     def GetUserInfo(userid)

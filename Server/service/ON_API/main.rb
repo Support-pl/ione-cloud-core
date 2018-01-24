@@ -1,7 +1,7 @@
-def UserCreate(login, pass, groupid, client)
+def UserCreate(login, pass, groupid = nil, client)
     user = User.new(User.build_xml(0), client) # Генерирование объекта User на основе шаблонного пользователя группы PaaS
     begin
-        allocation_result = user.allocate(login, pass, "core", [USERS_GROUP, groupid]) # Создание и размещение в пул нового пользователя login:pass
+        allocation_result = user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [USERS_GROUP, groupid]) # Создание и размещение в пул нового пользователя login:pass
     rescue => e
         raise e.message
         return 0
@@ -51,7 +51,7 @@ def VMCreate(userid, user_login, templateid, passwd, client, release = true)
     end
 
     user = User.new(User.build_xml(userid), client)
-    used = (template.info! || template.to_hash)['VMTEMPLATE']['TEMPLATE']
+    used = (vm.info! || vm.to_hash)['VM']['TEMPLATE']
     user_quota = (user.info! || user.to_hash)['USER']['VM_QUOTA']
     if user_quota.nil? then
         user_quota = user_quota['VM']

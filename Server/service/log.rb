@@ -1,4 +1,4 @@
-require '/scripts/server/service/time.rb'
+require "#{ROOT}/service/time.rb"
 
 begin
     `mkdir #{ROOT}/log`
@@ -26,7 +26,7 @@ def LOG(msg, method = "none", _time = true)
     else
         destination = "#{ROOT}/log/activities.log"
     end
-
+    msg = msg.to_s
     msg = "[ #{time(method)} ] " + msg if _time
     msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
 

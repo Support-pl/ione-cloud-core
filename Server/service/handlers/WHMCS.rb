@@ -33,7 +33,7 @@ class WHMHandler
         @client = client
     end
     def Test(msg) # Очень важный метод, по нему WHMCS проверяет доступность сервиса
-        LOG "Test message received, text: #{msg}", "Test"
+        LOG "Test message received, text: #{msg}", "Test" if msg != 'PING'
         if msg == "PING" then
             return "PONG"
         end

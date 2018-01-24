@@ -6,7 +6,7 @@ puts 'Initializing Ansible constants'
 ANSIBLE_HOST = CONF['AnsibleServer']['host']
 ANSIBLE_HOST_PORT = CONF['AnsibleServer']['port']
 ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
-require "#{CONF['AnsibleServer']['data-getters-url']}"
+# require "#{CONF['AnsibleServer']['data-getters-url']}"
 require 'net/ssh'
 require 'net/sftp'
 

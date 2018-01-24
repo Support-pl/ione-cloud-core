@@ -9,7 +9,7 @@ class WHMHandler
         proc_id = proc_id_gen(__method__)
         if !params['force'] then
             LOG "Suspend query call params: #{params.inspect}", "Suspend" if !params['force']
-            return nil if !params['force']
+            return kill_proc(proc_id) || nil if !params['force']
         end
         LOG "Params: #{params.inspect} | log = #{log}", "Suspend" if DEBUG
         # Удаление пользователя
@@ -34,7 +34,7 @@ class WHMHandler
         vm.resume
         if !params['force'] then            
             LOG "Unsuspend query call params: #{params.inspect}", "Unsuspend" if !params['force']
-            return nil if !params['force']
+            return kill_proc(proc_id) || nil if !params['force']
         end
         LOG "Unuspending VM ##{params['vmid']}", "Unsuspend"
         vm.chmod(
