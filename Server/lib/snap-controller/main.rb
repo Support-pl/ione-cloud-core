@@ -55,21 +55,21 @@ puts 'Extending Handler class by Snapshot control-methods'
 class WHMHandler
     def GetSnapshotList(vmid)
         LOG_STAT(__method__.to_s, time())        
-        return get_pool_element(VirtualMachine, vmid, @client).list_snapshots
+        return onblock(VirtualMachine, vmid).list_snapshots
     end
     def RMSnapshot(vmid, snapid, log = true)
         LOG_STAT(__method__.to_s, time())
         LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "SnapController" if log
-        get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_delete(snapid.to_i)
+        onblock(VirtualMachine, vmid.to_i).snapshot_delete(snapid.to_i)
     end
     def MKSnapshot(vmid, name, log = true)
         LOG_STAT(__method__.to_s, time())
         LOG "Snapshot create-query accepted", 'SnapController' if log
-        return get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_create(name)
+        return onblock(VirtualMachine, vmid.to_i).snapshot_create(name)
     end
     def RevSnapshot(vmid, snapid, log = true)
         LOG_STAT(__method__.to_s, time())
         LOG "Snapshot revert-query accepted", 'SnapController' if log
-        return get_pool_element(VirtualMachine, vmid.to_i, @client).snapshot_revert(snapid.to_i)
+        return onblock(VirtualMachine, vmid.to_i).snapshot_revert(snapid.to_i)
     end
 end

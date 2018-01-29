@@ -4,45 +4,63 @@
 
 puts 'Extending Handler class by commerce-useful methods'
 class WHMHandler
-    def Suspend(params, log = true)
-        LOG_STAT(__method__.to_s, time())
-        proc_id = proc_id_gen(__method__)
-        if !params['force'] then
-            LOG "Suspend query call params: #{params.inspect}", "Suspend" if !params['force']
-            return kill_proc(proc_id) || nil if !params['force']
+    def Suspend(params, log = true, trace = ["Suspend method called:#{__LINE__}"])
+        begin
+            LOG_STAT(__method__.to_s, time())
+            proc_id = proc_id_gen(__method__)
+            if !params['force'] then
+                LOG "Suspend query call params: #{params.inspect}", "Suspend" if !params['force']
+                return kill_proc(proc_id) || nil if !params['force']
+            end
+            LOG "Params: #{params.inspect} | log = #{log}", "Suspend" if DEBUG
+            # Удаление пользователя
+            LOG "Suspending VM#{params['vmid']}", "Suspend" if log
+            # Приостановление виртуальной машины
+            trace << "Creating VM object:#{__LINE__ + 1}"
+            onblock(VirtualMachine, params['vmid'].to_i) do | vm |
+                trace << "Suspending VM:#{__LINE__ + 1}"
+                vm.suspend
+                trace << "Changing user rights:#{__LINE__ + 1}"
+                vm.chmod(
+                    -1,  0, -1,
+                    -1, -1, -1,
+                    -1, -1, -1
+                    )
+            end
+            trace << "Killing proccess:#{__LINE__ + 1}"
+            return kill_proc(proc_id) || 0
+        rescue => e
+            return e.message, trace
         end
-        LOG "Params: #{params.inspect} | log = #{log}", "Suspend" if DEBUG
-        # Удаление пользователя
-        LOG "Suspending VM#{params['vmid']}", "Suspend" if log
-        # Приостановление виртуальной машины
-        vm = get_pool_element(VirtualMachine, params['vmid'].to_i, @client)
-        vm.suspend
-        vm.chmod(
-            -1,  0, -1,
-            -1, -1, -1,
-            -1, -1, -1
-        )
-        return kill_proc(proc_id) || 0
     end
     def SuspendVM(vmid)
-        get_pool_element(VirtualMachine, vmid.to_i, @client).suspend
+        onblock(VirtualMachine, vmid.to_i).suspend
     end        
-    def Unsuspend(params)
-        LOG_STAT(__method__.to_s, time())
-        proc_id = proc_id_gen(__method__)  
-        vm = get_pool_element(VirtualMachine, params['vmid'].to_i, @client)
-        vm.resume
-        if !params['force'] then            
-            LOG "Unsuspend query call params: #{params.inspect}", "Unsuspend" if !params['force']
-            return kill_proc(proc_id) || nil if !params['force']
+    def Unsuspend(params, trace = ["Unsuspend method called:#{__LINE__}"])
+        begin
+            LOG_STAT(__method__.to_s, time())
+            proc_id = proc_id_gen(__method__)
+            LOG "Unuspending VM ##{params['vmid']}", "Unsuspend"
+            trace << "Creating VM object:#{__LINE__ + 1}"            
+            onblock(VirtualMachine, params['vmid'].to_i) do | vm |
+                trace << "Unsuspending VM:#{__LINE__ + 1}"                
+                vm.resume
+                if !params['force'] then            
+                    LOG "Unsuspend query call params: #{params.inspect}", "Unsuspend" if !params['force']
+                    return kill_proc(proc_id) || nil if !params['force']
+                end
+                trace << "Changing user rights:#{__LINE__ + 1}"                
+                vm.chmod(
+                    -1,  1, -1,
+                    -1, -1, -1,
+                    -1, -1, -1
+                )
+            end
+            trace << "Killing proccess:#{__LINE__ + 1}"            
+            return kill_proc(proc_id) || 0
+        rescue => e
+            return e.message, trace
         end
-        LOG "Unuspending VM ##{params['vmid']}", "Unsuspend"
-        vm.chmod(
-            -1,  1, -1,
-            -1, -1, -1,
-            -1, -1, -1
-        )
-        return kill_proc(proc_id) || 0
     end
     def Reboot(vmid = nil, hard = true)
         LOG_STAT(__method__.to_s, time())
@@ -50,7 +68,7 @@ class WHMHandler
         return "VMID cannot be nil!" if vmid.nil?     
         LOG "Rebooting VM#{vmid}", "Reboot"
         LOG "Params: vmid = #{vmid}, hard = #{hard}", "Reboot" if DEBUG
-        return kill_proc(proc_id) || get_pool_element(VirtualMachine, vmid.to_i, @client).reboot(hard) # true означает, что будет вызвана функция reboot-hard
+        return kill_proc(proc_id) || onblock(VirtualMachine, vmid.to_i).reboot(hard) # true означает, что будет вызвана функция reboot-hard
     end
     def Terminate(userid, vmid, force = false)
         LOG_STAT(__method__.to_s, time())
@@ -67,19 +85,19 @@ class WHMHandler
         # Удаляем пользователя
         Delete(userid)
         LOG "Terminating VM#{vmid}", "Terminate"
-        get_pool_element(VirtualMachine, vmid, @client).recover 3 # recover с параметром 3 означает полное удаление с диска
+        onblock(VirtualMachine, vmid).recover 3 # recover с параметром 3 означает полное удаление с диска
         kill_proc(proc_id)
     end
     def Shutdown(vmid) # Выключение машины
         LOG_STAT(__method__.to_s, time())
         proc_id = proc_id_gen(__method__)        
         LOG "Shutting down VM#{vmid}", "Shutdown"
-        return kill_proc(proc_id) || get_pool_element(VirtualMachine, vmid, @client).poweroff
+        return kill_proc(proc_id) || onblock(VirtualMachine, vmid).poweroff
     end
     def Release(vmid)
         LOG_STAT(__method__.to_s, time())
         LOG "New Release Order Accepted!", "Release"
-        get_pool_element(VirtualMachine, vmid, @client).release
+        onblock(VirtualMachine, vmid).release
     end
     def Delete(userid) # Удаление пользователя
         LOG_STAT(__method__.to_s, time())
@@ -87,10 +105,10 @@ class WHMHandler
             LOG "Delete query rejected! Tryed to delete root-user(oneadmin)", "Delete"
         end
         LOG "Deleting User ##{userid}", "Delete"
-        get_pool_element(User, userid, @client).delete
+        onblock(User, userid).delete
     end
     def Resume(vmid)
         LOG_STAT(__method__.to_s, time())
-        return get_pool_element(VirtualMachine, vmid.to_i, @client).resume
+        return onblock(VirtualMachine, vmid.to_i).resume
     end
 end

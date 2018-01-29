@@ -7,7 +7,7 @@ def UserCreate(login, pass, groupid = nil, client)
         return 0
     end
 
-    LOG allocation_result.message if allocation_result != nil # В случае неудачного размещения будет ошибка, при удачном nil
+    LOG allocation_result.message, 'DEBUG' if !allocation_result.nil? # В случае неудачного размещения будет ошибка, при удачном nil
     return user.id
 end
 

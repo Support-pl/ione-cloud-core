@@ -2,9 +2,9 @@ puts 'Extending Handler class by IMPORT func'
 class WHMHandler
     def IMPORT(params)
         LOG params, 'DEBUG'
-        return nil
+        # return nil
         if params.class == Hash
-            LOG params, 'DEBUG'
+            begin
             userid = UserCreate(params['username'], params['password'], nil, @client)
             if userid == 0 then
                 up = UserPool.new(@client)
@@ -17,6 +17,7 @@ class WHMHandler
                 end
             end
             params['vmid'] = GetVMIDbyIP(params['ip']) if params['vmid'].nil?
+            return { params['serviceid'].to_s => [userid, nil] } if params['vmid'].nil?
             vm = get_pool_element(VirtualMachine, params['vmid'], @client)
             vm.chown(userid, USERS_GROUP)
             user = User.new(User.build_xml(userid), @client)
@@ -31,8 +32,12 @@ class WHMHandler
                     VMS=\"#{(user_quota['VMS_USED'].to_i + 1).to_s}\" ]")
             rescue
             end
-            vm.rename("user_#{params['serviceid']}_vm")
-            return { params['serviceid'] => [userid, params['vmid']] }
+            vm.rename("user_#{params['serviceid'].to_s}_vm")
+            return { params['serviceid'].to_s => [userid, params['vmid']] }
+            rescue
+                LOG params, 'DEBUG'
+                LOG userid, 'DEBUG'
+            end
         end
         return params.map! do |el|
             el = IMPORT(el)
