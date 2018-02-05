@@ -164,10 +164,10 @@ class WHMHandler
         img_pool.info_all!
         img_pool.each do | img |
             mon << { 
-                :id => img.id, :name => img.name.split('(').first, :full_size => sizeConvert(img.to_hash['DATASTORE']['TOTAL_MB']),
-                :used => sizeConvert(img.to_hash['DATASTORE']['USED_MB']),
-                :type => img.to_hash['DATASTORE']['TEMPLATE']['DRIVE_TYPE'],
-                :deploy => img.to_hash['DATASTORE']['TEMPLATE']['DEPLOY']
+                'id' => img.id, 'name' => img.name.split('(').first, :full_size => sizeConvert(img.to_hash['DATASTORE']['TOTAL_MB']),
+                'used' => sizeConvert(img.to_hash['DATASTORE']['USED_MB']),
+                'type' => img.to_hash['DATASTORE']['TEMPLATE']['DRIVE_TYPE'],
+                'deploy' => img.to_hash['DATASTORE']['TEMPLATE']['DEPLOY']
             } if img.short_type_str == type && img.id > 2
         end
         return mon

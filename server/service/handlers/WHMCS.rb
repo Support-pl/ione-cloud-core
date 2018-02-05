@@ -167,21 +167,97 @@ class WHMHandler
             return e.message, trace
         end
     end
-    def CreateVMwithSpecs(templateid, cpu, ram, drive, ds_type = 'HDD', datastore = nil)
-        onblock('temp', templateid) do | t |
-            t.info!
-            specs = "VCPU = #{cpu}
-            MEMORY = #{ram}
-            DISK = [
-                IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",
-                SIZE = \"#{drive * 1024}\",
-                OPENNEBULA_MANAGED = \"NO\" ]"
-            return t.instantiate('spectest', true, specs)
-            # vm.deploy(DEFAULT_HOST, false, datastore)           
+    def CreateVMwithSpecs(params, trace = ["#{__method__.to_s} method called:#{__LINE__}"])
+        begin
+            params['cpu'], params['ram'], params['drive'] = params['cpu'].to_i, params['ram'].to_i, params['drive'].to_i
+
+            ###################### Doing some important system stuff ###############################################################
+            
+            installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
+            $proc << "NewAccount_#{installid}"
+            at_exit do
+                $proc.delete "NewAccount_#{installid}"
+            end
+            LOG params.out, "DEBUG"
+            return nil if DEBUG
+            # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
+            LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "NewAccount" # Логи
+            LOG "Params: #{params.inspect}", 'NewAccount' if DEBUG # Логи
+            LOG "Error: TemplateLoadError", 'NewAccount' if params['templateid'].nil? # Логи
+            return {'error' => "TemplateLoadError"}, (trace << "TemplateLoadError:#{__LINE__ - 1}") if params['templateid'].nil?
+            LOG "Creating new user for #{params['login']}", "NewAccount"
+
+            #####################################################################################################################
+
+            #####   Initializing useful variables   #####
+                        userid, vmid = 0
+            ##### Initializing useful variables END #####
+
+            #####   Creating new User   #####
+            trace << "Creating new user:#{__LINE__ + 1}"
+            userid, user = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client, true) if params['test'].nil?
+            LOG "Error: UserAllocateError" if userid == 0
+            trace << "UserAllocateError:#{__LINE__ - 2}" if userid == 0
+            return {'error' => "UserAllocateError"} if userid == 0
+            ##### Creating new User END #####
+            
+            #####   Creating and Configuring VM   #####
+            LOG "Creating VM for #{params['login']}", "NewAccount"
+            trace << "Creating new VM:#{__LINE__ + 1}"
+            onblock('temp', params['templateid']) do | t |
+                t.info!
+                specs = "VCPU = #{params['cpu']}
+                MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}
+                DISK = [
+                    IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",
+                    SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",
+                    OPENNEBULA_MANAGED = \"NO\" ]"
+                vmid = t.instantiate("#{params['login']}_vm", true, specs)
+                
+            end
+            
             def ChooseDS(ds_type)
-                dss = DatastoreMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
+                dss = DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
                 dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' }
-            end 
+                ds = dss[rand(dss.size)]
+                LOG "Deploying to #{ds['name']}", 'DEBUG'
+                return ds['id']
+            end
+            
+            trace << "Updating user quota:#{__LINE__ + 1}"
+            user.update_quota_by_vm(
+                'append' => true, 'cpu' => params['cpu'],
+                'ram' => params['ram'] * (params['units'] == 'GB' ? 1024 : 1),
+                'drive' => params['drive'] * (params['units'] == 'GB' ? 1024 : 1)
+            )
+            
+            trace << "Configuring VM Template:#{__LINE__ + 1}"            
+            onblock('vm', vmid) do |vm|
+                vm.chown(userid, USERS_GROUP)
+                
+                if Win? params['templateid'], @client then
+                    vm.updateconf(
+                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\", USERNAME = \"Administrator\" ]"
+                    )
+                else
+                    vm.updateconf(
+                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\" ]"
+                    ) # Настройка контекста: изменение root-пароля на заданный
+                end
+                vm.updateconf(
+                    "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{CONF['OpenNebula']['base-vnc-port'] + vmid}\", TYPE=\"VNC\" ]"
+                ) # Настройка порта для VNC
+
+                trace << "Deploying VM:#{__LINE__ + 1}"            
+                vm.deploy(DEFAULT_HOST, false, ChooseDS(params['ds_type'])) if params['release']
+                # vm.deploy(DEFAULT_HOST, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
+            end
+            return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
+
+            ##### Creating and Configuring VM END #####            
+        rescue => e
+            LOG trace, 'DEBUG'
+            return e.message, trace << 'END_TRACE'
         end
     end
     def test(params, request)

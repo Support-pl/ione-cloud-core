@@ -1,4 +1,4 @@
-def UserCreate(login, pass, groupid = nil, client)
+def UserCreate(login, pass, groupid = nil, client = $client, object = false)
     user = User.new(User.build_xml(0), client) # Генерирование объекта User на основе шаблонного пользователя группы PaaS
     groupid = nil
     begin
@@ -9,6 +9,7 @@ def UserCreate(login, pass, groupid = nil, client)
     end
 
     LOG allocation_result.message, 'DEBUG' if !allocation_result.nil? # В случае неудачного размещения будет ошибка, при удачном nil
+    return user.id, user if object
     return user.id
 end
 
@@ -53,7 +54,7 @@ def VMCreate(userid, user_login, templateid, passwd, client, release = true)
         vm.deploy DEFAULT_HOST # Деплой машины
     end
 
-    user = User.new(User.build_xml(userid), client)
+    user = onblock(User, userid)
     used = (vm.info! || vm.to_hash)['VM']['TEMPLATE']
     user_quota = (user.info! || user.to_hash)['USER']['VM_QUOTA']
     if user_quota.nil? then
