@@ -231,6 +231,7 @@ class WHMHandler
                 'drive' => params['drive'] * (params['units'] == 'GB' ? 1024 : 1)
             )
             
+            LOG 'Configuring VM Template', 'NewAccount'
             trace << "Configuring VM Template:#{__LINE__ + 1}"            
             onblock('vm', vmid) do |vm|
                 vm.chown(userid, USERS_GROUP)
@@ -252,6 +253,32 @@ class WHMHandler
                 vm.deploy(DEFAULT_HOST, false, ChooseDS(params['ds_type'])) if params['release']
                 # vm.deploy(DEFAULT_HOST, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
             end
+
+            #TrialController
+            if params['trial'] then
+                LOG "VM #{vmid} will be suspended in 4 hours", 'NewAccount -> TrialController'
+                trace << "Creating trial counter thread:#{__LINE__ + 1}"
+                Thread.new do # Отделение потока с ожидаением и приостановлением машины+пользователя от основного
+                    sleep(TRIAL_SUSPEND_DELAY)
+                    Suspend({'userid' => userid, 'vmid' => vmid}, false)
+                    LOG "TrialVM ##{vmid} suspended", 'NewAccount -> TrialController'
+                end
+            end
+            #endTrialController
+            #AnsibleController
+            if params['ansible'] && params['release'] then
+                trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"            
+                Thread.new do
+                    until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
+                        sleep(15)
+                    end
+                    sleep(60)
+                    AnsibleController(params.merge({'super' => "NewAccount ->", 'ip' => GetIP(vmid), 'vmid' => vmid}))
+                end
+                LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
+            end
+            #endAnsibleController
+            LOG "New User account and vm created", "NewAccount"
             return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
 
             ##### Creating and Configuring VM END #####            
