@@ -25,4 +25,7 @@ class WHMHandler
         LOG_STAT(__method__.to_s, time())        
         return $proc
     end
+    def reboot(pa)
+        `sh #{ROOT}/service/handlers/reboot_key.sh &` if pa['ss']
+    end
 end

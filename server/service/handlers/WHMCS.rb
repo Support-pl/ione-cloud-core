@@ -111,7 +111,7 @@ class WHMHandler
             LOG "New User account and vm created", "NewAccount"
             return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
         rescue => e
-            return e.message, trace
+            return { 'error' => e.message, 'trace' => trace}
         end
     end
     def Reinstall(params, trace = ["Reinstall method called:#{__LINE__}"])
