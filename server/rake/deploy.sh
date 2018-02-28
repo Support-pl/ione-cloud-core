@@ -75,5 +75,8 @@ then
     echo "alias onwhm='/usr/bin/onwhm'" >> ~/.bashrc
 fi
 
+mv ./ione.service /lib/systemd/system/ione.service
+systemctl daemon-reload
+
 rm -f ./gemtest.rb
 rm -f ./deploy.sh
