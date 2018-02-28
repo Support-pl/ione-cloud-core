@@ -7,7 +7,7 @@ ANSIBLE_HOST_PORT = CONF['AnsibleServer']['port']
 ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
 require "#{CONF['AnsibleServer']['data-getters-url']}"
 
-class WHMHandler
+class IONe
 =begin
     Обязательные параметры для AnsibleController:{
         'ansible-service' => % Имя сервиса, например, vesta %,

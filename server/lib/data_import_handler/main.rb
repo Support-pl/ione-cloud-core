@@ -1,5 +1,5 @@
 puts 'Extending Handler class by IMPORT func'
-class WHMHandler
+class IONe
     def IMPORT(params)
         LOG params, 'DEBUG'
         # return nil

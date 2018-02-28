@@ -38,7 +38,7 @@ def LOG(msg, method = "none", _time = true)
     return true
 end
 
-class WHMHandler
+class IONe
     def activity_log() # Получение логов из activities.log
         LOG_STAT(__method__.to_s, time())        
         LOG "Log file content has been copied remotely", "activity_log"

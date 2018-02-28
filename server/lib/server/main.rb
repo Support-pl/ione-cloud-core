@@ -4,7 +4,7 @@
 ########################################################
 
 puts 'Extending Handler class by server-info getters'
-class WHMHandler
+class IONe
     def locks_stat(key = nil)
         LOG_STAT(__method__.to_s, time())
         return $thread_locks

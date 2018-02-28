@@ -3,7 +3,7 @@
 ########################################################
 
 puts 'Extending Handler class by VM and User info getters'
-class WHMHandler
+class IONe
     def VM_XML(vmid)
         LOG_STAT(__method__.to_s, time())        
         vm = onblock(VirtualMachine, vmid)

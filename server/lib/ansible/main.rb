@@ -11,15 +11,15 @@ require 'net/ssh'
 require 'net/sftp'
 
 puts 'Extending handler class by AnsibleController'
-class WHMHandler
+class IONe
     def AnsibleController(params)
+        LOG params.merge!({:method => __method__.to_s}).out, 'DEBUG'
         host, playbooks = params['host'], params['services']
-        LOG params.out, 'DEBUG'
         return if DEBUG
         ip, err = host.split(':').first, ""
         Thread.new do
             playbooks.each do |service, playbook|
-                installid = Time.now.to_i.to_s(16).crypt(service[0..3])
+                installid = Time.now.to_i.to_s(16).crypt(service[0..3]).delete!('!@#$%^&*()_+:"\'.,\/\\')
                 LOG "#{service} should be installed on #{ip}, installation ID is: #{installid}", "AnsibleController"
                 begin
                     LOG 'Connecting to Ansible', 'AnsibleController'            

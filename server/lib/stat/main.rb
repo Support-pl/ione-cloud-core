@@ -18,7 +18,7 @@ def LOG_STAT(method, time)
 end
 
 puts 'Extending Handler class by statistic-getter'
-class WHMHandler
+class IONe
     def GetStatistics(params = {})
         return JSON.pretty_generate($data) if params['method'].nil? && params['json'] == true
         return $data if params['method'].nil?

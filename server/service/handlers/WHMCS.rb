@@ -28,7 +28,7 @@ Thread.new do
     end
 end
 
-class WHMHandler
+class IONe
     def initialize(client)
         @client = client
     end
@@ -62,16 +62,16 @@ class WHMHandler
         begin
             installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
             $proc << "NewAccount_#{installid}"
-            at_exit do
-                $proc.delete "NewAccount_#{installid}"
-            end
-            LOG params.out, "DEBUG"
-            return nil if DEBUG
-            # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
+
+            LOG params.merge!({ :method => 'NewAccount' }).out, 'DEBUG'
+
+            return $proc.delete "NewAccount_#{installid}" if params['debug'] == 'turn_method_off'
+            return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'} || kill_proc("NewAccount_#{installid}") if params['debug'] == 'data'   
+
             LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "NewAccount" # Логи
             LOG "Params: #{params.inspect}", 'NewAccount' if DEBUG # Логи
             LOG "Error: TemplateLoadError", 'NewAccount' if params['templateid'].nil? # Логи
-            return {'error' => "TemplateLoadError"}, (trace << "TemplateLoadError:#{__LINE__ - 1}") if params['templateid'].nil?
+            return {'error' => "TemplateLoadError"}, (trace << "TemplateLoadError:#{__LINE__ - 1}") || kill_proc("NewAccount_#{installid}") if params['templateid'].nil?
             LOG "Creating new user for #{params['login']}", "NewAccount"
 
             #####################################################################################################################
@@ -103,34 +103,34 @@ class WHMHandler
                         sleep(15)
                     end
                     sleep(60)
-                    AnsibleController(params.merge({'super' => "NewAccount ->", 'ip' => GetIP(vmid), 'vmid' => vmid}))
+                    AnsibleController(params.merge({'super' => "NewAccount ->", 'host' => GetIP(vmid), 'vmid' => vmid}))
                 end
-                LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
+                LOG "Install-thread started, you should wait until the services will be installed", 'NewAccount -> AnsibleController'
             end
             #endAnsibleController
             LOG "New User account and vm created", "NewAccount"
-            return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
+            return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)} || kill_proc("NewAccount_#{installid}")
         rescue => e
-            return { 'error' => e.message, 'trace' => trace}
+            return { 'error' => e.message, 'trace' => trace} || kill_proc("NewAccount_#{installid}")
         end
     end
     def Reinstall(params, trace = ["Reinstall method called:#{__LINE__}"])
         begin
             installid = Time.now.to_i.to_s(16).crypt(params['login'])
             $proc << "Reinstall_#{installid}"
-            at_exit do
-                $proc.delete "Reinstall_#{installid}"
-            end
+
             # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
-            LOG params.out, 'DEBUG' if DEBUG
-            # return if DEBUG
+            LOG params.merge!({ :method => 'Reinstall' }).out, 'DEBUG'
+            return kill_proc "Reinstall_#{installid}" if params['debug'] == 'turn_method_off'
+            return { 'vmid' => 666, 'vmid_old' => params['vmid'], 'ip' => '6.6.6.6', 'ip_old' => '0.0.0.0' } || kill_proc("Reinstall_#{installid}") if params['debug'] == 'data'   
+
             LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
 
             params['vmid'], params['groupid'], params['userid'], params['templateid'] = params['vmid'].to_i, params['groupid'].to_i, params['userid'].to_i, params['templateid'].to_i
 
             if params['vmid'] * params['groupid'] * params['userid'] * params['templateid'] == 0 then
                 LOG "ReinstallError - some params are nil", 'Reinstall'
-                return "ReinstallError - some params are nil"
+                return "ReinstallError - some params are nil" || kill_proc("Reinstall_#{installid}")
             end
 
             LOG 'Initializing vm object', 'DEBUG'
@@ -144,27 +144,36 @@ class WHMHandler
             template = onblock(Template, params['templateid'])
             
             vm.terminate(true)
-            while STATE_STR(params['vmid']) != 'DONE' do
-                sleep(1)
-            end
             LOG 'Creating new VM', 'DEBUG'
-            vmid = template.instantiate(params['login'] + '_vm', !params['release'], nic)
-            LOG 'Deploying VM to the host', 'DEBUG'
-            vm = onblock(VirtualMachine, vmid).deploy(CONF['OpenNebula']['default-node-id'])
-            if params['ansible'] && params['release'] then
-                Thread.new do
-                    until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                        sleep(15)
-                    end
-                    sleep(60)
-                    AnsibleController(params.merge({'super' => "Reinstall ->", 'host' => "#{ip}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid}))
+            vmid = template.instantiate(params['login'] + '_vm', false, nic)
+            
+            Thread.new do
+                LOG 'Waiting until terminate process will over', 'Reinstall'
+                until STATE_STR(params['vmid']) == 'DONE' do
+                    sleep(0.2)
+                end if params['release']
+                LOG 'Deploying VM to the host', 'DEBUG'
+                onblock(VirtualMachine, vmid) do | vm |
+                    vm.deploy(CONF['OpenNebula']['default-node-id']) if params['release']
+                    vm.chown(params['userid'], USERS_GROUP)
                 end
-                LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
+
+                if params['ansible'] && params['release'] then
+                    Thread.new do
+                        until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
+                            sleep(15)
+                        end
+                        sleep(60)
+                        AnsibleController(params.merge({'super' => "Reinstall ->", 'host' => "#{ip}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid}))
+                    end
+                    LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
+                end
+                LOG "VM#{params['vmid']} has been recreated and deploying now", "Reinstall"
             end
-            LOG "VM#{params['vmid']} has been reinstalled", "Reinstall"
-            return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => ip }
+
+            return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => ip } || kill_proc("Reinstall_#{installid}")
         rescue => e
-            return e.message, trace
+            return e.message, trace || kill_proc("Reinstall_#{installid}")
         end
     end
     def CreateVMwithSpecs(params, trace = ["#{__method__.to_s} method called:#{__LINE__}"])
@@ -175,10 +184,7 @@ class WHMHandler
             
             installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
             $proc << "NewAccount_#{installid}"
-            at_exit do
-                $proc.delete "NewAccount_#{installid}"
-            end
-            LOG params.out, "DEBUG"
+            LOG params.merge!({:method => __method__.to_s}).out, "DEBUG"
             return nil if DEBUG
             # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
             LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "NewAccount" # Логи

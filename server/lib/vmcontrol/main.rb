@@ -3,7 +3,7 @@
 ########################################################
 
 puts 'Extending Handler class by commerce-useful methods'
-class WHMHandler
+class IONe
     def Suspend(params, log = true, trace = ["Suspend method called:#{__LINE__}"])
         begin
             LOG_STAT(__method__.to_s, time())
