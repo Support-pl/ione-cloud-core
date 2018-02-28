@@ -15,3 +15,5 @@ user\.xml
 
 server/daemon_whm\.rb\.txt
 \.vscode/
+
+rbvmomi\.rb
