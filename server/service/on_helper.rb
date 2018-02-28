@@ -1,3 +1,5 @@
+require 'rbvmomi'
+
 def get_pool_element(type, id, client)
     return type.new(type.build_xml(id), client)
 end
@@ -36,5 +38,30 @@ class User
                 SYSTEM_DISK_SIZE=\"#{spec['drive'].to_i + quota['SYSTEM_DISK_SIZE_USED'].to_i}\", 
                 VMS=\"#{spec['append'].nil? ? quota['VMS_USED'].to_s : (quota['VMS_USED'].to_i + 1).to_s}\" ]"
         )
+    end
+end
+
+class VirtualMachine
+    # Обязательно хранить актуальный пароль от vCenter атрибутом VCENTER_PASSWORD_ACTUAL
+    def setResourcesAllocationLimits(spec)
+        VIM, query, host = RbVmomi::VIM, {}, onblock(Host, get_vm_host(self.id))
+        host = host.info! || host.to_hash['HOST']['TEMPLATE']
+        datacenter = VIM.connect(
+            :host => host['VCENTER_HOST'], :insecure => true,
+            :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
+        ).serviceInstance.find_datacenter
+        vm = datacenter.find_vm("one-#{self.info! || self.id}-#{self.name}")
+        vm_disk = vm.disks.first
+
+        query[:cpuAllocation] = {:limit => spec[:cpu]} if !spec[:cpu].nil?
+        query[:memoryAllocation] = {:limit => spec[:ram]} if !spec[:ram].nil?
+        if !spec[:iops].nil? then
+            disk.storageIOAllocation.limit = 300
+            disk.backing.sharing = nil
+            query[:deviceChange] = [{
+                    :device => disk,
+                    :operation => :edit
+            }]
+        end
     end
 end
