@@ -102,7 +102,7 @@ class IONe
             return nil # Если информация не найдена(P = 0.(000)9%) возврат пустого значения
         end
     end
-    def compare_info # Получение списка ВМ находящихся под управлением ON с соответсвующими данными
+    def compare_info(vms = []) # Получение списка ВМ находящихся под управлением ON с соответсвующими данными
         LOG_STAT(__method__.to_s, time())
         proc_id, info, $free = proc_id_gen(__method__), "Method-inside error", nil
         def get_lease(vn) # Функция генерирующая список свободных IP
@@ -116,16 +116,19 @@ class IONe
             $free.push pool
         end
         
-        vm_pool, info = VirtualMachinePool.new(@client), []
+        vm_pool, info = VirtualMachinePool.new($client), []
+
         vm_pool.info_all!
         vm_pool.each do |vm| # Генерация объектов типа VM+DATA
             break if vm.nil?
+            next if !vms.empty? && !vms.include?(vm.id)
             vm = vm.to_hash['VM']
             info << {
                 :vmid => vm['ID'], :userid => vm['UID'], :host => get_vm_host(vm['ID']),
                 :login => vm['UNAME'], :ip => GetIP(vm['ID']), :state => (LCM_STATE(vm['ID']) != 0 ? LCM_STATE_STR(vm['ID']) : STATE_STR(vm['ID']))
             }
         end
+
         vn_pool, $free = VirtualNetworkPool.new(@client), []
         vn_pool.info_all!
         vn_pool.each do | vn |
