@@ -1,4 +1,6 @@
 require 'rbvmomi'
+VIM = RbVmomi::VIM
+
 
 def get_pool_element(type, id, client)
     return type.new(type.build_xml(id), client)
@@ -44,7 +46,7 @@ end
 class VirtualMachine
     # Обязательно хранить актуальный пароль от vCenter атрибутом VCENTER_PASSWORD_ACTUAL
     def setResourcesAllocationLimits(spec)
-        VIM, query, host = RbVmomi::VIM, {}, onblock(Host, get_vm_host(self.id))
+        query, host = {}, onblock(Host, get_vm_host(self.id))
         host = host.info! || host.to_hash['HOST']['TEMPLATE']
         datacenter = VIM.connect(
             :host => host['VCENTER_HOST'], :insecure => true,

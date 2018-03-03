@@ -123,7 +123,7 @@ class IONe
             vm = vm.to_hash['VM']
             info << {
                 :vmid => vm['ID'], :userid => vm['UID'], :host => get_vm_host(vm['ID']),
-                :login => vm['UNAME'], :ip => GetIP(vm['ID'])
+                :login => vm['UNAME'], :ip => GetIP(vm['ID']), :state => (LCM_STATE(vm['ID']) != 0 ? LCM_STATE_STR(vm['ID']) : STATE_STR(vm['ID']))
             }
         end
         vn_pool, $free = VirtualNetworkPool.new(@client), []
