@@ -25,8 +25,12 @@ Include:
   - 'ansible'
   # - 'freenas'
   # - 'snap-controller'
-  # - 'stat'
+  - 'stat'
   # - 'data_import_handler'
+  - 'useful_things'  
+
+vCenter:
+  cpu-limits-koef: 1000
 
 Other:
   debug: true

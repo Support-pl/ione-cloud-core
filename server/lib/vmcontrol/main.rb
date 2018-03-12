@@ -114,4 +114,20 @@ class IONe
         LOG_STAT(__method__.to_s, time())
         return onblock(VirtualMachine, vmid.to_i).resume
     end
+
+    def RMSnapshot(vmid, snapid, log = true)
+        LOG_STAT(__method__.to_s, time())
+        LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "SnapController" if log
+        onblock(VirtualMachine, vmid.to_i).snapshot_delete(snapid.to_i)
+    end
+    def MKSnapshot(vmid, name, log = true)
+        LOG_STAT(__method__.to_s, time())
+        LOG "Snapshot create-query accepted", 'SnapController' if log
+        return onblock(VirtualMachine, vmid.to_i).snapshot_create(name)
+    end
+    def RevSnapshot(vmid, snapid, log = true)
+        LOG_STAT(__method__.to_s, time())
+        LOG "Snapshot revert-query accepted", 'SnapController' if log
+        return onblock(VirtualMachine, vmid.to_i).snapshot_revert(snapid.to_i)
+    end
 end

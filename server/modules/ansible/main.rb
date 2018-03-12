@@ -11,9 +11,10 @@ require 'net/ssh'
 require 'net/sftp'
 
 puts 'Extending handler class by AnsibleController'
+
 class IONe
     def AnsibleController(params)
-        LOG params.merge!({:method => __method__.to_s}).out, 'DEBUG'
+        LOG params.merge!({:method => __method__.to_s}).debug_out, 'DEBUG'
         host, playbooks = params['host'], params['services']
         return if DEBUG
         ip, err = host.split(':').first, ""

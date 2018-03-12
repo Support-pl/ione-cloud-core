@@ -56,11 +56,11 @@ puts 'Starting watchdog service'
 require "#{ROOT}/service/handlers/watchdog.rb"
 
 LOG "", "", false
-LOG("       ###########################################################", "", false)
-LOG("       ##                                                       ##", "", false)
-LOG "       ##    WHMCS -> OpenNebula Connector v#{VERSION.chomp}#{" " if VERSION.split(' ').last == 'stable'}     ##", "", false
-LOG("       ##                                                       ##", "", false)
-LOG("       ###########################################################", "", false)
+LOG("       ################################################################", "", false)
+LOG("       ##                                                            ##", "", false)
+LOG "       ##    Integrated OpenNebula Cloud Server v#{VERSION.chomp}#{" " if VERSION.split(' ').last == 'stable'}     ##", "", false
+LOG("       ##                                                            ##", "", false)
+LOG("       ################################################################", "", false)
 LOG "", "", false
 
 puts 'Generating "at_exit" directive'
@@ -70,11 +70,56 @@ at_exit do
     LOG("       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
 end
 
-puts 'Including User-libs' if CONF['Include'].class == Array
-CONF['Include'].each do | lib |
-    CONF.merge!(YAML.load(File.read("#{ROOT}/lib/#{lib}/config.yml"))) if File.exist?("#{ROOT}/lib/#{lib}/config.yml")
-    require "#{ROOT}/lib/#{lib}/main.rb"
-end if CONF['Include'].class == Array
+puts 'Including Libs'
+begin
+    CONF['Include'].each do | lib |
+        puts "\tIncluding #{lib}"    
+        begin
+            require "#{ROOT}/lib/#{lib}/main.rb"
+        rescue => e
+            LOG "Library \"#{lib}\" was not included", 'LibraryController'
+            puts "Library \"#{lib}\" was not included"
+        end
+    end if CONF['Include'].class == Array
+rescue => e
+    LOG "LibraryController fatal error | #{e}", 'LibraryController'
+    puts "\tLibraryController fatal error | #{e}"
+end
+
+puts 'Including Modules'
+begin
+    CONF['Modules'].each do | mod |
+        puts "\tIncluding #{mod}"    
+        begin
+            CONF.merge!(YAML.load(File.read("#{ROOT}/modules/#{mod}/config.yml"))) if File.exist?("#{ROOT}/modules/#{mod}/config.yml")
+            require "#{ROOT}/modules/#{mod}/main.rb"
+        rescue => e
+            LOG "Module \"#{mod}\" was not included", 'ModuleController'
+            puts "Module \"#{mod}\" was not included"
+        end
+    end if CONF['Modules'].class == Array
+rescue => e
+    LOG "ModuleController fatal error | #{e}", 'ModuleController'
+    puts "\tModuleController fatal error | #{e}"
+end
+
+puts 'Including Scripts'
+begin
+    CONF['Scripts'].each do | script |
+        puts "\tIncluding #{script}"
+        begin
+            Thread.new do
+                require "#{ROOT}/scripts/#{script}/main.rb"
+            end
+        rescue => e
+            LOG "Script \"#{script}\" was not included", 'ScriptController'
+            puts "\tScript \"#{script}\" was not included"
+        end
+    end if CONF['Scripts'].class == Array
+rescue => e
+    LOG "ScriptsController fatal error | #{e}", 'ScriptController'
+    puts "ScriptsController fatal error | #{e}"
+end
 
 LOG "Initializing JSON-RPC Server..."
 puts 'Initializing JSON_RPC server and logic handler'

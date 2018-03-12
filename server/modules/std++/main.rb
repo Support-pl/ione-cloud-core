@@ -3,9 +3,12 @@ require 'digest/md5'
 
 puts 'Extending Hash class by out method'
 class Hash
-    def out
+    def out()
         return JSON.pretty_generate(self).gsub("\": ", "\" => ")
     end
+    def debug_out()
+        return JSON.pretty_generate(self).gsub("\": ", "\" => ").gsub(" => null", " => nil")
+    end        
     def privatise
         result = {}
         self.each do |key, value|

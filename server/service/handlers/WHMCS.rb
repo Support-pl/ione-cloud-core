@@ -63,7 +63,7 @@ class IONe
             installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
             $proc << "NewAccount_#{installid}"
 
-            LOG params.merge!({ :method => 'NewAccount' }).out, 'DEBUG'
+            LOG params.merge!({ :method => 'NewAccount' }).debug_out, 'DEBUG'
 
             return $proc.delete "NewAccount_#{installid}" if params['debug'] == 'turn_method_off'
             return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'} || kill_proc("NewAccount_#{installid}") if params['debug'] == 'data'   
@@ -103,7 +103,9 @@ class IONe
                         sleep(15)
                     end
                     sleep(60)
-                    AnsibleController(params.merge({'super' => "NewAccount ->", 'host' => GetIP(vmid), 'vmid' => vmid}))
+                    AnsibleController(params.merge({
+                        'super' => "NewAccount ->", 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
+                    }))
                 end
                 LOG "Install-thread started, you should wait until the services will be installed", 'NewAccount -> AnsibleController'
             end
@@ -120,7 +122,7 @@ class IONe
             $proc << "Reinstall_#{installid}"
 
             # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
-            LOG params.merge!({ :method => 'Reinstall' }).out, 'DEBUG'
+            LOG params.merge!({ :method => 'Reinstall' }).debug_out, 'DEBUG'
             return kill_proc "Reinstall_#{installid}" if params['debug'] == 'turn_method_off'
             return { 'vmid' => 666, 'vmid_old' => params['vmid'], 'ip' => '6.6.6.6', 'ip_old' => '0.0.0.0' } || kill_proc("Reinstall_#{installid}") if params['debug'] == 'data'   
 
@@ -166,7 +168,7 @@ class IONe
                         sleep(60)
                         AnsibleController(params.merge({'super' => "Reinstall ->", 'host' => "#{ip}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid}))
                     end
-                    LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
+                    LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'Reinstall -> AnsibleController'
                 end
                 LOG "VM#{params['vmid']} has been recreated and deploying now", "Reinstall"
             end
@@ -177,26 +179,28 @@ class IONe
         end
     end
     def CreateVMwithSpecs(params, trace = ["#{__method__.to_s} method called:#{__LINE__}"])
+        LOG params.merge!(:method => __method__.to_s).debug_out, 'DEBUG'
+        # return
         begin
-            params['cpu'], params['ram'], params['drive'] = params['cpu'].to_i, params['ram'].to_i, params['drive'].to_i
+            params['cpu'], params['ram'], params['drive'], params['iops'] = params['cpu'].to_i, params['ram'].to_i, params['drive'].to_i, params['iops'].to_i
 
             ###################### Doing some important system stuff ###############################################################
             
             installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
             $proc << "NewAccount_#{installid}"
-            LOG params.merge!({:method => __method__.to_s}).out, "DEBUG"
+            LOG params.merge!({:method => __method__.to_s}).debug_out, "DEBUG"
             return nil if DEBUG
             # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
-            LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "NewAccount" # Логи
-            LOG "Params: #{params.inspect}", 'NewAccount' if DEBUG # Логи
-            LOG "Error: TemplateLoadError", 'NewAccount' if params['templateid'].nil? # Логи
+            LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "CreateVMwithSpecs" # Логи
+            LOG "Params: #{params.inspect}", 'CreateVMwithSpecs' if DEBUG # Логи
+            LOG "Error: TemplateLoadError", 'CreateVMwithSpecs' if params['templateid'].nil? # Логи
             return {'error' => "TemplateLoadError"}, (trace << "TemplateLoadError:#{__LINE__ - 1}") if params['templateid'].nil?
-            LOG "Creating new user for #{params['login']}", "NewAccount"
+            LOG "Creating new user for #{params['login']}", "CreateVMwithSpecs"
 
             #####################################################################################################################
 
             #####   Initializing useful variables   #####
-                        userid, vmid = 0
+                        userid, vmid = 0, 0
             ##### Initializing useful variables END #####
 
             #####   Creating new User   #####
@@ -208,7 +212,7 @@ class IONe
             ##### Creating new User END #####
             
             #####   Creating and Configuring VM   #####
-            LOG "Creating VM for #{params['login']}", "NewAccount"
+            LOG "Creating VM for #{params['login']}", "CreateVMwithSpecs"
             trace << "Creating new VM:#{__LINE__ + 1}"
             onblock('temp', params['templateid']) do | t |
                 t.info!
@@ -216,8 +220,7 @@ class IONe
                 MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}
                 DISK = [
                     IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",
-                    SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",
-                    OPENNEBULA_MANAGED = \"NO\" ]"
+                    SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\"]"
                 vmid = t.instantiate("#{params['login']}_vm", true, specs)
                 
             end
@@ -237,7 +240,7 @@ class IONe
                 'drive' => params['drive'] * (params['units'] == 'GB' ? 1024 : 1)
             )
             
-            LOG 'Configuring VM Template', 'NewAccount'
+            LOG 'Configuring VM Template', 'CreateVMwithSpecs'
             trace << "Configuring VM Template:#{__LINE__ + 1}"            
             onblock('vm', vmid) do |vm|
                 vm.chown(userid, USERS_GROUP)
@@ -259,35 +262,54 @@ class IONe
                 vm.deploy(DEFAULT_HOST, false, ChooseDS(params['ds_type'])) if params['release']
                 # vm.deploy(DEFAULT_HOST, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
             end
+            ##### Creating and Configuring VM END #####            
 
-            #TrialController
-            if params['trial'] then
-                LOG "VM #{vmid} will be suspended in 4 hours", 'NewAccount -> TrialController'
-                trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                Thread.new do # Отделение потока с ожидаением и приостановлением машины+пользователя от основного
-                    sleep(TRIAL_SUSPEND_DELAY)
-                    Suspend({'userid' => userid, 'vmid' => vmid}, false)
-                    LOG "TrialVM ##{vmid} suspended", 'NewAccount -> TrialController'
+            #####   PostDeploy Activity define   #####
+            Thread.new do
+                #LimitsController
+               
+                until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
+                    sleep(30)
                 end
-            end
-            #endTrialController
-            #AnsibleController
-            if params['ansible'] && params['release'] then
-                trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"            
-                Thread.new do
-                    until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                        sleep(15)
+
+                onblock('vm', vmid) do | vm |
+                    LOG "Executing Limits Configurator for VM#{vmid}", 'DEBUG'
+                    vm.setResourcesAllocationLimits(cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops'])
+                end
+
+                #endLimitsController
+                #TrialController
+                if params['trial'] then
+                    LOG "VM #{vmid} will be suspended in 4 hours", 'CreateVMwithSpecs -> TrialController'
+                    trace << "Creating trial counter thread:#{__LINE__ + 1}"
+                    Thread.new do # Отделение потока с ожидаением и приостановлением машины+пользователя от основного
+                        sleep(TRIAL_SUSPEND_DELAY)
+                        Suspend({'userid' => userid, 'vmid' => vmid}, false)
+                        LOG "TrialVM ##{vmid} suspended", 'NewAccount -> TrialController'
                     end
-                    sleep(60)
-                    AnsibleController(params.merge({'super' => "NewAccount ->", 'ip' => GetIP(vmid), 'vmid' => vmid}))
                 end
-                LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
-            end
-            #endAnsibleController
+                #endTrialController
+                #AnsibleController
+                if params['ansible'] && params['release'] then
+                    trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"            
+                    Thread.new do
+                        until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
+                            sleep(15)
+                        end
+                        sleep(60)
+                        AnsibleController(params.merge({
+                            'super' => "CreateVMwithSpecs ->", 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
+                        }))
+                    end
+                    LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'NewAccount -> AnsibleController'
+                end
+                #endAnsibleController
+            end if params['release']
+            ##### PostDeploy Activity define END #####
+
+
             LOG "New User account and vm created", "NewAccount"
             return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
-
-            ##### Creating and Configuring VM END #####            
         rescue => e
             LOG trace, 'DEBUG'
             return e.message, trace << 'END_TRACE'
@@ -297,3 +319,25 @@ class IONe
         return request
     end
 end
+# administrator@helpdesk.by
+# ONuzy4N%m@~Wl?o
+=begin
+{
+    "serviceid" => "8062",
+    "release" => true,
+    "templateid" => 423,
+    "cpu" => 1,
+    "ram" => 2,
+    "drive" => 70,
+    "units" => "GB",
+    "ds_type" => "SSD",
+    "iops" => "500",
+    "groupid" => "104",
+    "trial" => false,
+    "services" => nil,
+    "ansiblebool" => false,
+    "password" => "yLiaA!cyYnYfw>zZ",
+    "login" => "user_8062",
+    "passwd" => "6UK>C6eoHwBLEj>a",
+} 
+=end

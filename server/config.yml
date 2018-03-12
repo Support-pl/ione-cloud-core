@@ -17,15 +17,23 @@ WHMCS: # Credentials for connection with WHMCS
   trial-suspend-delay: 14400
 
 Include:
-  - 'std++'
   - 'vmcontrol'
   - 'vminfo'
   - 'server'
+  - 'data_import_handler'
+  - 'useful_things'
+
+Modules:
+  - 'std++'
   - 'ansible'
   - 'freenas'
-  - 'snap-controller'
   - 'stat'
-  - 'data_import_handler'
+
+Scripts:
+  - 'snap-controller'
+
+vCenter:
+  cpu-limits-koef: 1000
 
 Other:
   debug: false
