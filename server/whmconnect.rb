@@ -108,9 +108,9 @@ begin
     CONF['Scripts'].each do | script |
         puts "\tIncluding #{script}"
         begin
-            Thread.new do
+            # Thread.new do
                 require "#{ROOT}/scripts/#{script}/main.rb"
-            end
+            # end
         rescue => e
             LOG "Script \"#{script}\" was not included", 'ScriptController'
             puts "\tScript \"#{script}\" was not included"
