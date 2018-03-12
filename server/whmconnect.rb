@@ -44,16 +44,12 @@ $client = Client.new(CREDENTIALS, ENDPOINT)
 
 puts "Including time-lib"
 require "#{ROOT}/service/time.rb"
-puts "Including thread-handler lib \t\t[!!!]"
-require "#{ROOT}/service/handlers/thread_lock_handler.rb"
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
 puts 'Including API funcs'
 require "#{ROOT}/service/ON_API/main.rb"
 puts 'Including service logic funcs'
 require "#{ROOT}/service/handlers/WHMCS.rb"
-puts 'Starting watchdog service'
-require "#{ROOT}/service/handlers/watchdog.rb"
 
 LOG "", "", false
 LOG("       ################################################################", "", false)
@@ -67,7 +63,15 @@ puts 'Generating "at_exit" directive'
 at_exit do
     LOG("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}")
     LOG "", "", false
-    LOG("       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
+    LOG("       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
+end
+
+# Basic App class definition  
+class IONe
+    def initialize(client)
+        @client = client
+        @version = VERSION
+    end
 end
 
 puts 'Including Libs'
@@ -77,8 +81,8 @@ begin
         begin
             require "#{ROOT}/lib/#{lib}/main.rb"
         rescue => e
-            LOG "Library \"#{lib}\" was not included", 'LibraryController'
-            puts "Library \"#{lib}\" was not included"
+            LOG "Library \"#{lib}\" was not included | Error: #{e.message}", 'LibraryController'
+            puts "Library \"#{lib}\" was not included | Error: #{e.message}"
         end
     end if CONF['Include'].class == Array
 rescue => e
@@ -94,8 +98,8 @@ begin
             CONF.merge!(YAML.load(File.read("#{ROOT}/modules/#{mod}/config.yml"))) if File.exist?("#{ROOT}/modules/#{mod}/config.yml")
             require "#{ROOT}/modules/#{mod}/main.rb"
         rescue => e
-            LOG "Module \"#{mod}\" was not included", 'ModuleController'
-            puts "Module \"#{mod}\" was not included"
+            LOG "Module \"#{mod}\" was not included | Error: #{e.message}", 'ModuleController'
+            puts "Module \"#{mod}\" was not included | Error: #{e.message}"
         end
     end if CONF['Modules'].class == Array
 rescue => e
@@ -108,12 +112,12 @@ begin
     CONF['Scripts'].each do | script |
         puts "\tIncluding #{script}"
         begin
-            # Thread.new do
+            Thread.new do
                 require "#{ROOT}/scripts/#{script}/main.rb"
-            # end
+            end
         rescue => e
-            LOG "Script \"#{script}\" was not included", 'ScriptController'
-            puts "\tScript \"#{script}\" was not included"
+            LOG "Script \"#{script}\" was not included | Error: #{e.message}", 'ScriptController'
+            puts "\tScript \"#{script}\" was not included | Error: #{e.message}"
         end
     end if CONF['Scripts'].class == Array
 rescue => e
@@ -135,5 +139,5 @@ LOG "Server initialized"
 #     thread.exit
 # end
 
-puts 'Starting up server'
+puts 'Pre-init job ended, starting up server'
 server.server_loop # Запуск сервера

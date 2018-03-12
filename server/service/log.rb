@@ -38,15 +38,36 @@ def LOG(msg, method = "none", _time = true)
     return true
 end
 
+def LOG_TEST(msg, method = caller_locations(1,1)[0].label, _time = true)
+    case method
+    when 'DEBUG'
+        destination = "#{ROOT}/log/debug.log"
+    when "SnapController"
+        destination = "#{ROOT}/log/snapshot.log"
+    else
+        destination = "#{ROOT}/log/activities.log"
+    end
+    msg = msg.to_s
+    msg = "[ #{time(method)} ] " + msg if _time
+    msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
+
+    File.open(destination, 'a'){ |log| log.write msg + "\n" }
+    File.open("#{ROOT}/log/suspend.log", 'a'){ |log| log.write msg + "\n" } if method == 'Suspend'
+
+    $log << "#{msg} | #{destination}"
+    puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
+    return true
+end
+
 class IONe
     def activity_log() # Получение логов из activities.log
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         LOG "Log file content has been copied remotely", "activity_log"
         log = File.read("#{ROOT}/log/activities.log")
         return log
     end
     def log(msg)
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         LOG(msg, "log")
 	    return "YEP!"
     end

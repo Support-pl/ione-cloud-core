@@ -1,4 +1,11 @@
 class IONe
+    def Test(msg) # Очень важный метод, по нему WHMCS проверяет доступность сервиса
+        LOG "Test message received, text: #{msg}", "Test" if msg != 'PING'
+        if msg == "PING" then
+            return "PONG"
+        end
+        return "DONE"
+    end
     def get_vm_by_uid(uid)
         vmp = VirtualMachinePool.new($client)
         vmp.info_all!
@@ -30,7 +37,7 @@ class IONe
         end
     end
     def compare_info(vms = []) # Получение списка ВМ находящихся под управлением ON с соответсвующими данными
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         proc_id, info, $free = proc_id_gen(__method__), "Method-inside error", nil
         def get_lease(vn) # Функция генерирующая список свободных IP
             vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"][0]
@@ -77,11 +84,11 @@ class IONe
     end
     def GetUserInfo(userid)
         user = onblock(User, userid)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         return user.info! || user.to_xml
     end
     def DatastoresMonitoring(type) # Мониторинг занятости дисков на NAS*
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         return "WrongTypeExeption: type '#{type}' not exists" if type != 'sys' && type != 'img'
 
         def sizeConvert(mb) # Конвертация мегабайт в гига- либо тера- байты
@@ -105,7 +112,7 @@ class IONe
         return mon
     end
     def HostsMonitoring() # Мониторинг резерваций CPU и RAM
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
 
         def sizeConvert(mb)
             if mb.to_f / 1048576 > 768 then

@@ -1,15 +1,15 @@
 require 'json'
 puts 'Parsing statistics data'
-$data = JSON.parse(File.read("#{ROOT}/lib/stat/data.json"))
+$data = JSON.parse(File.read("#{ROOT}/modules/stat/data.json"))
 
 puts 'Binding "at_exit" actions for statistics-helper'
 at_exit do
-    `echo > #{ROOT}/lib/stat/data.json`
-    File.open("#{ROOT}/lib/stat/data.json", 'w') { |file| file.write(JSON.pretty_generate($data)) }    
+    `echo > #{ROOT}/modules/stat/data.json`
+    File.open("#{ROOT}/modules/stat/data.json", 'w') { |file| file.write(JSON.pretty_generate($data)) }    
 end
 
 puts 'Initializing stat-method'
-def LOG_STAT(method, time)
+def LOG_STAT(method = caller_locations(1,1)[0].label, time = Time.now.to_i)
     $data[method] = {} if $data[method].nil?
     $data[method]['calls'] = [] if $data[method]['calls'].nil?
     $data[method]['counter'] = 0 if $data[method]['counter'].nil?

@@ -33,7 +33,7 @@ end
 puts 'Extending Handler class by FreeNASController'
 class IONe
     def FreeNASController(request)
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()
         # LOG request, 'META'
         LOG "Request to FreeNAS accepted, params: #{request['method']}(#{request['params']})", 'FreeNASController'
         # return request

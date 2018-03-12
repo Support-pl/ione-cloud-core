@@ -22,6 +22,7 @@ Include:
   - 'server'
   - 'data_import_handler'
   - 'useful_things'
+  - 'creative_funcs'
 
 Modules:
   - 'std++'

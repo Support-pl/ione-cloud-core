@@ -5,13 +5,13 @@
 puts 'Extending Handler class by VM and User info getters'
 class IONe
     def VM_XML(vmid)
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         vm = onblock(VirtualMachine, vmid)
         return vm.info! || vm.to_xml
     end
 
     def GetIP(vmid) # Получение IP адреса ВМ
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         onblock('vm', vmid) do |vm|
             vm.info!
             vm, ip = vm.to_hash['VM'], 'nil'
@@ -49,22 +49,22 @@ class IONe
         return nil
     end
     def STATE(vmid) # Состояние ВМ в цифровом виде
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.state
     end
     def STATE_STR(vmid) # Состояние ВМ в виде строки
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.state_str
     end
     def LCM_STATE(vmid) # Состояние в жизненном цикле ВМ в цифровом виде
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.lcm_state
     end
     def LCM_STATE_STR(vmid) # Состояние в жизненном цикле ВМ в виде строки
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.lcm_state_str
     end
@@ -94,7 +94,7 @@ class IONe
         }
     end
     def GetSnapshotList(vmid)
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         return onblock(VirtualMachine, vmid).list_snapshots
     end
 end

@@ -6,7 +6,7 @@ puts 'Extending Handler class by commerce-useful methods'
 class IONe
     def Suspend(params, log = true, trace = ["Suspend method called:#{__LINE__}"])
         begin
-            LOG_STAT(__method__.to_s, time())
+            LOG_STAT()
             LOG "Suspending VM#{params['vmid']}", "Suspend" if log
             if !params['force'] then
                 LOG "Suspend query call params: #{params.inspect}", "Suspend"
@@ -37,7 +37,7 @@ class IONe
     end        
     def Unsuspend(params, trace = ["Resume method called:#{__LINE__}"])
         begin
-            LOG_STAT(__method__.to_s, time())
+            LOG_STAT()
             proc_id = proc_id_gen(__method__)
             LOG "Resuming VM ##{params['vmid']}", "Resume"
             trace << "Creating VM object:#{__LINE__ + 1}"            
@@ -62,7 +62,7 @@ class IONe
         end
     end
     def Reboot(vmid = nil, hard = false)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         proc_id = proc_id_gen(__method__)          
         return "VMID cannot be nil!" if vmid.nil?     
         LOG "Rebooting VM#{vmid}", "Reboot"
@@ -70,7 +70,7 @@ class IONe
         return kill_proc(proc_id) || onblock(VirtualMachine, vmid.to_i).reboot(hard) # true означает, что будет вызвана функция reboot-hard
     end
     def Terminate(userid, vmid, force = false)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         proc_id = proc_id_gen(__method__)          
         begin
             LOG "Terminate query call params: {\"userid\" => #{userid}, \"vmid\" => #{vmid}}", "Terminate"
@@ -92,18 +92,18 @@ class IONe
         kill_proc(proc_id)
     end
     def Shutdown(vmid) # Выключение машины
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         proc_id = proc_id_gen(__method__)        
         LOG "Shutting down VM#{vmid}", "Shutdown"
         return kill_proc(proc_id) || onblock(VirtualMachine, vmid).poweroff
     end
     def Release(vmid)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         LOG "New Release Order Accepted!", "Release"
         onblock(VirtualMachine, vmid).release
     end
     def Delete(userid) # Удаление пользователя
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         if userid == 0 then
             LOG "Delete query rejected! Tryed to delete root-user(oneadmin)", "Delete"
         end
@@ -111,22 +111,22 @@ class IONe
         onblock(User, userid).delete
     end
     def Resume(vmid)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         return onblock(VirtualMachine, vmid.to_i).resume
     end
 
     def RMSnapshot(vmid, snapid, log = true)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "SnapController" if log
         onblock(VirtualMachine, vmid.to_i).snapshot_delete(snapid.to_i)
     end
     def MKSnapshot(vmid, name, log = true)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         LOG "Snapshot create-query accepted", 'SnapController' if log
         return onblock(VirtualMachine, vmid.to_i).snapshot_create(name)
     end
     def RevSnapshot(vmid, snapid, log = true)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         LOG "Snapshot revert-query accepted", 'SnapController' if log
         return onblock(VirtualMachine, vmid.to_i).snapshot_revert(snapid.to_i)
     end

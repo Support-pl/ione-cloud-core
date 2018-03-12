@@ -6,23 +6,23 @@
 puts 'Extending Handler class by server-info getters'
 class IONe
     def locks_stat(key = nil)
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         return $thread_locks
     end
     def version
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         return VERSION
     end
     def uptime
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         return fmt_time(Time.now.to_i - STARTUP_TIME)
     end
     def conf
-        LOG_STAT(__method__.to_s, time())
+        LOG_STAT()
         return CONF.privatise.out
     end
     def proc
-        LOG_STAT(__method__.to_s, time())        
+        LOG_STAT()        
         return $proc
     end
     def reboot(pa)
