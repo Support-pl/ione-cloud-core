@@ -1,37 +1,37 @@
 require "#{ROOT}/service/time.rb"
 
 begin
-    `mkdir #{ROOT}/log`
+    `mkdir #{LOG_ROOT}`
 rescue
 end
-`echo > #{ROOT}/log/errors.txt`
+`echo > #{LOG_ROOT}/errors.txt`
 begin
-    `echo > #{ROOT}/log/activities.log` if File.read("#{ROOT}/log/activities.log").split("\n").size >= 1000
+    `echo > #{LOG_ROOT}/activities.log` if File.read("#{LOG_ROOT}/activities.log").split("\n").size >= 1000
 rescue
-    `echo > #{ROOT}/log/activities.log`
+    `echo > #{LOG_ROOT}/activities.log`
 end
 
 $log = []
 
 at_exit do
-    File.open("#{ROOT}/log/old.log", 'a') { |file| file.write($log.join("\n")) }
+    File.open("#{LOG_ROOT}/old.log", 'a') { |file| file.write($log.join("\n")) }
 end
 
 def LOG(msg, method = "none", _time = true)
     case method
     when 'DEBUG'
-        destination = "#{ROOT}/log/debug.log"
+        destination = "#{LOG_ROOT}/debug.log"
     when "SnapController"
-        destination = "#{ROOT}/log/snapshot.log"
+        destination = "#{LOG_ROOT}/snapshot.log"
     else
-        destination = "#{ROOT}/log/activities.log"
+        destination = "#{LOG_ROOT}/activities.log"
     end
     msg = msg.to_s
     msg = "[ #{time(method)} ] " + msg if _time
     msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
 
     File.open(destination, 'a'){ |log| log.write msg + "\n" }
-    File.open("#{ROOT}/log/suspend.log", 'a'){ |log| log.write msg + "\n" } if method == 'Suspend'
+    File.open("#{LOG_ROOT}/suspend.log", 'a'){ |log| log.write msg + "\n" } if method == 'Suspend'
 
     $log << "#{msg} | #{destination}"
     puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
@@ -41,18 +41,18 @@ end
 def LOG_TEST(msg, method = caller_locations(1,1)[0].label, _time = true)
     case method
     when 'DEBUG'
-        destination = "#{ROOT}/log/debug.log"
+        destination = "#{LOG_ROOT}/debug.log"
     when "SnapController"
-        destination = "#{ROOT}/log/snapshot.log"
+        destination = "#{LOG_ROOT}/snapshot.log"
     else
-        destination = "#{ROOT}/log/activities.log"
+        destination = "#{LOG_ROOT}/activities.log"
     end
     msg = msg.to_s
     msg = "[ #{time(method)} ] " + msg if _time
     msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
 
     File.open(destination, 'a'){ |log| log.write msg + "\n" }
-    File.open("#{ROOT}/log/suspend.log", 'a'){ |log| log.write msg + "\n" } if method == 'Suspend'
+    File.open("#{LOG_ROOT}/suspend.log", 'a'){ |log| log.write msg + "\n" } if method == 'Suspend'
 
     $log << "#{msg} | #{destination}"
     puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
@@ -63,7 +63,7 @@ class IONe
     def activity_log() # Получение логов из activities.log
         LOG_STAT()        
         LOG "Log file content has been copied remotely", "activity_log"
-        log = File.read("#{ROOT}/log/activities.log")
+        log = File.read("#{LOG_ROOT}/activities.log")
         return log
     end
     def log(msg)

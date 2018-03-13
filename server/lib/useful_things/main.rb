@@ -63,6 +63,12 @@ class IONe
             }
         end
 
+        host_pool, hosts = HostPool.new($client), [] # Номинальное получение списка доступных кластеров
+        host_pool.info_all!
+        host_pool.each do | host |
+            hosts << host.name
+        end
+        
         return kill_proc(proc_id) || info if !vms.empty?
 
         vn_pool, $free = VirtualNetworkPool.new(@client), []
@@ -75,12 +81,7 @@ class IONe
             end
         end
 
-        host_pool, hosts = HostPool.new($client), [] # Номинальное получение списка доступных кластеров
-        host_pool.info_all!
-        host_pool.each do | host |
-            hosts << host.name
-        end
-        return kill_proc(proc_id) || info, $free, hosts
+        return kill_proc(proc_id) || info, hosts, $free
     end
     def GetUserInfo(userid)
         user = onblock(User, userid)
@@ -134,5 +135,8 @@ class IONe
             }
         end
         return mon
+    end
+    def getglog
+        return $log
     end
 end

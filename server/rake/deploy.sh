@@ -75,8 +75,16 @@ then
     echo "alias onwhm='/usr/bin/onwhm'" >> ~/.bashrc
 fi
 
+echo 'export IONEROOT="/root/server"' >> ~/.bashrc
+echo 'export IONELOGROOT="/var/log/ione"' >> ~/.bashrc
+systemctl set-environment IONEROOT=$IONEROOT
+systemctl set-environment IONEROOT=$IONELOGROOT
+
 mv ./ione.service /lib/systemd/system/ione.service
 systemctl daemon-reload
 
+mkdir /var/log/ione
+
 rm -f ./gemtest.rb
 rm -f ./deploy.sh
+rm -f .gitignore

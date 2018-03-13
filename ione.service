@@ -1,22 +1,21 @@
 [Unit]
-Description=IONe Driver Server
+Description=Integrated OpenNebula Cloud Server
 
 [Service]
-Type=forking
-SyslogIdentifier=ione-driver
-User=root
-PIDFile=/root/server/whmconnect.rb.pid
-WorkingDirectory=/root/server
-OOMScoreAdjust=-1000
-
 Environment=RACK_ENV=production
 
+Type=forking
+SyslogIdentifier=ione-cloud
+User=root
+PIDFile=/var/run/ione.rb.pid
+WorkingDirectory=/root
 OOMScoreAdjust=-1000
+
 Restart=always
 
-ExecStart=/bin/ruby /root/server/daemon_whm.rb start
-ExecReload=/bin/ruby /root/server/daemon_whm.rb restart
-ExecStop=/bin/ruby /root/server/daemon_whm.rb stop
+ExecStart=/bin/ruby ${IONEROOT}/daemon.rb start
+ExecReload=/bin/ruby ${IONEROOT}/daemon.rb restart
+ExecStop=/bin/ruby ${IONEROOT}/daemon.rb stop
 TimeoutSec=300
 
 [Install]

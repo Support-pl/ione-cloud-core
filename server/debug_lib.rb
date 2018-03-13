@@ -1,10 +1,12 @@
 STARTUP_TIME = Time.now().to_i
 
+require 'zmqjsonrpc'
 require 'yaml'
 require 'json'
 
 puts 'Getting path to the server'
-ROOT = File.expand_path(File.dirname(__FILE__))
+ROOT = ENV['IONEROOT']
+LOG_ROOT = ENV['IONELOGROOT']
 puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
 
@@ -43,16 +45,19 @@ $client = Client.new(CREDENTIALS, ENDPOINT)
 
 puts "Including time-lib"
 require "#{ROOT}/service/time.rb"
-puts "Including thread-handler lib \t\t[!!!]"
-require "#{ROOT}/service/handlers/thread_lock_handler.rb"
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
 puts 'Including API funcs'
 require "#{ROOT}/service/ON_API/main.rb"
 puts 'Including service logic funcs'
 require "#{ROOT}/service/handlers/WHMCS.rb"
-puts 'Starting watchdog service'
-require "#{ROOT}/service/handlers/watchdog.rb"
+# Basic App class definition  
+class IONe
+    def initialize(client)
+        @client = client
+        @version = VERSION
+    end
+end
 
 puts 'Including Libs'
 begin
@@ -61,10 +66,12 @@ begin
         begin
             require "#{ROOT}/lib/#{lib}/main.rb"
         rescue => e
-            puts "Library \"#{lib}\" was not included"
+            LOG "Library \"#{lib}\" was not included | Error: #{e.message}", 'LibraryController'
+            puts "Library \"#{lib}\" was not included | Error: #{e.message}"
         end
     end if CONF['Include'].class == Array
 rescue => e
+    LOG "LibraryController fatal error | #{e}", 'LibraryController'
     puts "\tLibraryController fatal error | #{e}"
 end
 
@@ -76,10 +83,12 @@ begin
             CONF.merge!(YAML.load(File.read("#{ROOT}/modules/#{mod}/config.yml"))) if File.exist?("#{ROOT}/modules/#{mod}/config.yml")
             require "#{ROOT}/modules/#{mod}/main.rb"
         rescue => e
-            puts "Module \"#{mod}\" was not included"
+            LOG "Module \"#{mod}\" was not included | Error: #{e.message}", 'ModuleController'
+            puts "Module \"#{mod}\" was not included | Error: #{e.message}"
         end
     end if CONF['Modules'].class == Array
 rescue => e
+    LOG "ModuleController fatal error | #{e}", 'ModuleController'
     puts "\tModuleController fatal error | #{e}"
 end
 
@@ -88,13 +97,15 @@ begin
     CONF['Scripts'].each do | script |
         puts "\tIncluding #{script}"
         begin
-            # Thread.new do
+            Thread.new do
                 require "#{ROOT}/scripts/#{script}/main.rb"
-            # end
+            end
         rescue => e
-            puts "\tScript \"#{script}\" was not included"
+            LOG "Script \"#{script}\" was not included | Error: #{e.message}", 'ScriptController'
+            puts "\tScript \"#{script}\" was not included | Error: #{e.message}"
         end
     end if CONF['Scripts'].class == Array
 rescue => e
+    LOG "ScriptsController fatal error | #{e}", 'ScriptController'
     puts "ScriptsController fatal error | #{e}"
 end

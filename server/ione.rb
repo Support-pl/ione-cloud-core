@@ -5,7 +5,14 @@ require 'yaml'
 require 'json'
 
 puts 'Getting path to the server'
-ROOT = File.expand_path(File.dirname(__FILE__))
+ROOT = ENV['IONEROOT']
+LOG_ROOT = ENV['IONELOGROOT']
+
+if ROOT.nil? || LOG_ROOT.nil? then
+    `echo "Set ENV variables $IONEROOT and $IONELOGROOT at .bashrc and systemd!"`
+    raise "ENV NOT SET"
+end
+
 puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
 
