@@ -1,0 +1,87 @@
+#!/usr/bin/ruby
+
+require 'yaml'
+ROOT = ENV['IONEROOT']
+LOG_ROOT = ENV['IONELOGROOT']
+CONF = YAML.load(File.read("#{ROOT}/config.yml"))
+
+require 'zmqjsonrpc'
+uri = "tcp://localhost:#{CONF['Server']['listen-port']}"
+
+def print_log(target)
+    puts "#{LOG_ROOT}/#{target}" if ARGV[1] == 'path'
+    return if ARGV[1] == 'path'
+    File.open("#{LOG_ROOT}/#{target}") do |log|
+        require 'file-tail'
+        log.extend(File::Tail)
+        log.interval = 1
+        log.backward(ARGV[1].to_i).tail { |line| puts line }
+        # log.backward(10)
+        # log.tail { |line| puts line }
+        return
+    end if ARGV[2] == 'follow'
+    log = File.read("#{LOG_ROOT}/#{target}").split("\n")
+    if ARGV[1] == 'size' then
+        puts log.size
+    elsif ARGV[1].nil? then
+        puts log.join("\n")
+    else
+        begin
+            puts log[-ARGV[1].to_i, ARGV[1].to_i].join("\n")
+        rescue => e
+            puts log.join("\n")
+        end
+    end
+end
+
+case ARGV[0]
+    when 'server'
+        if ARGV[1] == 'stop' || ARGV[1] == 'restart' || ARGV[1] == 'start' then
+            `systemctl #{ARGV[1]} ione`
+        else
+            puts 'Undefined key, you may use: stop | start | restart'
+        end  
+        puts ARGV[1]
+    when 'log'
+        print_log("activities.log")
+    when 'debug'
+        print_log("debug.log")
+    when 'snapshot'
+        print_log("snapshot.log")
+    when 'ping'
+        begin
+            puts 'Ping probe - ok, service is available.' if ZmqJsonRpc::Client.new(uri, 50).Test('PING') == 'PONG'
+        rescue => e
+            puts 'Service is not available or an error while ping probe occurred...'
+        end
+    when 'proc'
+        puts client.proc
+    when 'version'
+        puts client.version
+    when 'uptime'
+        puts client.uptime
+    else
+        puts "
+Help page for ione cli tool:
+
+        server          -----       Initializing server control functions
+            stop        -----       Stops server using system.d
+            start       -----       Start server using system.d
+            restart     -----       Restart server using system.d
+
+        log             -----       Prints main IONe log
+            <number>    -----       Number of lines to print
+                follow  -----       Prints log in 'tail -f' mode
+            size        -----       Prints number of lines log file contains
+            path        -----       Returns log-file path
+
+        debug           -----       Prints IONe debug log -- uses the same params as 'log'
+
+        snapshot        -----       Prints IONe snapshot script log -- uses the same params as 'log'
+
+        version         -----       Checks current version of WHMConnect
+
+        uptime          -----       Checks uptime of WHMConnect server
+
+"
+end

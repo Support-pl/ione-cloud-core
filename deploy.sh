@@ -58,29 +58,15 @@ mv Server server
 rm -rf opennebula
 bundle install --gemfile server/Gemfile
 
-read -p "Do you want to add aliases for log(onlog) and snapshot-log(onsnap)[Y/n]?" -n 1 -r
-echo
-if [[ $REPLY =~ ^[Y]$ ]]
-then
-    echo "alias onlog='cat /scripts/server/log/activities.log'" >> ~/.bashrc
-    echo "alias onsnap='cat /scripts/server/log/snapshot.log'" >> ~/.bashrc
-fi
-
-read -p "Do you want to add onwhm to '/usr/bin'?[Y/n]" -n 1 -r
-echo
-if [[ $REPLY =~ ^[Y]$ ]]
-then
-    cp server/rake/onwhm /usr/bin
-    chmod +x /usr/bin/onwhm
-    echo "alias onwhm='/usr/bin/onwhm'" >> ~/.bashrc
-fi
+cp utils/ione /usr/bin
+chmod +x /usr/bin/ione
 
 echo 'export IONEROOT="/root/server"' >> ~/.bashrc
 echo 'export IONELOGROOT="/var/log/ione"' >> ~/.bashrc
 systemctl set-environment IONEROOT=$IONEROOT
 systemctl set-environment IONEROOT=$IONELOGROOT
 
-mv ./ione.service /lib/systemd/system/ione.service
+mv utils/ione.service /lib/systemd/system/ione.service
 systemctl daemon-reload
 
 mkdir /var/log/ione

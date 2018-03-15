@@ -134,7 +134,7 @@ end
 
 LOG "Initializing JSON-RPC Server..."
 puts 'Initializing JSON_RPC server and logic handler'
-server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['WHMCS']['listen-port']}") # Создание экземпляра сервера
+server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['Server']['listen-port']}") # Создание экземпляра сервера
 LOG "Server initialized"
 
 # if ARGV[0] == "test" then
