@@ -14,7 +14,7 @@ def UserCreate(login, pass, groupid = nil, client = $client, object = false)
 end
 
 def Win?(templateid, client)
-    onblock('temp', templateid, client) do | t |
+    onblock(:t, templateid, client) do | t |
         t.info!
         name = t.to_hash['VMTEMPLATE']['NAME']
         return name.include?('Windows_server') || name.include?('Win_Server')

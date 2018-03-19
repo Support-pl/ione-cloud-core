@@ -18,7 +18,7 @@ WHMCS: # Credentials for connection with WHMCS
   # Delay value for trial VMs in seconds
   trial-suspend-delay: 14400
 
-Include:
+Include: # IONe libraries to include
   - 'vmcontrol'
   - 'vminfo'
   - 'server'
@@ -26,20 +26,20 @@ Include:
   - 'useful_things'
   - 'creative_funcs'
 
-Modules:
+Modules: # IONe modules to connect
   - 'std++'
   - 'ansible'
   - 'freenas'
   - 'stat'
 
-Scripts:
+Scripts: # Automation scripts to start
   - 'snap-controller'
 
 vCenter:
   cpu-limits-koef: 1000
 
 SnapshotController:
-  check-frequency: 3600 # Snapshots check frequency in seconds
+  check-period: 3600 # Snapshots check frequency in seconds
 
 Other:
   debug: false

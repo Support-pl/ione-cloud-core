@@ -28,7 +28,7 @@ begin
             LOG "Detected snapshots:\n\t\t\t\t| rm? | del | vmid |   age   |          name          \n#{out}\nDeleting snapshots, which marked with 'V'", 'SnapController'
             kill_proc(proc_id)
             $snap_controller_status = 'SLEEP'
-            sleep(CONF['SnapshotController']['check-frequency'] - iter * 300)
+            sleep(CONF['SnapshotController']['check-period'] - iter * 300)
         rescue => e
             LOG "SnapController Error, code: #{e.message}\nSnapController is down now", 'SnapController'
             sleep(30)

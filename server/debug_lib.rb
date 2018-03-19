@@ -47,6 +47,7 @@ puts "Including time-lib"
 require "#{ROOT}/service/time.rb"
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
+include ONeHelper
 puts 'Including API funcs'
 require "#{ROOT}/service/ON_API/main.rb"
 puts 'Including service logic funcs'

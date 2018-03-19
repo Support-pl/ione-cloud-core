@@ -53,6 +53,7 @@ puts "Including time-lib"
 require "#{ROOT}/service/time.rb"
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
+include ONeHelper
 puts 'Including API funcs'
 require "#{ROOT}/service/ON_API/main.rb"
 puts 'Including service logic funcs'
@@ -73,7 +74,7 @@ at_exit do
     LOG("       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
 end
 
-# Basic App class definition  
+# Main App class. All methods, which must be available as JSON-RPC methods, should be defined in this class
 class IONe
     def initialize(client)
         @client = client

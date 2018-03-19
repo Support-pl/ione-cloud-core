@@ -12,7 +12,7 @@ class IONe
 
     def GetIP(vmid) # Получение IP адреса ВМ
         LOG_STAT()
-        onblock('vm', vmid) do |vm|
+        onblock(:vm, vmid) do |vm|
             vm.info!
             vm, ip = vm.to_hash['VM'], 'nil'
             begin
@@ -70,7 +70,7 @@ class IONe
     end
     def get_vm_data(vmid) # Получение найважнейших данных о ВМ
         proc_id = proc_id_gen(__method__)
-        onblock('vm', vmid) do | vm |
+        onblock(:vm, vmid) do | vm |
             vm.info!
             vm_hash = vm.to_hash['VM']
             return kill_proc(proc_id) || {
