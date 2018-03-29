@@ -4,8 +4,15 @@ module ONeHelper
     # Alias for RbVmomi::VIM
     VIM = RbVmomi::VIM
 
-    # vcenter-helper funcs, source: https://github.com/MarkArbogast/vsphere-helper/blob/master/lib/vsphere_helper/helpers.rb#L51-#L68
+    # Searches Instances at vCenter by name at given folder
+    # @param [RbVmomi::VIM::Folder] folder - folder where search
+    # @param [String] name - VM name at vCenter
+    # @param [Boolean] exact
+    # @return [Array<RbVmomi::VIM::VirtualMachine>]
+    # @note Tested and used for VMs, but can search at any datacenter folder
+    # @note Source https://github.com/MarkArbogast/vsphere-helper/blob/master/lib/vsphere_helper/helpers.rb#L51-#L68
     def recursive_find_vm(folder, name, exact = false)
+        # @!visibility private
         def matches(child, name, exact = false)
             is_vm = child.class == RbVmomi::VIM::VirtualMachine
             name_matches = (name == "*") || (exact ? (child.name == name) : (child.name.include? name))
@@ -75,10 +82,12 @@ module ONeHelper
             return get_pool_element(object, id, client)
         end
     end
-
-    def ChooseDS(ds_type)
+    # Returns random Datastore ID filtered by disk type
+    # @param [String] ds_type   - Datastore type, may be HDD or SSD, returns any DS if not given
+    # @return [Integer]
+    def ChooseDS(ds_type = nil)
         dss = DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
-        dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' }
+        dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' } if ds_type != nil
         ds = dss[rand(dss.size)]
         LOG "Deploying to #{ds['name']}", 'DEBUG'
         return ds['id']
@@ -109,6 +118,8 @@ class User
 end
 
 class Template
+    # Checks given template OS type by User Input
+    # @return [Boolean]
     def win?
         self.info!
         return self.to_hash['VMTEMPLATE']['TEMPLATE']['USER_INPUTS'].include? 'USERNAME'

@@ -1,6 +1,18 @@
 class IONe
+    # Creates new user account
+    # @param [String]   login       - login for new OpenNebula User
+    # @param [String]   pass        - password for new OpenNebula User
+    # @param [Integer]  groupid     - Secondary group for new user
+    # @param [OpenNebula::Client] client
+    # @param [Boolean]  object      - Returns userid of the new User and object of new User
+    # @return [Integer | Integer, OpenNebula::User]
+    # @example Examples
+    #   Success:                    777
+    #       Object set to true:     777, OpenNebula::User(777)
+    #   Error:                      "[one.user.allocation] Error ...", maybe caused if user with given name already exists
+    #   Error:                      0
     def UserCreate(login, pass, groupid = nil, client = $client, object = false)
-        user = User.new(User.build_xml(0), client) # Генерирование объекта User на основе шаблонного пользователя группы PaaS
+        user = User.new(User.build_xml(0), client) # Generates user template using oneadmin user object
         groupid = nil
         begin
             allocation_result = user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [USERS_GROUP, groupid]) # Создание и размещение в пул нового пользователя login:pass
