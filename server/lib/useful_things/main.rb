@@ -58,7 +58,7 @@ class IONe
     #   => String('example-node-vcenter') => Host was found
     #   => nil => Host wasn't found
     def get_vm_host(vmid) # Получение имени кластера, которому принадлежит ВМ
-        onblock('vm', vmid, $client) do | vm |
+        onblock(:vm, vmid, $client) do | vm |
             vm.info!
             vm = vm.to_hash['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
             return vm.last['HOSTNAME'] if vm.class == Array # If history consists of 2 or more lines - returns last
