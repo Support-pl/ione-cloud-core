@@ -1,79 +1,17 @@
 class IONe
-    # Creates new virtual machine from the given template, and new user account, which becomes owner of this VM 
-    # @param [Hash] params - all needed data for new User and VM creation
-    # @option params [String] :login Username for new OpenNebula account
-    # @option params [String] :password Password for new OpenNebula account
-    # @option params [String] :passwd Password for new Virtual Machine 
-    # @option params [Integer] :templateid Template ID to instantiate
-    # @option params [Integer] :groupid Additional group, in which user should be
-    # @option params [Boolean] :trial (false) VM will be suspended after TRIAL_SUSPEND_DELAY
-    # @option params [Boolean] :release (false) VM will be started on HOLD if false
-    # @param [Array<String>] trace - public trace log
-    # @return [Hash, nil] UserID, VMID and IP address if success, or error message and traceback log if error
-    # @example Example out
-    #   Success: {'userid' => 777, 'vmid' => 123, 'ip' => '0.0.0.0'}
-    #   Debug turn method off: nil
-    #   Debug return fake data: {'userid' => rand(1000), 'vmid' => rand(1000), 'ip' => "#{rand(255)}.#{rand(255)}.#{rand(255)}.#{rand(255)}"}
-    #   Template not found Error: {'error' => "TemplateLoadError", 'trace' => (trace << "TemplateLoadError:#{__LINE__ - 1}")(Array<String>)}
-    #   User create Error: {'error' => "UserAllocateError", 'trace' => trace(Array<String>)}
-    #   Unknown error: { 'error' => e.message, 'trace' => trace(Array<String>)}
-    def NewAccount(params, trace = ["NewAccount method called:#{__LINE__}"])
+    def UserCreate(login, pass, groupid = nil, client = $client, object = false)
+        user = User.new(User.build_xml(0), client) # Генерирование объекта User на основе шаблонного пользователя группы PaaS
+        groupid = nil
         begin
-            installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
-            $proc << "NewAccount_#{installid}"
-
-            LOG params.merge!({ :method => 'NewAccount' }).debug_out, 'DEBUG'
-
-            return $proc.delete "NewAccount_#{installid}" if params['debug'] == 'turn_method_off'
-            return {'userid' => rand(1000), 'vmid' => rand(1000), 'ip' => "#{rand(255)}.#{rand(255)}.#{rand(255)}.#{rand(255)}"} || kill_proc("NewAccount_#{installid}") if params['debug'] == 'data'   
-
-            LOG "New Account for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}", "NewAccount" # Логи
-            LOG "Params: #{params.inspect}", 'NewAccount' if DEBUG # Логи
-            LOG "Error: TemplateLoadError", 'NewAccount' if params['templateid'].nil? # Логи
-            return {'error' => "TemplateLoadError", 'trace' => (trace << "TemplateLoadError:#{__LINE__ - 1}")} || kill_proc("NewAccount_#{installid}") if params['templateid'].nil?
-            LOG "Creating new user for #{params['login']}", "NewAccount"
-
-            #####################################################################################################################
-
-            trace << "Creating new user:#{__LINE__ + 1}"
-            userid = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client) if params['test'].nil?
-            LOG "Error: UserAllocateError" if userid == 0
-            trace << "UserAllocateError:#{__LINE__ + 1}"
-            return {'error' => "UserAllocateError", 'trace' => trace} if userid == 0
-            LOG "Creating VM for #{params['login']}", "NewAccount"
-            trace << "Creating new VM:#{__LINE__ + 1}"
-            vmid = VMCreate(userid, params['login'], params['templateid'].to_i, params['passwd'], @client, params['release']) if params['test'].nil?
-            #TrialController
-            if params['trial'] then
-                LOG "VM #{vmid} will be suspended in 4 hours", 'NewAccount -> TrialController'
-                trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                Thread.new do # Отделение потока с ожидаением и приостановлением машины+пользователя от основного
-                    sleep(TRIAL_SUSPEND_DELAY)
-                    Suspend({'userid' => userid, 'vmid' => vmid}, false)
-                    LOG "TrialVM ##{vmid} suspended", 'NewAccount -> TrialController'
-                end
-            end
-            #endTrialController
-            #AnsibleController
-            if params['ansible'] && params['release'] then
-                trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"            
-                Thread.new do
-                    until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                        sleep(15)
-                    end
-                    sleep(60)
-                    AnsibleController(params.merge({
-                        'super' => "NewAccount ->", 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
-                    }))
-                end
-                LOG "Install-thread started, you should wait until the services will be installed", 'NewAccount -> AnsibleController'
-            end
-            #endAnsibleController
-            LOG "New User account and vm created", "NewAccount"
-            return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)} || kill_proc("NewAccount_#{installid}")
+            allocation_result = user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [USERS_GROUP, groupid]) # Создание и размещение в пул нового пользователя login:pass
         rescue => e
-            return { 'error' => e.message, 'trace' => trace} || kill_proc("NewAccount_#{installid}")
+            raise e.message
+            return 0
         end
+    
+        LOG allocation_result.message, 'DEBUG' if !allocation_result.nil? # В случае неудачного размещения будет ошибка, при удачном nil
+        return user.id, user if object
+        return user.id
     end
     # Creates VM for Old OpenNebula account and with old IP address
     # @param [Hash] params - all needed data for VM reinstall
@@ -129,7 +67,7 @@ class IONe
             template = onblock(Template, params['templateid'])
             template.info!
             trace << "Checking OS type:#{__LINE__ + 1}"            
-            win = template.to_hash['VMTEMPLATE']['TEMPLATE']['USER_INPUTS'].include? 'USERNAME'
+            win = template.win?
             trace << "Generating credentials and network context:#{__LINE__ + 1}"
             context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ', USERNAME = "Administrator"' : nil}\n]\n"
             trace << "Generating specs configuration:#{__LINE__ + 1}"
@@ -311,14 +249,11 @@ class IONe
             trace << "Configuring VM Template:#{__LINE__ + 1}"            
             onblock(:vm, vmid) do | vm |
                 vm.chown(userid, USERS_GROUP)
-                onblock(:t, params['templateid']) do | t |
-                    t.info!
-                    win = t.to_hash['VMTEMPLATE']['TEMPLATE']['USER_INPUTS'].include? 'USERNAME'
-                    LOG "Instantiating VM as#{win ? nil : ' not'} Windows", 'DEBUG'
-                    vm.updateconf(
-                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ', USERNAME = "Administrator"' : nil} ]"
-                    )
-                end
+                win = onblock(:t, params['templateid']).win?
+                LOG "Instantiating VM as#{win ? nil : ' not'} Windows", 'DEBUG'
+                vm.updateconf(
+                    "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ', USERNAME = "Administrator"' : nil} ]"
+                )
       
                 # if Win? params['templateid'], @client then
                 #     vm.updateconf(

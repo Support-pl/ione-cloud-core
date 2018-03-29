@@ -108,6 +108,13 @@ class User
     end
 end
 
+class Template
+    def win?
+        self.info!
+        return self.to_hash['VMTEMPLATE']['TEMPLATE']['USER_INPUTS'].include? 'USERNAME'
+    end
+end
+
 class VirtualMachine
     # Sets resources allocation limits at vCenter node
     # @note For correct work of this method, you must keep actual vCenter Password at VCENTER_PASSWORD_ACTUAL attribute in OpenNebula
