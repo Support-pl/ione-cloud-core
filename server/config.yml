@@ -6,26 +6,40 @@ OpenNebula:
   default-node-id: 0 # ID of the node, vms to deploy by default
   base-vnc-port: 5900 # Base VNC-port number. VMs will get port for VNC by formula: {{ base-vnc-port }} + {{ vmid }}
 
+Server:
+  # Port for WHMConnector to listen
+  listen-port: '8008'
+
 WHMCS: # Credentials for connection with WHMCS
   uri: 'https://my.support.by/includes/api.php' # API script
   # Credentials
   username: 'hell_api'
   password: '3924105f27ca00fd90a08aadddfb65e9'
-  # Port for WHMConnector to listen
-  listen-port: '8008'
   # Delay value for trial VMs in seconds
   trial-suspend-delay: 14400
 
-Include:
-  - 'std++'
+Include: # IONe libraries to include
   - 'vmcontrol'
   - 'vminfo'
   - 'server'
+  - 'data_import_handler'
+  - 'useful_things'
+  - 'creative_funcs'
+
+Modules: # IONe modules to connect
+  - 'std++'
   - 'ansible'
   - 'freenas'
-  - 'snap-controller'
   - 'stat'
-  - 'data_import_handler'
+
+Scripts: # Automation scripts to start
+  - 'snap-controller'
+
+vCenter:
+  cpu-limits-koef: 1000
+
+SnapshotController:
+  check-period: 3600 # Snapshots check frequency in seconds
 
 Other:
   debug: false
