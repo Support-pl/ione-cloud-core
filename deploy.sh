@@ -52,7 +52,7 @@ else
     echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 fi
 
-git clone --branch testing https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/opennebula.git
+git clone --branch stable https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/opennebula.git
 mv opennebula/* ./
 mv Server server
 rm -rf opennebula
