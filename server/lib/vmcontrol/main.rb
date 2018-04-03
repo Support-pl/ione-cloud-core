@@ -137,19 +137,30 @@ class IONe
         LOG_STAT()
         return onblock(VirtualMachine, vmid.to_i).resume
     end
-    
+    # Removes choosen snapshot for given VM
+    # @param [Integer] vmid - VM ID
+    # @param [Integer] snapid - Snapshot ID
+    # @param [Boolean] log - Making no logs if false
     # @return [nil | OpenNebula::Error]
     def RMSnapshot(vmid, snapid, log = true)
         LOG_STAT()
         LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "SnapController" if log
         onblock(VirtualMachine, vmid.to_i).snapshot_delete(snapid.to_i)
     end
-    # @return [Integer | OpenNebula::Error]
+    # Making new snapshot for given VM with given name
+    # @param [Integer] vmid - VM ID
+    # @param [String] name - Name for new VM
+    # @param [Boolean] log - Making no logs if false
+    # @return [Integer | OpenNebula::Error] New snapshot ID
     def MKSnapshot(vmid, name, log = true)
         LOG_STAT()
         LOG "Snapshot create-query accepted", 'SnapController' if log
         return onblock(VirtualMachine, vmid.to_i).snapshot_create(name)
     end
+    # Reverts choosen snapshot for given VM
+    # @param [Integer] vmid - VM ID
+    # @param [Integer] snapid - Snapshot ID
+    # @param [Boolean] log - Making no logs if false
     # @return [nil | OpenNebula::Error]
     def RevSnapshot(vmid, snapid, log = true)
         LOG_STAT()

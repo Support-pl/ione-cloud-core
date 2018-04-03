@@ -282,8 +282,8 @@ class IONe
                 ) # Configuring VNC
 
                 trace << "Deploying VM:#{__LINE__ + 1}"            
-                vm.deploy(DEFAULT_HOST, false, ChooseDS(params['ds_type'])) if params['release']
-                # vm.deploy(DEFAULT_HOST, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
+                vm.deploy($default_host, false, ChooseDS(params['ds_type'])) if params['release']
+                # vm.deploy($default_host, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
             end
             ##### Creating and Configuring VM END #####            
 

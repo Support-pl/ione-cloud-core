@@ -149,7 +149,8 @@ class IONe
         LOG_STAT()        
         return "WrongTypeExeption: type '#{type}' not exists" if type != 'sys' && type != 'img'
 
-        def sizeConvert(mb) # Конвертация мегабайт в гига- либо тера- байты
+        # @!visibility private
+        def sizeConvert(mb)
             if mb.to_f / 1024 > 768 then
                 return "#{(mb.to_f / 1048576.0).round(2).to_s}TB"
             else
@@ -176,6 +177,7 @@ class IONe
     def HostsMonitoring()
         LOG_STAT()        
 
+        # @!visibility private
         def sizeConvert(mb)
             if mb.to_f / 1048576 > 768 then
                 return "#{(mb.to_f / 1073741824.0).round(2).to_s}TB"

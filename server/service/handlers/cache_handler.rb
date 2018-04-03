@@ -1,6 +1,6 @@
 class CacheStack
-    
-    include Enumerable
+  
+  include Enumerable
   
     def initialize(num = 5)
       @size = num

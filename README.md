@@ -1,5 +1,3 @@
-# @title README
-
 # Integrated OpenNebula Cloud Server API and toolkit documentation
 [Homepage](https://ione-cloud.net)
 [GitHub](https://github.com)
@@ -257,24 +255,29 @@ You should know about the scopes defined inside the IONe for creating modules, s
 So the basic scopes are: __main__ and __IONe__. You may see which classes and functions available from IONe class scope only.
 > Note: Functions and classes from ONeHelper module are available from __main__(global) scope.
 
+#### Main scope
+
 Functions, classes and variables defined at __main__ scope available everywhere at the IONe system, you may use them directly at your scripts, modules and libraries.
 
-__For example:__
+* For example:
 
 ```rb
-# Rebooting VM #777 every hour if it's at the state RUNNING
-while true do
-  onblock(:vm, 777, $client) do | vm |
+client = OpenNebula::Client.new('oneadmin:secret')
+while true do # Rebooting VM #777 every hour if it's at the state RUNNING
+  onblock(:vm, 777, client) do | vm |
     vm.info!
     vm.reboot if vm.lcm_state_str == 'RUNNING'
+  end
 end
 ```
 
+#### IONe scope
+
 Functions, which are available as JSON-RPC methods are defined as {IONe} class methods. Remember this, if you want your funcional to be available from network.
 
-__For example:__
+* For example:
 
-```ruby
+```rb
 # Calling Reboot method for VM #777 from network
 require 'zmqjsonrpc'
 ZmqJsonRpc::Client.new('tcp://your.domain:8008').Reboot(777)
@@ -282,7 +285,6 @@ ZmqJsonRpc::Client.new('tcp://your.domain:8008').Reboot(777)
 # Doing the same stuff from the module
 IONe.new($client).Reboot(777)
 ```
-
 
 
 ### Creating automation scripts for IONe
@@ -293,19 +295,96 @@ IONe.new($client).Reboot(777)
 
 IONe module is also the kind of Ruby Gem. The difference between libraries and modules is that modules are including later than libraries and modules, also, modules may have some background activities, libraries - not(it's can cause some exceptions and broke the whole systems, because libraries are the __'core'__ of the _IONe_ system).
 
-Remember, that your module should can be activated by including it as Gem.
+* IONe module structure
 
-__For example:__
+Your module should starts from the _main.rb_ file inside your module directory.
+If your module have some constants, you may put it to the _config.yml_.
 
-```ruby
-  require 'ione-telegram-bot' # ~> Here the Telegram bot server starts 
+* For example
+
+```yml
+  ModuleName:
+    some-variable: 'some-value'
+    some-array:
+      - 'array-member0'
+      - 'array-member1'
+```
+
+So, you'll have this inside your programm:
+
+```rb
+  puts CONF
+  # => {
+  #   * * *
+  # 'ModuleName' => {
+  #   'some-variable' => 'some-value',
+  #   'some-array' => ['array-member0', 'array-member1']
+  # }
+  #   * * *
+  # }
+```
+
+So, the basic structure should you have is:
+
+```
+modulename/:
+|-- main.rb
+|-- config.yml
+|-- 'any data you wish to store and use here'
+```
+
+Remember, that your module should can be activated by including it:
+
+```rb
+  require 'ione-telegram-bot/main.rb' # ~> Here the Telegram bot server starts 
 ```
 
 Please, separate the _'passive'_ functional: _variables, functions, classes_, and the _'active'_ functional like servers, events handlers and etc.
 
 You may use all available libraries and modules for your module, but remember about [basic scopes](#label-Working+with+scopes)
 
-### Scaling IONe by modules
+### IONe structure
+
+IONe server structure is:
+
+```sh
+$IONEROOT/:
+|-- ione.rb # IONe bootstrapper
+|-- config.yml # Basic IONe config
+|-- daemon.rb # IONe daemon(kind of power key)
+|-- Gemfile
+|-- debug_lib.rb # IONe bootstrapper replication, you may use it for tests at irb
+|-- .debug_conf.yml # Config for debug_lib.rb
+|-- service
+|   |-- on_helper.rb # ONeHelper ruby module
+|   |-- log.rb # Log functions
+|   |-- time.rb # Time functions
+|
+|-- lib
+|   |-- %default and user libraries%
+|
+|-- modules
+|   |-- %modules you have installed%
+|
+|-- scripts
+|   |-- %your automation scripts%
+|
+|-- meta
+|   |-- version.txt
+
+$IONELOGROOT/:
+|-- activities.log # Main IONe log
+|-- snapshot.log # All logs, with SnapshotController method sended are here
+|-- debug.log # Debug logs
+|-- old.log # Old logs from activities.log
+|-- errors.txt # Daemon errors stores here
+
+/usr/bin/:
+|-- ione # IONe CLI utility
+
+/lib/systemd/system/:
+|-- ione.service # IONe SystemD service
+```
 
 ### Available modules
 
@@ -313,10 +392,14 @@ You may use all available libraries and modules for your module, but remember ab
 
 2. FreeNAS
 
+3. WHMCS API caller
+
 ### Available solutions based on IONe
 
 1. WHMCS Automation Module (PaaS)
 
 2. OpenNebula Provisioning IOS App
+
+3. Telegram OpenNebula Control Bot
 
 ## LICENSE

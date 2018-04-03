@@ -60,15 +60,20 @@ def LOG_TEST(msg, method = caller_locations(1,1)[0].label, _time = true)
 end
 
 class IONe
-    def activity_log() # Получение логов из activities.log
+    # Get log from activities.log file
+    # @return [String] Log
+    def activity_log()
         LOG_STAT()        
         LOG "Log file content has been copied remotely", "activity_log"
         log = File.read("#{LOG_ROOT}/activities.log")
         return log
     end
+    # Logs given message to activities.log
+    # @param [String] msg - your message
+    # @return [String] returns given message
     def log(msg)
         LOG_STAT()        
-        LOG(msg, "log")
-	    return "YEP!"
+        LOG(msg, "RemoteLOG")
+	    return msg
     end
 end

@@ -1,12 +1,12 @@
-STARTUP_TIME = Time.now().to_i
-
 require 'zmqjsonrpc'
 require 'yaml'
 require 'json'
 
+STARTUP_TIME = Time.now().to_i # IONe server start time
+
 puts 'Getting path to the server'
-ROOT = ENV['IONEROOT']
-LOG_ROOT = ENV['IONELOGROOT']
+ROOT = ENV['IONEROOT'] # IONe root path
+LOG_ROOT = ENV['IONELOGROOT'] # IONe logs path
 
 if ROOT.nil? || LOG_ROOT.nil? then
     `echo "Set ENV variables $IONEROOT and $IONELOGROOT at .bashrc and systemd!"`
@@ -17,25 +17,24 @@ puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
 
 puts 'Checking service version'
-VERSION = File.read("#{ROOT}/meta/version.txt")
+VERSION = File.read("#{ROOT}/meta/version.txt") # IONe version
 
 puts 'Parsing config file'
-CONF = YAML.load(File.read("#{ROOT}/config.yml"))
-DEBUG = CONF['Other']['debug']
-USERS_GROUP = CONF['OpenNebula']['users-group']
-TRIAL_SUSPEND_DELAY = CONF['WHMCS']['trial-suspend-delay']
+CONF = YAML.load(File.read("#{ROOT}/config.yml")) # IONe configuration constants
+DEBUG = CONF['Other']['debug'] # IONe debug level
+USERS_GROUP = CONF['OpenNebula']['users-group'] # OpenNebula users group
+TRIAL_SUSPEND_DELAY = CONF['Server']['trial-suspend-delay'] # Trial VMs suspend delay
 
-USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port']
-DEFAULT_HOST = CONF['OpenNebula']['default-node-id']
-REINSTALL_TEMPLATE_ID = CONF['OpenNebula']['reinstall-template-id']
+USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port'] # Default SSH port at OpenNebula Virtual Machines 
+$default_host = CONF['OpenNebula']['default-node-id'] # Default host to deploy
 
 puts 'Setting up Enviroment(OpenNebula API)'
 ###########################################
 # Setting up Enviroment                   #
 ###########################################
-ONE_LOCATION=ENV["ONE_LOCATION"]
+ONE_LOCATION=ENV["ONE_LOCATION"] # OpenNebula location
 if !ONE_LOCATION
-    RUBY_LIB_LOCATION="/usr/lib/one/ruby"
+    RUBY_LIB_LOCATION="/usr/lib/one/ruby" # OpenNebula gem location
 else
     RUBY_LIB_LOCATION=ONE_LOCATION+"/lib/ruby"
 end
@@ -47,7 +46,7 @@ include OpenNebula
 CREDENTIALS = CONF['OpenNebula']['credentials']
 # XML_RPC endpoint where OpenNebula is listening
 ENDPOINT = CONF['OpenNebula']['endpoint']
-$client = Client.new(CREDENTIALS, ENDPOINT)
+$client = Client.new(CREDENTIALS, ENDPOINT) # oneadmin auth-client
 
 puts "Including time-lib"
 require "#{ROOT}/service/time.rb"
@@ -74,6 +73,8 @@ end
 
 # Main App class. All methods, which must be available as JSON-RPC methods, should be defined in this class
 class IONe
+    # IONe initializer, stores auth-client and version
+    # @param [OpenNebula::Client] client 
     def initialize(client)
         @client = client
         @version = VERSION
@@ -133,17 +134,8 @@ end
 
 LOG "Initializing JSON-RPC Server..."
 puts 'Initializing JSON_RPC server and logic handler'
-server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['Server']['listen-port']}") # Создание экземпляра сервера
+server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['Server']['listen-port']}")
 LOG "Server initialized"
 
-# if ARGV[0] == "test" then
-#     thread = Thread.new {
-#         test_server = ZmqJsonRpc::Server.new(WHMCS, "tcp://*:8008")
-#         test_server.server_loop
-#     }
-#     sleep(30)
-#     thread.exit
-# end
-
 puts 'Pre-init job ended, starting up server'
-server.server_loop # Запуск сервера
+server.server_loop # Server start

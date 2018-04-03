@@ -20,7 +20,7 @@ USERS_GROUP = CONF['OpenNebula']['users-group']
 TRIAL_SUSPEND_DELAY = CONF['WHMCS']['trial-suspend-delay']
 
 USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port']
-DEFAULT_HOST = CONF['OpenNebula']['default-node-id']
+$default_host = CONF['OpenNebula']['default-node-id']
 REINSTALL_TEMPLATE_ID = CONF['OpenNebula']['reinstall-template-id']
 
 puts 'Setting up Enviroment(OpenNebula API)'
@@ -50,7 +50,7 @@ require "#{ROOT}/service/on_helper.rb"
 include ONeHelper
 puts 'Including service logic funcs'
 require "#{ROOT}/service/handlers/WHMCS.rb"
-# Basic App class definition  
+
 class IONe
     def initialize(client)
         @client = client
