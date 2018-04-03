@@ -43,15 +43,6 @@ class IONe
                             return $pbexec.last[regexp].split(/=/).last.to_i
                         end
                         LOG 'Creating log-ticket', 'AnsibleController' 
-                        WHM.new.LogtoTicket(
-                            subject: "#{ip}: #{service.capitalize} install",                    
-                            message: "
-                            IP: #{ip}
-                                Service for install: #{service.capitalize}
-                                Log: \n    #{$pbexec.join("\n    ")}",
-                                method: __method__.to_s,
-                                priority: "#{(status(/failed=(\d*)/) | status(/unreachable=(\d*)/) == 0) ? 'Low' : 'High'}",
-                        )
                         LOG "#{service} installed on #{ip}", "AnsibleController"
                         LOG 'Wiping hosts and pb files', 'AnsibleController' 
                         ssh.sftp.remove!("/tmp/#{installid}.ini")
@@ -61,16 +52,6 @@ class IONe
                     end
                 rescue => e
                     LOG "An Error occured, while installing #{service} on #{ip}: #{err}, Code: #{e.message}", "AnsibleController"
-                    WHM.new.LogtoTicket(
-                        subject: "#{ip}: #{service.capitalize} install",                    
-                        message: "
-                        IP: #{ip}
-                        Service for install: #{service.capitalize}
-                        Error: Method-inside error
-                        Log: #{err}, code: #{e.message} --- #{e} -- #{e.class}",
-                        method: __method__.to_s,
-                        priority: 'High'
-                    )
                 end
             end
             LOG 'Ansible job ended', 'AnsibleController'

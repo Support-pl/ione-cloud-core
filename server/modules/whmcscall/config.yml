@@ -1,0 +1,5 @@
+WHMCS: # Credentials for connection with WHMCS
+  uri: 'https://my.support.by/includes/api.php' # API script
+  # Credentials
+  username: 'hell_api'
+  password: '3924105f27ca00fd90a08aadddfb65e9'

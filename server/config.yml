@@ -9,12 +9,6 @@ OpenNebula:
 Server:
   # Port for WHMConnector to listen
   listen-port: '8008'
-
-WHMCS: # Credentials for connection with WHMCS
-  uri: 'https://my.support.by/includes/api.php' # API script
-  # Credentials
-  username: 'hell_api'
-  password: '3924105f27ca00fd90a08aadddfb65e9'
   # Delay value for trial VMs in seconds
   trial-suspend-delay: 14400
 
@@ -31,6 +25,7 @@ Modules: # IONe modules to connect
   - 'ansible'
   - 'freenas'
   - 'stat'
+  - 'whmcscall'
 
 Scripts: # Automation scripts to start
   - 'snap-controller'
