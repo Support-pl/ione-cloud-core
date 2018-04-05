@@ -39,6 +39,13 @@ case ARGV[0]
     when 'server'
         if ARGV[1] == 'stop' || ARGV[1] == 'restart' || ARGV[1] == 'start' then
             `systemctl #{ARGV[1]} ione`
+        elsif ARGV[1] == 'pid' then
+            pid = File.read('/var/run/ione.rb.pid')
+            if pid.nil? || pid == '' then
+                puts 'No PID file was found'
+            else
+                puts "IONe running, PID:#{pid}"
+            end
         else
             puts 'Undefined key, you may use: stop | start | restart'
         end  
@@ -69,6 +76,7 @@ Help page for ione cli tool:
             stop        -----       Stops server using system.d
             start       -----       Start server using system.d
             restart     -----       Restart server using system.d
+            pid         -----       Prints server process PID
 
         log             -----       Prints main IONe log
             <number>    -----       Number of lines to print
