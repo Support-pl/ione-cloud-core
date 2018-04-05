@@ -249,6 +249,8 @@ class IONe
                 vmid = t.instantiate("#{params['login']}_vm", true, specs + "\n" + params['user-template'].to_s)
             end
 
+            raise "Template instantiate Error: #{vmid.message}" if vmid.class != Fixnum
+
             trace << "Updating user quota:#{__LINE__ + 1}"
             user.update_quota_by_vm(
                 'append' => true, 'cpu' => params['cpu'],
@@ -260,26 +262,31 @@ class IONe
             LOG_TEST 'Configuring VM Template'
             trace << "Configuring VM Template:#{__LINE__ + 1}"            
             onblock(:vm, vmid) do | vm |
-                vm.chown(userid, USERS_GROUP)
+                trace << "Changing VM owner:#{__LINE__ + 1}"
+                begin
+                    vm.chown(userid, USERS_GROUP)
+                rescue
+                    LOG "CHOWN error, params: #{userid}, #{vm}", 'DEBUG'
+                end
                 win = onblock(:t, params['templateid']).win?
                 LOG "Instantiating VM as#{win ? nil : ' not'} Windows", 'DEBUG'
-                vm.updateconf(
-                    "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ', USERNAME = "Administrator"' : nil} ]"
-                )
-      
-                # if Win? params['templateid'], @client then
-                #     vm.updateconf(
-                #         "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\", USERNAME = \"Administrator\" ]"
-                #     )
-                # else
-                #     vm.updateconf(
-                #         "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\" ]"
-                #     ) # Настройка контекста: изменение root-пароля на заданный
-                # end
-      
-                vm.updateconf(
-                    "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{CONF['OpenNebula']['base-vnc-port'] + vmid}\", TYPE=\"VNC\" ]"
-                ) # Configuring VNC
+                trace << "Setting VM context:#{__LINE__ + 2}"
+                begin
+                    vm.updateconf(
+                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ', USERNAME = "Administrator"' : nil} ]"
+                    )
+                rescue => e
+                    LOG "Context configuring error: #{e.message}", 'DEBUG'
+                end
+                    
+                trace << "Setting VM VNC settings:#{__LINE__ + 2}"
+                begin
+                    vm.updateconf(
+                        "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{(CONF['OpenNebula']['base-vnc-port'] + vmid).to_s}\", TYPE=\"VNC\" ]"
+                    ) # Configuring VNC
+                rescue => e
+                    LOG "VNC configuring error: #{e.message}", 'DEBUG'
+                end
 
                 trace << "Deploying VM:#{__LINE__ + 1}"            
                 vm.deploy($default_host, false, ChooseDS(params['ds_type'])) if params['release']

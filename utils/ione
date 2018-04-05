@@ -7,6 +7,7 @@ CONF = YAML.load(File.read("#{ROOT}/config.yml"))
 
 require 'zmqjsonrpc'
 uri = "tcp://localhost:#{CONF['Server']['listen-port']}"
+client = ZmqJsonRpc::Client.new(uri)
 
 def print_log(target)
     puts "#{LOG_ROOT}/#{target}" if ARGV[1] == 'path'

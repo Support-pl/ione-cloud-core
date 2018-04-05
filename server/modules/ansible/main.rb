@@ -6,7 +6,6 @@ puts 'Initializing Ansible constants'
 ANSIBLE_HOST = CONF['AnsibleServer']['host']
 ANSIBLE_HOST_PORT = CONF['AnsibleServer']['port']
 ANSIBLE_HOST_USER = CONF['AnsibleServer']['user']
-require "#{ROOT}/service/ansible/getters.rb"
 require 'net/ssh'
 require 'net/sftp'
 

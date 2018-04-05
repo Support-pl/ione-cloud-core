@@ -55,9 +55,8 @@ else
     echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 fi
 
-git clone --branch stable https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/opennebula.git
-mv opennebula/* ./
-mv Server server
+git clone --branch stable https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/ione-cloud.git
+mv ione-cloud/* ./
 rm -rf opennebula
 bundle install --gemfile server/Gemfile
 

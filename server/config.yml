@@ -22,10 +22,10 @@ Include: # IONe libraries to include
 
 Modules: # IONe modules to connect
   - 'std++'
+  - 'whmcscall'
   - 'ansible'
   - 'freenas'
   - 'stat'
-  - 'whmcscall'
 
 Scripts: # Automation scripts to start
   - 'snap-controller'
