@@ -44,12 +44,17 @@ case ARGV[0]
             if pid.nil? || pid == '' then
                 puts 'No PID file was found'
             else
-                puts "IONe running, PID:#{pid}"
+                puts "IONe running, PID: #{pid}"
             end
         else
-            puts 'Undefined key, you may use: stop | start | restart'
+            puts 'Undefined key, you may use: stop | start | restart | pid'
         end  
-        puts ARGV[1]
+    when 'update'
+        if ARGV[1].nil? then
+            puts "Type your update token. You can see it at #{ROOT}/modules/updatesmanager/config.yml"
+        else
+            puts client.IONeUpdate(ARGV[1])
+        end
     when 'log'
         print_log("activities.log")
     when 'debug'
@@ -78,6 +83,8 @@ Help page for ione cli tool:
             restart     -----       Restart server using system.d
             pid         -----       Prints server process PID
 
+        update          -----       Updates your IONe Cloud server
+            <string>    -----       Update token
         log             -----       Prints main IONe log
             <number>    -----       Number of lines to print
                 follow  -----       Prints log in 'tail -f' mode

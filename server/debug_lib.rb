@@ -17,7 +17,7 @@ puts 'Parsing config file'
 CONF = YAML.load(File.read("#{ROOT}/config.yml"))
 DEBUG = CONF['Other']['debug']
 USERS_GROUP = CONF['OpenNebula']['users-group']
-TRIAL_SUSPEND_DELAY = CONF['WHMCS']['trial-suspend-delay']
+TRIAL_SUSPEND_DELAY = CONF['Server']['trial-suspend-delay']
 
 USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port']
 $default_host = CONF['OpenNebula']['default-node-id']
@@ -48,8 +48,6 @@ require "#{ROOT}/service/time.rb"
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
 include ONeHelper
-puts 'Including service logic funcs'
-require "#{ROOT}/service/handlers/WHMCS.rb"
 
 class IONe
     def initialize(client)
