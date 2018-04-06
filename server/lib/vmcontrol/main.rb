@@ -11,8 +11,11 @@ class IONe
     # @param [Array<String>] trace
     # @return [nil | Array] Returns message and trace if Exception
     def Suspend(params, log = true, trace = ["Suspend method called:#{__LINE__}"])
+        LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
         begin
-            LOG_STAT()
             LOG "Suspending VM#{params['vmid']}", "Suspend" if log
             LOG "Params: #{params.inspect} | log = #{log}", "Suspend" if log
             trace << "Creating VM object:#{__LINE__ + 1}"
@@ -45,8 +48,11 @@ class IONe
     # @param [Array<String>] trace
     # @return [nil | Array] Returns message and trace if Exception
     def Unsuspend(params, trace = ["Resume method called:#{__LINE__}"])
+        LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
         begin
-            LOG_STAT()
             LOG "Resuming VM ##{params['vmid']}", "Resume"
             trace << "Creating VM object:#{__LINE__ + 1}"            
             onblock(VirtualMachine, params['vmid'].to_i) do | vm |
@@ -71,6 +77,9 @@ class IONe
     # @return nil
     def Reboot(vmid, hard = false)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
                   
         return "VMID cannot be nil!" if vmid.nil?     
         LOG "Rebooting VM#{vmid}", "Reboot"
@@ -83,6 +92,9 @@ class IONe
     # @return [nil | OpenNebula::Error]    
     def Terminate(userid, vmid)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
                   
         begin
             LOG "Terminate query call params: {\"userid\" => #{userid}, \"vmid\" => #{vmid}}", "Terminate"
@@ -107,6 +119,9 @@ class IONe
     # @return [nil | OpenNebula::Error]
     def Shutdown(vmid)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
                 
         LOG "Shutting down VM#{vmid}", "Shutdown"
         return onblock(VirtualMachine, vmid).poweroff
@@ -114,6 +129,10 @@ class IONe
     # @!visibility private
     def Release(vmid)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         LOG "New Release Order Accepted!", "Release"
         onblock(VirtualMachine, vmid).release
     end
@@ -122,6 +141,10 @@ class IONe
     # @return [nil | OpenNebula::Error]
     def Delete(userid)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         if userid == 0 then
             LOG "Delete query rejected! Tryed to delete root-user(oneadmin)", "Delete"
         end
@@ -133,6 +156,10 @@ class IONe
     # @return [nil | OpenNebula::Error]
     def Resume(vmid)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         return onblock(VirtualMachine, vmid.to_i).resume
     end
     # Removes choosen snapshot for given VM
@@ -142,6 +169,10 @@ class IONe
     # @return [nil | OpenNebula::Error]
     def RMSnapshot(vmid, snapid, log = true)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         LOG "Deleting snapshot(ID: #{snapid.to_s}) for VM#{vmid.to_s}", "SnapController" if log
         onblock(VirtualMachine, vmid.to_i).snapshot_delete(snapid.to_i)
     end
@@ -152,6 +183,10 @@ class IONe
     # @return [Integer | OpenNebula::Error] New snapshot ID
     def MKSnapshot(vmid, name, log = true)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         LOG "Snapshot create-query accepted", 'SnapController' if log
         return onblock(VirtualMachine, vmid.to_i).snapshot_create(name)
     end
@@ -162,6 +197,10 @@ class IONe
     # @return [nil | OpenNebula::Error]
     def RevSnapshot(vmid, snapid, log = true)
         LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+        
         LOG "Snapshot revert-query accepted", 'SnapController' if log
         return onblock(VirtualMachine, vmid.to_i).snapshot_revert(snapid.to_i)
     end

@@ -61,6 +61,8 @@ case ARGV[0]
         print_log("debug.log")
     when 'snapshot'
         print_log("snapshot.log")
+    when 'sys'
+        print_log("sys.log")
     when 'ping'
         begin
             puts 'Ping probe - ok, service is available.' if ZmqJsonRpc::Client.new(uri, 50).Test('PING') == 'PONG'
@@ -92,6 +94,8 @@ Help page for ione cli tool:
         debug           -----       Prints IONe debug log -- uses the same params as 'log'
 
         snapshot        -----       Prints IONe snapshot script log -- uses the same params as 'log'
+
+        sys             -----       Prints IONe sys log
 
         version         -----       Checks current version of WHMConnect
 

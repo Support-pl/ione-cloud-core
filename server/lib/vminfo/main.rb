@@ -59,7 +59,11 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [Integer] State
     def STATE(vmid) 
-        LOG_STAT()        
+        LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         vm = onblock(:vm, vmid.to_i)
         return vm.info! || vm.state
     end
@@ -67,7 +71,11 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [String] State
     def STATE_STR(vmid)
-        LOG_STAT()        
+        LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.state_str
     end
@@ -75,7 +83,11 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [Integer] State
     def LCM_STATE(vmid)
-        LOG_STAT()        
+        LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.lcm_state
     end
@@ -83,7 +95,11 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [String] State
     def LCM_STATE_STR(vmid)
-        LOG_STAT()        
+        LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.lcm_state_str
     end
@@ -91,7 +107,11 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [Hash] Data(name, owner-name, owner-id, ip, host, state, cpu, ram, imported)
     def get_vm_data(vmid)
-        
+        LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+
         onblock(:vm, vmid) do | vm |
             vm.info!
             vm_hash = vm.to_hash['VM']
@@ -119,7 +139,11 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [Array<Hash> | Hash]
     def GetSnapshotList(vmid)
-        LOG_STAT()        
+        LOG_STAT()
+        id = Time.now.to_i.to_s(16)
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, __method__) }
+             
         return onblock(VirtualMachine, vmid).list_snapshots
     end
 end

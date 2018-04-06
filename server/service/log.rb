@@ -59,6 +59,13 @@ def LOG_TEST(msg, method = caller_locations(1,1)[0].label, _time = true)
     return true
 end
 
+def LOG_CALL(id, called, method = 'noname')
+    msg = "[ #{time()} ] Method #{method.to_s}:#{id} #{called ? 'called' : 'closed'}"
+
+    File.open(LOG_ROOT + '/sys.log', 'a'){ |log| log.write msg + "\n" }
+    return true
+end
+
 class IONe
     # Get log from activities.log file
     # @return [String] Log
