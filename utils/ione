@@ -67,8 +67,6 @@ case ARGV[0]
         rescue => e
             puts 'Service is not available or an error while ping probe occurred...'
         end
-    when 'proc'
-        puts client.proc
     when 'version'
         puts client.version
     when 'uptime'

@@ -14,7 +14,6 @@ class IONe
         begin
             LOG_STAT()
             LOG "Suspending VM#{params['vmid']}", "Suspend" if log
-            proc_id = proc_id_gen(__method__)
             LOG "Params: #{params.inspect} | log = #{log}", "Suspend" if log
             trace << "Creating VM object:#{__LINE__ + 1}"
             onblock(VirtualMachine, params['vmid'].to_i) do | vm |
@@ -28,7 +27,7 @@ class IONe
                     )
             end
             trace << "Killing proccess:#{__LINE__ + 1}"
-            return kill_proc(proc_id) || 0
+            return 0
         rescue => e
             return e.message, trace
         end
@@ -48,7 +47,6 @@ class IONe
     def Unsuspend(params, trace = ["Resume method called:#{__LINE__}"])
         begin
             LOG_STAT()
-            proc_id = proc_id_gen(__method__)
             LOG "Resuming VM ##{params['vmid']}", "Resume"
             trace << "Creating VM object:#{__LINE__ + 1}"            
             onblock(VirtualMachine, params['vmid'].to_i) do | vm |
@@ -62,7 +60,7 @@ class IONe
                 )
             end
             trace << "Killing proccess:#{__LINE__ + 1}"            
-            return kill_proc(proc_id) || 0
+            return 0
         rescue => e
             return e.message, trace
         end
@@ -73,11 +71,11 @@ class IONe
     # @return nil
     def Reboot(vmid, hard = false)
         LOG_STAT()
-        proc_id = proc_id_gen(__method__)          
+                  
         return "VMID cannot be nil!" if vmid.nil?     
         LOG "Rebooting VM#{vmid}", "Reboot"
         LOG "Params: vmid = #{vmid}, hard = #{hard}", "DEBUG" #if DEBUG
-        return kill_proc(proc_id) || onblock(VirtualMachine, vmid.to_i).reboot(hard) # true означает, что будет вызвана функция reboot-hard
+        return onblock(VirtualMachine, vmid.to_i).reboot(hard) # true означает, что будет вызвана функция reboot-hard
     end
     # Terminates(deletes) user account and VM
     # @param [Integer] userid - user to delete
@@ -85,7 +83,7 @@ class IONe
     # @return [nil | OpenNebula::Error]    
     def Terminate(userid, vmid)
         LOG_STAT()
-        proc_id = proc_id_gen(__method__)          
+                  
         begin
             LOG "Terminate query call params: {\"userid\" => #{userid}, \"vmid\" => #{vmid}}", "Terminate"
             # If userid will be nil oneadmin account can be broken
@@ -99,9 +97,9 @@ class IONe
             LOG "Terminating VM#{vmid}", "Terminate"
             onblock(VirtualMachine, vmid).recover 3 # recover с параметром 3 означает полное удаление с диска
         rescue => err
-            return kill_proc(proc_id) || err
+            return err
         end
-        kill_proc(proc_id)
+        return 0
     end
     # Powering off VM
     # @note Don't user OpenNebula::VirtualMachine#shutdown - this method deletes VM's
@@ -109,9 +107,9 @@ class IONe
     # @return [nil | OpenNebula::Error]
     def Shutdown(vmid)
         LOG_STAT()
-        proc_id = proc_id_gen(__method__)        
+                
         LOG "Shutting down VM#{vmid}", "Shutdown"
-        return kill_proc(proc_id) || onblock(VirtualMachine, vmid).poweroff
+        return onblock(VirtualMachine, vmid).poweroff
     end
     # @!visibility private
     def Release(vmid)

@@ -28,11 +28,6 @@ class IONe
         LOG_STAT()
         return CONF.privatise.out
     end
-    # Returns currently running processes inside IONe
-    def proc
-        LOG_STAT()        
-        return $proc
-    end
     # @api private
     def reboot(pa)
         `sh #{ROOT}/service/handlers/reboot_key.sh &` if pa['ss']

@@ -48,12 +48,10 @@ class IONe
     def Reinstall(params, trace = ["Reinstall method called:#{__LINE__}"])
         begin
             installid = Time.now.to_i.to_s(16).crypt(params['login'])
-            $proc << "Reinstall_#{installid}"
-
             # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
             LOG params.merge!({ :method => 'Reinstall' }).debug_out, 'DEBUG'
-            return kill_proc "Reinstall_#{installid}" if params['debug'] == 'turn_method_off'
-            return { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } || kill_proc("Reinstall_#{installid}") if params['debug'] == 'data'   
+            return nil if params['debug'] == 'turn_method_off'
+            return { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } if params['debug'] == 'data'   
 
             LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
             trace << "Checking params:#{__LINE__ + 1}"
@@ -162,9 +160,9 @@ class IONe
             end if params['release']
             ##### PostDeploy Activity define END #####
 
-            return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => nic['IP'] } || kill_proc("Reinstall_#{installid}")
+            return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => nic['IP'] }
         rescue => e
-            return e.message, trace || kill_proc("Reinstall_#{installid}")
+            return e.message, trace
         end
     end
     # Creates new virtual machine from the given OS template and resize it to given specs, and new user account, which becomes owner of this VM 
@@ -200,7 +198,6 @@ class IONe
             ###################### Doing some important system stuff ###############################################################
             
             installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
-            $proc << "CreateVMwithSpecs_#{installid}"
             return nil if DEBUG
             # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
             LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}" # Логи

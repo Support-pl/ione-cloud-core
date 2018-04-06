@@ -91,11 +91,11 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [Hash] Data(name, owner-name, owner-id, ip, host, state, cpu, ram, imported)
     def get_vm_data(vmid)
-        proc_id = proc_id_gen(__method__)
+        
         onblock(:vm, vmid) do | vm |
             vm.info!
             vm_hash = vm.to_hash['VM']
-            return kill_proc(proc_id) || {
+            return {
                 # "Имя, владелец, id владельца машины"
                 'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'],
                 # IP, кластер и упрощенное состояние ВМ
@@ -108,7 +108,7 @@ class IONe
         end if vmid.class != VirtualMachine # Если приходит vmid
         vm, vmid = vmid, vmid.id # Если приходит объект
         vm_hash = vm.to_hash['VM']
-        return kill_proc(proc_id) || {
+        return {
             'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'],
             'IP' => GetIP(vmid), 'HOST' => get_vm_host(vmid), 'STATE' => LCM_STATE(vmid) != 0 ? LCM_STATE_STR(vmid) : STATE_STR(vmid),
             'CPU' => vm_hash['TEMPLATE']['VCPU'], 'RAM' => vm_hash['TEMPLATE']['MEMORY'],

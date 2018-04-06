@@ -83,7 +83,7 @@ class IONe
     #           }, ...], ['example-node0', 'example-node1', ...], ['192.168.10.2', '192.168.10.4', '192.168.10.5', ...]
     def compare_info(vms = [])
         LOG_STAT()
-        proc_id, info, $free = proc_id_gen(__method__), "Method-inside error", nil
+        info, $free = "Method-inside error", nil
         # @!visibility private
         def get_lease(vn) # This functions generates list of free addresses in given VN
             vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"][0]
@@ -115,7 +115,7 @@ class IONe
             hosts << host.name
         end
         
-        return kill_proc(proc_id) || info if !vms.empty?
+        return info if !vms.empty?
 
         vn_pool, $free = VirtualNetworkPool.new(@client), []
         vn_pool.info_all!
@@ -127,7 +127,7 @@ class IONe
             end
         end
 
-        return kill_proc(proc_id) || info, hosts, $free
+        return info, hosts, $free
     end
     # Returns User template in XML
     # @param [Integer] userid
