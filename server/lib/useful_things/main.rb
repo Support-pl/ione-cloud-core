@@ -83,51 +83,53 @@ class IONe
     #           }, ...], ['example-node0', 'example-node1', ...], ['192.168.10.2', '192.168.10.4', '192.168.10.5', ...]
     def compare_info(vms = [])
         LOG_STAT()
-        info, $free = "Method-inside error", nil
-        # @!visibility private
-        def get_lease(vn) # This functions generates list of free addresses in given VN
-            vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"][0]
-            return if (vn['IP'] && vn['SIZE']).nil?
-            pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
-            leases = vn['LEASES']['LEASE'].map {|lease| lease['IP']}
-            vn['LEASES']['LEASE'].each do | lease |
-                pool.delete(lease['IP'])
+        info = []
+        infot = Thread.new do
+            vm_pool = VirtualMachinePool.new(@client)
+            vm_pool.info_all!
+            vm_pool.each do |vm| # Creating VM list from VirtualMachine Pool Object
+                break if vm.nil?
+                next if !vms.empty? && !vms.include?(vm.id)
+                vm_hash = vm.to_hash['VM']
+                info << {
+                    :vmid => vm.id, :userid => vm.uid, :host => get_vm_host(vm.id),
+                    :login => vm_hash['UNAME'], :ip => GetIP(vm.id), :state => (vm.lcm_state != 0 ? vm.lcm_state_str : vm.state_str)
+                }
             end
-            $free.push pool
-        end
-        
-        vm_pool, info = VirtualMachinePool.new($client), []
-
-        vm_pool.info_all!
-        vm_pool.each do |vm| # Creating VM list from VirtualMachine Pool Object
-            break if vm.nil?
-            next if !vms.empty? && !vms.include?(vm.id)
-            vm = vm.to_hash['VM']
-            info << {
-                :vmid => vm['ID'], :userid => vm['UID'], :host => get_vm_host(vm['ID']),
-                :login => vm['UNAME'], :ip => GetIP(vm['ID']), :state => (LCM_STATE(vm['ID']) != 0 ? LCM_STATE_STR(vm['ID']) : STATE_STR(vm['ID']))
-            }
         end
 
-        host_pool, hosts = HostPool.new($client), [] # Collecting hostnames(node-names) from HostPool
+        return info if !vms.empty?
+
+        free = []
+        freet = Thread.new do
+            vn_pool = VirtualNetworkPool.new(@client)
+            vn_pool.info_all!
+            vn_pool.each do | vn | # Getting leases from each VN
+                break if vn.nil?
+                begin
+                    # This, generates list of free addresses in given VN
+                    vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"][0]
+                    next if (vn['IP'] && vn['SIZE']).nil?
+                    pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
+                    leases = vn['LEASES']['LEASE'].map {|lease| lease['IP']}
+                    vn['LEASES']['LEASE'].each do | lease |
+                        pool.delete(lease['IP'])
+                    end
+                    free.push pool
+                rescue
+                end
+            end
+        end
+
+        host_pool, hosts = HostPool.new(@client), [] # Collecting hostnames(node-names) from HostPool
         host_pool.info_all!
         host_pool.each do | host |
             hosts << host.name
         end
-        
-        return info if !vms.empty?
 
-        vn_pool, $free = VirtualNetworkPool.new(@client), []
-        vn_pool.info_all!
-        vn_pool.each do | vn | # Getting leases from each VN
-            break if vn.nil?
-            begin
-                get_lease vn
-            rescue
-            end
-        end
-
-        return info, hosts, $free
+        freet.join
+        infot.join
+        return info, hosts, free
     end
     # Returns User template in XML
     # @param [Integer] userid
