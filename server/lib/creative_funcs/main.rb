@@ -12,9 +12,9 @@ class IONe
     #   Error:                      "[one.user.allocation] Error ...", maybe caused if user with given name already exists
     #   Error:                      0
     def UserCreate(login, pass, groupid = nil, client = $client, object = false)
-        id = Time.now.to_i.to_s(16)
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        id = id_gen()
+        LOG_CALL(id, true)
+        defer { LOG_CALL(id, false, 'UserCreate') }
         user = User.new(User.build_xml(0), client) # Generates user template using oneadmin user object
         groupid = nil
         begin
@@ -50,11 +50,11 @@ class IONe
     #   Debug return fake data: { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } 
     def Reinstall(params, trace = ["Reinstall method called:#{__LINE__}"])
         LOG_STAT()
-        id = Time.now.to_i.to_s(16)
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        id = id_gen()
+        LOG_CALL(id, true)
+        defer { LOG_CALL(id, false, 'Reinstall') }
         begin
-            installid = Time.now.to_i.to_s(16).crypt(params['login'])
+            installid = id_gen().crypt(params['login'])
             # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
             LOG params.merge!({ :method => 'Reinstall' }).debug_out, 'DEBUG'
             return nil if params['debug'] == 'turn_method_off'
@@ -198,9 +198,9 @@ class IONe
     #   Unknown error: { 'error' => e.message, 'trace' => trace(Array<String>)}
     def CreateVMwithSpecs(params, trace = ["#{__method__.to_s} method called:#{__LINE__}"])
         LOG_STAT()
-        id = Time.now.to_i.to_s(16)
+        id = id_gen()
         LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        defer { LOG_CALL(id, false, 'CreateVMwithSpecs') }
         LOG params.merge!(:method => __method__.to_s).debug_out, 'DEBUG'
         # return
         begin

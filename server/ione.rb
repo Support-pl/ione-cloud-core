@@ -140,6 +140,8 @@ class IONe
     end
 end
 
+$methods = IONe.instance_methods(false).map { | method | method.to_s }
+
 LOG "Initializing JSON-RPC Server..."
 puts 'Initializing JSON_RPC server and logic handler'
 server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['Server']['listen-port']}")

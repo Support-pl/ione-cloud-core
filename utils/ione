@@ -73,6 +73,8 @@ case ARGV[0]
         puts client.version
     when 'uptime'
         puts client.uptime
+    when 'proc'
+        puts client.proc
     else
         puts "
 Help page for ione cli tool:
@@ -92,14 +94,10 @@ Help page for ione cli tool:
             path        -----       Returns log-file path
 
         debug           -----       Prints IONe debug log -- uses the same params as 'log'
-
         snapshot        -----       Prints IONe snapshot script log -- uses the same params as 'log'
-
         sys             -----       Prints IONe sys log
-
         version         -----       Checks current version of WHMConnect
-
         uptime          -----       Checks uptime of WHMConnect server
-
+        proc            -----       Prints current working proccesses
 "
 end

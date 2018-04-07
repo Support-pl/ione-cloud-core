@@ -5,6 +5,7 @@ begin
 rescue
 end
 `echo > #{LOG_ROOT}/errors.txt`
+`echo > #{LOG_ROOT}/sys.log`
 begin
     `echo > #{LOG_ROOT}/activities.log` if File.read("#{LOG_ROOT}/activities.log").split("\n").size >= 1000
 rescue
@@ -59,10 +60,38 @@ def LOG_TEST(msg, method = caller_locations(1,1)[0].label, _time = true)
     return true
 end
 
-def LOG_CALL(id, called, method = 'noname')
-    msg = "[ #{time()} ] Method #{method.to_s}:#{id} #{called ? 'called' : 'closed'}"
+$PROC = []
 
-    File.open(LOG_ROOT + '/sys.log', 'a'){ |log| log.write msg + "\n" }
+def LOG_CALL(id, called, method = caller_locations(1,1)[0].label)
+    level = 0
+    caller_locations.each do | loc |
+        loc = loc.label
+        if $methods.include? loc then
+            level += 1
+            next
+        end
+        $methods.each do | method |
+            if loc.include? method then
+                level += 1 
+                break
+            end
+        end
+    end
+    if called then
+        $PROC << "#{method}:#{id}"
+    elsif !called then
+        $PROC.delete "#{method}:#{id}"
+    end if level < 2
+    msg = "[ #{time()} ] Method #{method.to_s}:#{id} #{called ? 'called' : 'closed'}\n"
+    if level > 1  || !called then
+        tabs = "                             "
+        for i in 0..(level - 3) do
+            tabs += "    "
+        end
+        msg = "#{tabs}|-- Method #{method.to_s}:#{id} #{called ? 'called' : 'closed'}\n"
+    end
+
+    File.open(LOG_ROOT + '/sys.log', 'a'){ |log| log.write msg }
     return true
 end
 
@@ -83,4 +112,10 @@ class IONe
         LOG(msg, "RemoteLOG")
 	    return msg
     end
+end
+
+$id = 0
+
+def id_gen
+    return ($id += 1).to_s(16)
 end

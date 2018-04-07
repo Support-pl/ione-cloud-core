@@ -8,7 +8,11 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [String] XML
     def VM_XML(vmid)
-        LOG_STAT()        
+        LOG_STAT()
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'VM_XML') }
         vm = onblock(VirtualMachine, vmid)
         return vm.info! || vm.to_xml
     end
@@ -17,6 +21,10 @@ class IONe
     # @return [String] IP
     def GetIP(vmid)
         LOG_STAT()
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'GetIP') }
         onblock(:vm, vmid) do |vm|
             vm.info!
             vm, ip = vm.to_hash['VM'], 'nil'
@@ -44,6 +52,10 @@ class IONe
     # @param [String] ip - IP address
     # @return [Integer | nil] - VM ID if found, nil if not
     def GetVMIDbyIP(ip)
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'GetVMIDbyIP') }
         vm_pool = VirtualMachinePool.new(@client)
         vm_pool.info_all!
         vm_pool.each do |vm| # Прочесываем пул, пока не найдем ВМ с IP равным заданному
@@ -60,9 +72,9 @@ class IONe
     # @return [Integer] State
     def STATE(vmid) 
         LOG_STAT()
-        id = Time.now.to_i.to_s(16)
+        id = id_gen()
         LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        defer { LOG_CALL(id, false, 'STATE') }
 
         vm = onblock(:vm, vmid.to_i)
         return vm.info! || vm.state
@@ -72,9 +84,9 @@ class IONe
     # @return [String] State
     def STATE_STR(vmid)
         LOG_STAT()
-        id = Time.now.to_i.to_s(16)
+        id = id_gen()
         LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        defer { LOG_CALL(id, false, 'STATE_STR') }
 
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.state_str
@@ -84,9 +96,9 @@ class IONe
     # @return [Integer] State
     def LCM_STATE(vmid)
         LOG_STAT()
-        id = Time.now.to_i.to_s(16)
+        id = id_gen()
         LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        defer { LOG_CALL(id, false, 'LCM_STATE') }
 
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.lcm_state
@@ -96,9 +108,9 @@ class IONe
     # @return [String] State
     def LCM_STATE_STR(vmid)
         LOG_STAT()
-        id = Time.now.to_i.to_s(16)
+        id = id_gen()
         LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        defer { LOG_CALL(id, false, 'LCM_STATE_STR') }
 
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.lcm_state_str
@@ -108,9 +120,9 @@ class IONe
     # @return [Hash] Data(name, owner-name, owner-id, ip, host, state, cpu, ram, imported)
     def get_vm_data(vmid)
         LOG_STAT()
-        id = Time.now.to_i.to_s(16)
+        id = id_gen()
         LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        defer { LOG_CALL(id, false, 'get_vm_data') }
 
         onblock(:vm, vmid) do | vm |
             vm.info!
@@ -140,9 +152,9 @@ class IONe
     # @return [Array<Hash> | Hash]
     def GetSnapshotList(vmid)
         LOG_STAT()
-        id = Time.now.to_i.to_s(16)
+        id = id_gen()
         LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, __method__) }
+        defer { LOG_CALL(id, false, 'GetSnapshotList') }
              
         return onblock(VirtualMachine, vmid).list_snapshots
     end

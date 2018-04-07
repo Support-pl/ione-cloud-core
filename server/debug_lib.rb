@@ -48,8 +48,14 @@ require "#{ROOT}/service/time.rb"
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
 include ONeHelper
+puts 'Including Deferable rmodule'
+require "#{ROOT}/service/defer.rb"
 
+# Main App class. All methods, which must be available as JSON-RPC methods, should be defined in this class
 class IONe
+    include Deferable
+    # IONe initializer, stores auth-client and version
+    # @param [OpenNebula::Client] client 
     def initialize(client)
         @client = client
         @version = VERSION
@@ -106,3 +112,12 @@ rescue => e
     LOG "ScriptsController fatal error | #{e}", 'ScriptController'
     puts "ScriptsController fatal error | #{e}"
 end
+
+puts 'Making IONe methods deferable'
+class IONe
+    self.instance_methods(false).each do | method |
+        deferable method
+    end
+end
+
+$methods = IONe.instance_methods(false).map { | method | method.to_s }

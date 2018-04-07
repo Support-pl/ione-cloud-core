@@ -19,7 +19,7 @@ class IONe
         ip, err = host.split(':').first, ""
         Thread.new do
             playbooks.each do |service, playbook|
-                installid = Time.now.to_i.to_s(16).crypt(service[0..3]).delete('!@#$%^&*()_+:"\'.,\/\\')
+                installid = id_gen().crypt(service[0..3]).delete('!@#$%^&*()_+:"\'.,\/\\')
                 LOG "#{service} should be installed on #{ip}, installation ID is: #{installid}", "AnsibleController"
                 begin
                     LOG 'Connecting to Ansible', 'AnsibleController'            
