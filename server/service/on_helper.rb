@@ -84,6 +84,7 @@ module ONeHelper
         end
     end
     # Returns random Datastore ID filtered by disk type
+    # @note Remember to configure DRIVE_TYPE(HDD|SSD) and DEPLOY(TRUE|FALSE) attributes at your Datastores
     # @param [String] ds_type   - Datastore type, may be HDD or SSD, returns any DS if not given
     # @return [Integer]
     def ChooseDS(ds_type = nil)

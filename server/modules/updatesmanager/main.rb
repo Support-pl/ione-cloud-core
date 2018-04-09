@@ -17,6 +17,8 @@ class IONe
                 trace << "Replacing the old server:#{__LINE__ + 1}"
                 `cp -rf /tmp/ione/server/* #{ROOT}/`
 
+                `cp -f /tmp/ione_current/config.yml #{ROOT}/`
+
                 "Starting bundler:#{__LINE__ + 1}"
                 `bundle install --gemfile /tmp/ione/Gemfile`
 
