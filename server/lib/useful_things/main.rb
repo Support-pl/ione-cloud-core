@@ -73,7 +73,7 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'get_vm_host') }
-        onblock(:vm, vmid, $client) do | vm |
+        onblock(:vm, vmid, @client) do | vm |
             vm.info!
             vm = vm.to_hash['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
             return vm.last['HOSTNAME'] if vm.class == Array # If history consists of 2 or more lines - returns last

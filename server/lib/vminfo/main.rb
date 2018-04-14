@@ -21,7 +21,6 @@ class IONe
     # @return [String] IP
     def GetIP(vmid)
         LOG_STAT()
-        LOG_STAT()
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'GetIP') }
@@ -31,17 +30,20 @@ class IONe
             begin
                 # If VM was created using OpenNebula template
                 ip = vm['TEMPLATE']['NIC']['IP'] if !vm['TEMPLATE']['NIC']['IP'].nil?
+                return ip if !ip.include?(':')
             rescue # If not, this action will raise HashRead exception
             end
             begin
                 # If VM was imported correctly, IP address will be readed by the monitoring system
                 ip = vm['MONITORING']['GUEST_IP'] if !vm['MONITORING']['GUEST_IP'].nil? && !vm['MONITORING']['GUEST_IP'].include?(':')
                 # Monitoring can read IPv6 address, so let us make the check
+                return ip if !ip.include?(':')
             rescue
             end
             begin
                 # Also IP can be stored at the another place in monitoring, but here all IP's are stored 
                 ip = vm['MONITORING']['GUEST_IP_ADDRESSES'].split(',').first if !vm['MONITORING']['GUEST_IP_ADDRESSES'].nil?
+                return ip if !ip.include?(':')
             rescue
             end
             return 'nil' if ip.nil? || ip.include?(':')

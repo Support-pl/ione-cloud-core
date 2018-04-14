@@ -122,7 +122,7 @@ class IONe
             Thread.new do
                 LOG 'Deploying VM to the host', 'DEBUG'
                 onblock(:vm, vmid) do | vm |
-                    vm.deploy(CONF['OpenNebula']['default-node-id']) if params['release']
+                    vm.deploy($default_host, false, ChooseDS(params['ds_type'])) if params['release']
                 end
 
                 LOG 'Waiting until VM will be deployed', 'DEBUG'

@@ -1,7 +1,10 @@
 require 'json'
 puts 'Parsing statistics data'
-$data = JSON.parse(File.read("#{ROOT}/modules/stat/data.json"))
-
+begin
+    $data = JSON.parse(File.read("#{ROOT}/modules/stat/data.json"))
+rescue => e
+    $data = {}
+end
 puts 'Binding "at_exit" actions for statistics-helper'
 at_exit do
     `echo > #{ROOT}/modules/stat/data.json`
@@ -15,6 +18,9 @@ def LOG_STAT(method = caller_locations(1,1)[0].label, time = Time.now.to_i)
     $data[method]['counter'] = 0 if $data[method]['counter'].nil?
     $data[method]['counter'] += 1
     $data[method]['calls'] << time
+    `echo > #{ROOT}/modules/stat/data.json`
+    File.open("#{ROOT}/modules/stat/data.json", 'w') { |file| file.write(JSON.pretty_generate($data)) }    
+    return nil
 end
 
 puts 'Extending Handler class by statistic-getter'

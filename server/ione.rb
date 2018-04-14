@@ -15,6 +15,7 @@ end
 
 puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
+include IONeLoggerKit
 
 puts 'Checking service version'
 VERSION = File.read("#{ROOT}/meta/version.txt") # IONe version
@@ -48,8 +49,6 @@ CREDENTIALS = CONF['OpenNebula']['credentials']
 ENDPOINT = CONF['OpenNebula']['endpoint']
 $client = Client.new(CREDENTIALS, ENDPOINT) # oneadmin auth-client
 
-puts "Including time-lib"
-require "#{ROOT}/service/time.rb"
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
 include ONeHelper

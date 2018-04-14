@@ -88,7 +88,7 @@ module ONeHelper
     # @param [String] ds_type   - Datastore type, may be HDD or SSD, returns any DS if not given
     # @return [Integer]
     def ChooseDS(ds_type = nil)
-        dss = DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
+        dss = IONe.new($client).DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
         dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' } if ds_type != nil
         ds = dss[rand(dss.size)]
         LOG "Deploying to #{ds['name']}", 'DEBUG'
