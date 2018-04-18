@@ -26,6 +26,7 @@ Modules: # IONe modules to connect
   - 'ansible'
   - 'freenas'
   - 'stat'
+  - 'webapi'
   - 'updatesmanager'
 
 Scripts: # Automation scripts to start
