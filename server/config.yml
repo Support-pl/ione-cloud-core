@@ -40,3 +40,11 @@ SnapshotController:
 
 Other:
   debug: false
+  debug-modules:
+    - 'std++'
+    - 'whmcscall'
+    - 'ansible'
+    - 'freenas'
+    - 'stat'
+  
+  key: false

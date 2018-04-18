@@ -1,17 +1,18 @@
-module IONeLoggerKit
-    require "#{ROOT}/service/time.rb"
+require "#{ROOT}/service/time.rb"
 
-    begin
-        `mkdir #{LOG_ROOT}`
-    rescue
-    end
-    `echo > #{LOG_ROOT}/errors.txt`
-    `echo > #{LOG_ROOT}/sys.log`
-    begin
-        `echo > #{LOG_ROOT}/activities.log` if File.read("#{LOG_ROOT}/activities.log").split("\n").size >= 1000
-    rescue
-        `echo > #{LOG_ROOT}/activities.log`
-    end
+begin
+    `mkdir #{LOG_ROOT}`
+rescue
+end
+`echo > #{LOG_ROOT}/errors.txt`
+`echo > #{LOG_ROOT}/sys.log` if !CONF['Other']['key']
+begin
+    `echo > #{LOG_ROOT}/activities.log` if File.read("#{LOG_ROOT}/activities.log").split("\n").size >= 1000
+rescue
+    `echo > #{LOG_ROOT}/activities.log`
+end
+
+module IONeLoggerKit
 
     $log = []
 

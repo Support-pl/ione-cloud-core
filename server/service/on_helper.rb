@@ -94,6 +94,12 @@ module ONeHelper
         LOG "Deploying to #{ds['name']}", 'DEBUG'
         return ds['id']
     end
+    def ClusterType(hostid)
+        onblock(:h, hostid) do | host |
+            host.info!
+            return host.to_hash['HOST']['TEMPLATE']['HYPERVISOR']
+        end
+    end
 end
 
 # OpenNebula::User class

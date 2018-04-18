@@ -120,9 +120,12 @@ class IONe
 
             #####   PostDeploy Activity define   #####
             Thread.new do
+
+                host = params['host'].nil? ? $default_host : params['host']
+
                 LOG 'Deploying VM to the host', 'DEBUG'
                 onblock(:vm, vmid) do | vm |
-                    vm.deploy($default_host, false, ChooseDS(params['ds_type'])) if params['release']
+                    vm.deploy(host, false, ChooseDS(params['ds_type'])) if params['release']
                 end
 
                 LOG 'Waiting until VM will be deployed', 'DEBUG'
@@ -132,6 +135,7 @@ class IONe
 
                 #LimitsController
 
+                LOG "Executing Limits Configurator for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
                 onblock(:vm, vmid) do | vm |
                     lim_res = vm.setResourcesAllocationLimits(
                         cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
@@ -139,6 +143,7 @@ class IONe
                     if !lim_res.nil? then
                         LOG "Limits was not set, error: #{lim_res}", 'DEBUG'
                     end
+                end if ClusterType(host) == 'vcenter'
 
                 #endLimitsController
                 #TrialController
