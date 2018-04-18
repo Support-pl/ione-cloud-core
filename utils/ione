@@ -12,15 +12,10 @@ client = ZmqJsonRpc::Client.new(uri)
 def print_log(target)
     puts "#{LOG_ROOT}/#{target}" if ARGV[1] == 'path'
     return if ARGV[1] == 'path'
-    File.open("#{LOG_ROOT}/#{target}") do |log|
-        require 'file-tail'
-        log.extend(File::Tail)
-        log.interval = 1
-        log.backward(ARGV[1].to_i).tail { |line| puts line }
-        # log.backward(10)
-        # log.tail { |line| puts line }
-        return
-    end if ARGV[2] == 'follow'
+    if ARGV[2] == 'follow' then
+        exec("tail -n #{ARGV[1]} #{LOG_ROOT}/#{target} -f")
+        return 
+    end
     log = File.read("#{LOG_ROOT}/#{target}").split("\n")
     if ARGV[1] == 'size' then
         puts log.size
