@@ -12,6 +12,9 @@ class IONe
     #   Error:                      "[one.user.allocation] Error ...", maybe caused if user with given name already exists
     #   Error:                      0
     def UserCreate(login, pass, groupid = nil, client = $client, object = false)
+        id = id_gen()
+        LOG_CALL(id, true)
+        defer { LOG_CALL(id, false, 'UserCreate') }
         user = User.new(User.build_xml(0), client) # Generates user template using oneadmin user object
         groupid = nil
         begin
@@ -46,14 +49,16 @@ class IONe
     #   Debug turn method off: nil
     #   Debug return fake data: { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } 
     def Reinstall(params, trace = ["Reinstall method called:#{__LINE__}"])
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true)
+        defer { LOG_CALL(id, false, 'Reinstall') }
         begin
-            installid = Time.now.to_i.to_s(16).crypt(params['login'])
-            $proc << "Reinstall_#{installid}"
-
+            installid = id_gen().crypt(params['login'])
             # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
             LOG params.merge!({ :method => 'Reinstall' }).debug_out, 'DEBUG'
-            return kill_proc "Reinstall_#{installid}" if params['debug'] == 'turn_method_off'
-            return { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } || kill_proc("Reinstall_#{installid}") if params['debug'] == 'data'   
+            return nil if params['debug'] == 'turn_method_off'
+            return { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } if params['debug'] == 'data'   
 
             LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
             trace << "Checking params:#{__LINE__ + 1}"
@@ -117,7 +122,7 @@ class IONe
             Thread.new do
                 LOG 'Deploying VM to the host', 'DEBUG'
                 onblock(:vm, vmid) do | vm |
-                    vm.deploy(CONF['OpenNebula']['default-node-id']) if params['release']
+                    vm.deploy($default_host, false, ChooseDS(params['ds_type'])) if params['release']
                 end
 
                 LOG 'Waiting until VM will be deployed', 'DEBUG'
@@ -162,9 +167,9 @@ class IONe
             end if params['release']
             ##### PostDeploy Activity define END #####
 
-            return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => nic['IP'] } || kill_proc("Reinstall_#{installid}")
+            return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => nic['IP'] }
         rescue => e
-            return e.message, trace || kill_proc("Reinstall_#{installid}")
+            return e.message, trace
         end
     end
     # Creates new virtual machine from the given OS template and resize it to given specs, and new user account, which becomes owner of this VM 
@@ -192,6 +197,10 @@ class IONe
     #   User create Error: {'error' => "UserAllocateError", 'trace' => trace(Array<String>)}
     #   Unknown error: { 'error' => e.message, 'trace' => trace(Array<String>)}
     def CreateVMwithSpecs(params, trace = ["#{__method__.to_s} method called:#{__LINE__}"])
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'CreateVMwithSpecs') }
         LOG params.merge!(:method => __method__.to_s).debug_out, 'DEBUG'
         # return
         begin
@@ -200,7 +209,6 @@ class IONe
             ###################### Doing some important system stuff ###############################################################
             
             installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
-            $proc << "CreateVMwithSpecs_#{installid}"
             return nil if DEBUG
             # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
             LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}" # Логи
@@ -249,6 +257,8 @@ class IONe
                 vmid = t.instantiate("#{params['login']}_vm", true, specs + "\n" + params['user-template'].to_s)
             end
 
+            raise "Template instantiate Error: #{vmid.message}" if vmid.class != Fixnum
+
             trace << "Updating user quota:#{__LINE__ + 1}"
             user.update_quota_by_vm(
                 'append' => true, 'cpu' => params['cpu'],
@@ -260,30 +270,35 @@ class IONe
             LOG_TEST 'Configuring VM Template'
             trace << "Configuring VM Template:#{__LINE__ + 1}"            
             onblock(:vm, vmid) do | vm |
-                vm.chown(userid, USERS_GROUP)
+                trace << "Changing VM owner:#{__LINE__ + 1}"
+                begin
+                    vm.chown(userid, USERS_GROUP)
+                rescue
+                    LOG "CHOWN error, params: #{userid}, #{vm}", 'DEBUG'
+                end
                 win = onblock(:t, params['templateid']).win?
                 LOG "Instantiating VM as#{win ? nil : ' not'} Windows", 'DEBUG'
-                vm.updateconf(
-                    "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ', USERNAME = "Administrator"' : nil} ]"
-                )
-      
-                # if Win? params['templateid'], @client then
-                #     vm.updateconf(
-                #         "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\", USERNAME = \"Administrator\" ]"
-                #     )
-                # else
-                #     vm.updateconf(
-                #         "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\" ]"
-                #     ) # Настройка контекста: изменение root-пароля на заданный
-                # end
-      
-                vm.updateconf(
-                    "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{CONF['OpenNebula']['base-vnc-port'] + vmid}\", TYPE=\"VNC\" ]"
-                ) # Configuring VNC
+                trace << "Setting VM context:#{__LINE__ + 2}"
+                begin
+                    vm.updateconf(
+                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ', USERNAME = "Administrator"' : nil} ]"
+                    )
+                rescue => e
+                    LOG "Context configuring error: #{e.message}", 'DEBUG'
+                end
+                    
+                trace << "Setting VM VNC settings:#{__LINE__ + 2}"
+                begin
+                    vm.updateconf(
+                        "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{(CONF['OpenNebula']['base-vnc-port'] + vmid).to_s}\", TYPE=\"VNC\" ]"
+                    ) # Configuring VNC
+                rescue => e
+                    LOG "VNC configuring error: #{e.message}", 'DEBUG'
+                end
 
                 trace << "Deploying VM:#{__LINE__ + 1}"            
-                vm.deploy(DEFAULT_HOST, false, ChooseDS(params['ds_type'])) if params['release']
-                # vm.deploy(DEFAULT_HOST, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
+                vm.deploy($default_host, false, ChooseDS(params['ds_type'])) if params['release']
+                # vm.deploy($default_host, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
             end
             ##### Creating and Configuring VM END #####            
 

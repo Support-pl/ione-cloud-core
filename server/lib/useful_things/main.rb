@@ -6,6 +6,9 @@ class IONe
     #   ZmqJsonRpc::Client.new(uri, 50).Test('PING') => 'PONG' -> Service available
     #                                                => Exception -> Service down
     def Test(msg)
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'Test') }
         LOG "Test message received, text: #{msg}", "Test" if msg != 'PING'
         if msg == "PING" then
             return "PONG"
@@ -19,6 +22,9 @@ class IONe
     #   => Integer => user and vm found
     #   => 'none'  => no user or now vm exists
     def get_vm_by_uid(uid)
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'get_vm_by_uid') }
         vmp = VirtualMachinePool.new($client)
         vmp.info_all!
         vmp.each do | vm |
@@ -33,6 +39,9 @@ class IONe
     #   => Integer => user found
     #   => 'none'  => no user exists
     def get_uid_by_name(name)
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'get_uid_by_name') }
         up = UserPool.new($client)
         up.info_all!
         up.each do | u |
@@ -47,6 +56,9 @@ class IONe
     #   => {:vmid => Integer, :userid => Integer, :ip => String} => User and VM found
     #   => {:vmid => 'none', :userid => 'none', :ip => String}
     def get_vm_by_uname(name)
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'get_vm_by_uname') }
         userid = get_uid_by_name(name)
         vmid = get_vm_by_uid(userid)
         return { :vmid => vmid, :userid => userid, :ip => GetIP(vmid) }
@@ -58,7 +70,10 @@ class IONe
     #   => String('example-node-vcenter') => Host was found
     #   => nil => Host wasn't found
     def get_vm_host(vmid) # Получение имени кластера, которому принадлежит ВМ
-        onblock(:vm, vmid, $client) do | vm |
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'get_vm_host') }
+        onblock(:vm, vmid, @client) do | vm |
             vm.info!
             vm = vm.to_hash['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
             return vm.last['HOSTNAME'] if vm.class == Array # If history consists of 2 or more lines - returns last
@@ -83,57 +98,65 @@ class IONe
     #           }, ...], ['example-node0', 'example-node1', ...], ['192.168.10.2', '192.168.10.4', '192.168.10.5', ...]
     def compare_info(vms = [])
         LOG_STAT()
-        proc_id, info, $free = proc_id_gen(__method__), "Method-inside error", nil
-        # @!visibility private
-        def get_lease(vn) # This functions generates list of free addresses in given VN
-            vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"][0]
-            return if (vn['IP'] && vn['SIZE']).nil?
-            pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
-            leases = vn['LEASES']['LEASE'].map {|lease| lease['IP']}
-            vn['LEASES']['LEASE'].each do | lease |
-                pool.delete(lease['IP'])
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'compare_info') }
+        info = []
+        infot = Thread.new do
+            vm_pool = VirtualMachinePool.new(@client)
+            vm_pool.info_all!
+            vm_pool.each do |vm| # Creating VM list from VirtualMachine Pool Object
+                break if vm.nil?
+                next if !vms.empty? && !vms.include?(vm.id)
+                vm_hash = vm.to_hash['VM']
+                info << {
+                    :vmid => vm.id, :userid => vm.uid, :host => get_vm_host(vm.id),
+                    :login => vm_hash['UNAME'], :ip => GetIP(vm.id), :state => (vm.lcm_state != 0 ? vm.lcm_state_str : vm.state_str)
+                }
             end
-            $free.push pool
-        end
-        
-        vm_pool, info = VirtualMachinePool.new($client), []
-
-        vm_pool.info_all!
-        vm_pool.each do |vm| # Creating VM list from VirtualMachine Pool Object
-            break if vm.nil?
-            next if !vms.empty? && !vms.include?(vm.id)
-            vm = vm.to_hash['VM']
-            info << {
-                :vmid => vm['ID'], :userid => vm['UID'], :host => get_vm_host(vm['ID']),
-                :login => vm['UNAME'], :ip => GetIP(vm['ID']), :state => (LCM_STATE(vm['ID']) != 0 ? LCM_STATE_STR(vm['ID']) : STATE_STR(vm['ID']))
-            }
         end
 
-        host_pool, hosts = HostPool.new($client), [] # Collecting hostnames(node-names) from HostPool
+        return info if !vms.empty?
+
+        free = []
+        freet = Thread.new do
+            vn_pool = VirtualNetworkPool.new(@client)
+            vn_pool.info_all!
+            vn_pool.each do | vn | # Getting leases from each VN
+                break if vn.nil?
+                begin
+                    # This, generates list of free addresses in given VN
+                    vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"][0]
+                    next if (vn['IP'] && vn['SIZE']).nil?
+                    pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
+                    leases = vn['LEASES']['LEASE'].map {|lease| lease['IP']}
+                    vn['LEASES']['LEASE'].each do | lease |
+                        pool.delete(lease['IP'])
+                    end
+                    free.push pool
+                rescue
+                end
+            end
+        end
+
+        host_pool, hosts = HostPool.new(@client), [] # Collecting hostnames(node-names) from HostPool
         host_pool.info_all!
         host_pool.each do | host |
             hosts << host.name
         end
-        
-        return kill_proc(proc_id) || info if !vms.empty?
 
-        vn_pool, $free = VirtualNetworkPool.new(@client), []
-        vn_pool.info_all!
-        vn_pool.each do | vn | # Getting leases from each VN
-            break if vn.nil?
-            begin
-                get_lease vn
-            rescue
-            end
-        end
-
-        return kill_proc(proc_id) || info, hosts, $free
+        freet.join
+        infot.join
+        return info, hosts, free
     end
     # Returns User template in XML
     # @param [Integer] userid
     # @return [String] XML
     def GetUserInfo(userid)
         LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'GetUserInfo') }
         onblock(User, userid) do |user|
             user.info!
             return user.to_xml
@@ -146,10 +169,14 @@ class IONe
     #   DatastoresMonitoring('sys') => [{"id"=>101, "name"=>"NASX", "full_size"=>"16TB", "used"=>"3.94TB", "type"=>"HDD", "deploy"=>"TRUE"}, ...]
     #   DatastoresMonitoring('ing') => String("WrongTypeExeption: type 'ing' not exists")
     def DatastoresMonitoring(type) # Мониторинг занятости дисков на NAS*
-        LOG_STAT()        
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'DatastoresMonitoring') }    
         return "WrongTypeExeption: type '#{type}' not exists" if type != 'sys' && type != 'img'
 
-        def sizeConvert(mb) # Конвертация мегабайт в гига- либо тера- байты
+        # @!visibility private
+        def sizeConvert(mb)
             if mb.to_f / 1024 > 768 then
                 return "#{(mb.to_f / 1048576.0).round(2).to_s}TB"
             else
@@ -174,8 +201,12 @@ class IONe
     # @example
     #   HostsMonitoring() => {"id"=>0, "name"=>"vCloud", "full_size"=>"875.76GB", "reserved"=>"636.11GB", "running_vms"=>179, "cpu"=>"16.14%"}
     def HostsMonitoring()
-        LOG_STAT()        
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'HostsMonitoring') }
 
+        # @!visibility private
         def sizeConvert(mb)
             if mb.to_f / 1048576 > 768 then
                 return "#{(mb.to_f / 1073741824.0).round(2).to_s}TB"

@@ -4,39 +4,60 @@
 
 puts 'Extending Handler class by VM and User info getters'
 class IONe
+    # Returns VM template XML
+    # @param [Integer] vmid - VM ID
+    # @return [String] XML
     def VM_XML(vmid)
-        LOG_STAT()        
+        LOG_STAT()
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'VM_XML') }
         vm = onblock(VirtualMachine, vmid)
         return vm.info! || vm.to_xml
     end
-
-    def GetIP(vmid) # Получение IP адреса ВМ
+    # Returns VM's IP by ID
+    # @param [Integer] vmid - VM ID
+    # @return [String] IP
+    def GetIP(vmid)
         LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'GetIP') }
         onblock(:vm, vmid) do |vm|
             vm.info!
             vm, ip = vm.to_hash['VM'], 'nil'
             begin
-                # Если ВМ создана через шаблон ON, то информация об её сетевых устройствах будет вшита в шаблон
+                # If VM was created using OpenNebula template
                 ip = vm['TEMPLATE']['NIC']['IP'] if !vm['TEMPLATE']['NIC']['IP'].nil?
-            rescue # Если все же нет - юудет ошибка чтения из Hash
+                return ip if !ip.include?(':')
+            rescue # If not, this action will raise HashRead exception
             end
             begin
-                # Тогда, если ВМ правильно импортирована, адрес будет считан системой мониторинга и запиан в соответствующее поле
+                # If VM was imported correctly, IP address will be readed by the monitoring system
                 ip = vm['MONITORING']['GUEST_IP'] if !vm['MONITORING']['GUEST_IP'].nil? && !vm['MONITORING']['GUEST_IP'].include?(':')
-                # В этом поле так же может содержаться IPv6 адрес, посему делаем проверку
+                # Monitoring can read IPv6 address, so let us make the check
+                return ip if !ip.include?(':')
             rescue
             end
             begin
-                # И последняя возможность получить адрес: другое поле в мониторинге, однако сюда записываются все найденные адреса ВМ
+                # Also IP can be stored at the another place in monitoring, but here all IP's are stored 
                 ip = vm['MONITORING']['GUEST_IP_ADDRESSES'].split(',').first if !vm['MONITORING']['GUEST_IP_ADDRESSES'].nil?
-                # т.е. как IPv4, так и IPv6, а инода MAC, VPN, локальные и тд
+                return ip if !ip.include?(':')
             rescue
             end
             return 'nil' if ip.nil? || ip.include?(':')
             return ip if !ip.include?(':')
         end
     end
-    def GetVMIDbyIP(ip) # Получение vmid по IP адресу
+    # Getting VM ID by IP
+    # @param [String] ip - IP address
+    # @return [Integer | nil] - VM ID if found, nil if not
+    def GetVMIDbyIP(ip)
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'GetVMIDbyIP') }
         vm_pool = VirtualMachinePool.new(@client)
         vm_pool.info_all!
         vm_pool.each do |vm| # Прочесываем пул, пока не найдем ВМ с IP равным заданному
@@ -48,32 +69,67 @@ class IONe
         end
         return nil
     end
-    def STATE(vmid) # Состояние ВМ в цифровом виде
-        LOG_STAT()        
-        vm = onblock(VirtualMachine, vmid.to_i)
+    # Getting VM state number by ID
+    # @param [Integer] vmid - VM ID
+    # @return [Integer] State
+    def STATE(vmid) 
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'STATE') }
+
+        vm = onblock(:vm, vmid.to_i)
         return vm.info! || vm.state
     end
-    def STATE_STR(vmid) # Состояние ВМ в виде строки
-        LOG_STAT()        
+    # Getting VM state string by ID
+    # @param [Integer] vmid - VM ID
+    # @return [String] State
+    def STATE_STR(vmid)
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'STATE_STR') }
+
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.state_str
     end
-    def LCM_STATE(vmid) # Состояние в жизненном цикле ВМ в цифровом виде
-        LOG_STAT()        
+    # Getting VM LCM state number by ID
+    # @param [Integer] vmid - VM ID
+    # @return [Integer] State
+    def LCM_STATE(vmid)
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'LCM_STATE') }
+
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.lcm_state
     end
-    def LCM_STATE_STR(vmid) # Состояние в жизненном цикле ВМ в виде строки
-        LOG_STAT()        
+    # Getting VM LCM state string by ID
+    # @param [Integer] vmid - VM ID
+    # @return [String] State
+    def LCM_STATE_STR(vmid)
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'LCM_STATE_STR') }
+
         vm = onblock(VirtualMachine, vmid.to_i)
         return vm.info! || vm.lcm_state_str
     end
-    def get_vm_data(vmid) # Получение найважнейших данных о ВМ
-        proc_id = proc_id_gen(__method__)
+    # Getting VM most important data
+    # @param [Integer] vmid - VM ID
+    # @return [Hash] Data(name, owner-name, owner-id, ip, host, state, cpu, ram, imported)
+    def get_vm_data(vmid)
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'get_vm_data') }
+
         onblock(:vm, vmid) do | vm |
             vm.info!
             vm_hash = vm.to_hash['VM']
-            return kill_proc(proc_id) || {
+            return {
                 # "Имя, владелец, id владельца машины"
                 'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'],
                 # IP, кластер и упрощенное состояние ВМ
@@ -86,15 +142,22 @@ class IONe
         end if vmid.class != VirtualMachine # Если приходит vmid
         vm, vmid = vmid, vmid.id # Если приходит объект
         vm_hash = vm.to_hash['VM']
-        return kill_proc(proc_id) || {
+        return {
             'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'],
             'IP' => GetIP(vmid), 'HOST' => get_vm_host(vmid), 'STATE' => LCM_STATE(vmid) != 0 ? LCM_STATE_STR(vmid) : STATE_STR(vmid),
             'CPU' => vm_hash['TEMPLATE']['VCPU'], 'RAM' => vm_hash['TEMPLATE']['MEMORY'],
             'IMPORTED' => vm_hash['TEMPLATE']['IMPORTED'].nil? ? 'NO' : 'YES'
         }
     end
+    # Getting snapshot list for given VM
+    # @param [Integer] vmid - VM ID
+    # @return [Array<Hash> | Hash]
     def GetSnapshotList(vmid)
-        LOG_STAT()        
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'GetSnapshotList') }
+             
         return onblock(VirtualMachine, vmid).list_snapshots
     end
 end

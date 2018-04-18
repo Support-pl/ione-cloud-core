@@ -7,6 +7,7 @@ CONF = YAML.load(File.read("#{ROOT}/config.yml"))
 
 require 'zmqjsonrpc'
 uri = "tcp://localhost:#{CONF['Server']['listen-port']}"
+client = ZmqJsonRpc::Client.new(uri)
 
 def print_log(target)
     puts "#{LOG_ROOT}/#{target}" if ARGV[1] == 'path'
@@ -38,28 +39,42 @@ case ARGV[0]
     when 'server'
         if ARGV[1] == 'stop' || ARGV[1] == 'restart' || ARGV[1] == 'start' then
             `systemctl #{ARGV[1]} ione`
+        elsif ARGV[1] == 'pid' then
+            pid = File.read('/var/run/ione.rb.pid')
+            if pid.nil? || pid == '' then
+                puts 'No PID file was found'
+            else
+                puts "IONe running, PID: #{pid}"
+            end
         else
-            puts 'Undefined key, you may use: stop | start | restart'
+            puts 'Undefined key, you may use: stop | start | restart | pid'
         end  
-        puts ARGV[1]
+    when 'update'
+        if ARGV[1].nil? then
+            puts "Type your update token. You can see it at #{ROOT}/modules/updatesmanager/config.yml"
+        else
+            puts client.IONeUpdate(ARGV[1])
+        end
     when 'log'
         print_log("activities.log")
     when 'debug'
         print_log("debug.log")
     when 'snapshot'
         print_log("snapshot.log")
+    when 'sys'
+        print_log("sys.log")
     when 'ping'
         begin
             puts 'Ping probe - ok, service is available.' if ZmqJsonRpc::Client.new(uri, 50).Test('PING') == 'PONG'
         rescue => e
             puts 'Service is not available or an error while ping probe occurred...'
         end
-    when 'proc'
-        puts client.proc
     when 'version'
         puts client.version
     when 'uptime'
         puts client.uptime
+    when 'proc'
+        puts client.proc
     else
         puts "
 Help page for ione cli tool:
@@ -68,7 +83,10 @@ Help page for ione cli tool:
             stop        -----       Stops server using system.d
             start       -----       Start server using system.d
             restart     -----       Restart server using system.d
+            pid         -----       Prints server process PID
 
+        update          -----       Updates your IONe Cloud server
+            <string>    -----       Update token
         log             -----       Prints main IONe log
             <number>    -----       Number of lines to print
                 follow  -----       Prints log in 'tail -f' mode
@@ -76,12 +94,10 @@ Help page for ione cli tool:
             path        -----       Returns log-file path
 
         debug           -----       Prints IONe debug log -- uses the same params as 'log'
-
         snapshot        -----       Prints IONe snapshot script log -- uses the same params as 'log'
-
+        sys             -----       Prints IONe sys log
         version         -----       Checks current version of WHMConnect
-
         uptime          -----       Checks uptime of WHMConnect server
-
+        proc            -----       Prints current working proccesses
 "
 end

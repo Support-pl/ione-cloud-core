@@ -1,3 +1,4 @@
+# @api private
 def NewQuota(login, vmquota, cpu, memory, disk)
     quota = "VM=[
             CPU=\"#{cpu}\",

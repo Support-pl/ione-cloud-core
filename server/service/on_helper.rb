@@ -1,8 +1,9 @@
 require 'rbvmomi'
 
+# Useful methods for OpenNebula classes, functions and constants.
 module ONeHelper
-    # Alias for RbVmomi::VIM
-    VIM = RbVmomi::VIM
+    
+    VIM = RbVmomi::VIM # Alias for RbVmomi::VIM
 
     # Searches Instances at vCenter by name at given folder
     # @param [RbVmomi::VIM::Folder] folder - folder where search
@@ -83,10 +84,11 @@ module ONeHelper
         end
     end
     # Returns random Datastore ID filtered by disk type
+    # @note Remember to configure DRIVE_TYPE(HDD|SSD) and DEPLOY(TRUE|FALSE) attributes at your Datastores
     # @param [String] ds_type   - Datastore type, may be HDD or SSD, returns any DS if not given
     # @return [Integer]
     def ChooseDS(ds_type = nil)
-        dss = DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
+        dss = IONe.new($client).DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
         dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' } if ds_type != nil
         ds = dss[rand(dss.size)]
         LOG "Deploying to #{ds['name']}", 'DEBUG'
@@ -94,6 +96,7 @@ module ONeHelper
     end
 end
 
+# OpenNebula::User class
 class User
     # Sets user quota by his existing VMs and/or appends new vm specs to it
     # @param [Hash] spec
@@ -117,6 +120,7 @@ class User
     end
 end
 
+# OpenNebula::Template class
 class Template
     # Checks given template OS type by User Input
     # @return [Boolean]
@@ -126,6 +130,7 @@ class Template
     end
 end
 
+# OpenNebula::VirtualMachine class
 class VirtualMachine
     # Sets resources allocation limits at vCenter node
     # @note For correct work of this method, you must keep actual vCenter Password at VCENTER_PASSWORD_ACTUAL attribute in OpenNebula
@@ -156,7 +161,7 @@ class VirtualMachine
             vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
             disk = vm.disks.first
 
-            query[:cpuAllocation] = {:limit => spec[:cpu], :reservation => spec[:cpu]} if !spec[:cpu].nil?
+            query[:cpuAllocation] = {:limit => spec[:cpu], :reservation => 0} if !spec[:cpu].nil?
             query[:memoryAllocation] = {:limit => spec[:ram]} if !spec[:ram].nil?
             if !spec[:iops].nil? then
                 disk.storageIOAllocation.limit = spec[:iops]
