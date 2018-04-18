@@ -132,10 +132,13 @@ class IONe
 
                 #LimitsController
 
-                LOG "Executing Limits Configurator for VM#{vmid}", 'DEBUG'
                 onblock(:vm, vmid) do | vm |
-                    vm.setResourcesAllocationLimits(cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops'])
-                end
+                    lim_res = vm.setResourcesAllocationLimits(
+                        cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
+                    )
+                    if !lim_res.nil? then
+                        LOG "Limits was not set, error: #{lim_res}", 'DEBUG'
+                    end
 
                 #endLimitsController
                 #TrialController

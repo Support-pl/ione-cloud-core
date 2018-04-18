@@ -161,10 +161,10 @@ class VirtualMachine
             vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
             disk = vm.disks.first
 
-            query[:cpuAllocation] = {:limit => spec[:cpu], :reservation => 0} if !spec[:cpu].nil?
-            query[:memoryAllocation] = {:limit => spec[:ram]} if !spec[:ram].nil?
+            query[:cpuAllocation] = {:limit => spec[:cpu].to_i, :reservation => 0} if !spec[:cpu].nil?
+            query[:memoryAllocation] = {:limit => spec[:ram].to_i} if !spec[:ram].nil?
             if !spec[:iops].nil? then
-                disk.storageIOAllocation.limit = spec[:iops]
+                disk.storageIOAllocation.limit = spec[:iops].to_i
                 disk.backing.sharing = nil
                 query[:deviceChange] = [{
                         :device => disk,
