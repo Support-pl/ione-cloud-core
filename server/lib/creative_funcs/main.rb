@@ -88,7 +88,8 @@ class IONe
             trace << "Generating credentials and network context:#{__LINE__ + 1}"
             context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ', USERNAME = "Administrator"' : nil}\n]\n"
             trace << "Generating specs configuration:#{__LINE__ + 1}"
-            context += "VCPU=\"#{params['cpu']}\"\nMEMORY=\"#{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\"\nDISK=[\n\tIMAGE_ID = \"#{template.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n\tSIZE=\"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\"]"
+            context += "VCPU=\"#{params['cpu']}\"\nMEMORY=\"#{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\""
+            context += "DISK=[\n\tIMAGE_ID = \"#{template.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n\tSIZE=\"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\"\n\tOPENNEBULA_MANAGED = \"NO\"]"
             LOG "Resulting template:\n#{context}", 'DEBUG'
             
             trace << "Terminating VM:#{__LINE__ + 1}"            
@@ -120,9 +121,12 @@ class IONe
 
             #####   PostDeploy Activity define   #####
             Thread.new do
+
+                host = params['host'].nil? ? $default_host : params['host']
+
                 LOG 'Deploying VM to the host', 'DEBUG'
                 onblock(:vm, vmid) do | vm |
-                    vm.deploy($default_host, false, ChooseDS(params['ds_type'])) if params['release']
+                    vm.deploy(host, false, ChooseDS(params['ds_type'])) if params['release']
                 end
 
                 LOG 'Waiting until VM will be deployed', 'DEBUG'
@@ -132,6 +136,7 @@ class IONe
 
                 #LimitsController
 
+                LOG "Executing Limits Configurator for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
                 onblock(:vm, vmid) do | vm |
                     lim_res = vm.setResourcesAllocationLimits(
                         cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
@@ -139,6 +144,7 @@ class IONe
                     if !lim_res.nil? then
                         LOG "Limits was not set, error: #{lim_res}", 'DEBUG'
                     end
+                end if ClusterType(host) == 'vcenter'
 
                 #endLimitsController
                 #TrialController
@@ -256,7 +262,8 @@ class IONe
                 MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}
                 DISK = [
                     IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",
-                    SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\"]"
+                    SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",
+                    OPENNEBULA_MANAGED = \"NO\"]"
                 vmid = t.instantiate("#{params['login']}_vm", true, specs + "\n" + params['user-template'].to_s)
             end
 
@@ -270,6 +277,8 @@ class IONe
             )
             LOG_TEST "New User account created"
             
+            host = params['host'].nil? ? $default_host : params['host']
+
             LOG_TEST 'Configuring VM Template'
             trace << "Configuring VM Template:#{__LINE__ + 1}"            
             onblock(:vm, vmid) do | vm |
@@ -307,16 +316,22 @@ class IONe
 
             #####   PostDeploy Activity define   #####
             Thread.new do
-                #LimitsController
-            
+
                 until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
                     sleep(30)
                 end
 
+                #LimitsController
+
+                LOG "Executing Limits Configurator for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
                 onblock(:vm, vmid) do | vm |
-                    LOG "Executing Limits Configurator for VM#{vmid}", 'DEBUG'
-                    vm.setResourcesAllocationLimits(cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops'])
-                end
+                    lim_res = vm.setResourcesAllocationLimits(
+                        cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
+                    )
+                    if !lim_res.nil? then
+                        LOG "Limits was not set, error: #{lim_res}", 'DEBUG'
+                    end
+                end if ClusterType(host) == 'vcenter'
 
                 #endLimitsController
                 #TrialController

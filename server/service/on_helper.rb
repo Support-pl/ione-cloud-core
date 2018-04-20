@@ -94,6 +94,12 @@ module ONeHelper
         LOG "Deploying to #{ds['name']}", 'DEBUG'
         return ds['id']
     end
+    def ClusterType(hostid)
+        onblock(:h, hostid) do | host |
+            host.info!
+            return host.to_hash['HOST']['TEMPLATE']['HYPERVISOR']
+        end
+    end
 end
 
 # OpenNebula::User class
@@ -150,9 +156,9 @@ class VirtualMachine
     #       => 'Reconfigure Error:{error message}' -- Exception has been generated while proceed, check your configuration
     def setResourcesAllocationLimits(spec)
         LOG spec.debug_out, 'DEBUG'
-        return 'Unsupported query' if IONe.new($class).get_vm_data(self.id)['IMPORTED'] == 'YES'        
+        return 'Unsupported query' if IONe.new($client).get_vm_data(self.id)['IMPORTED'] == 'YES'        
         begin
-            query, host = {}, onblock(Host, IONe.new($class).get_vm_host(self.id))
+            query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
             host = host.info! || host.to_hash['HOST']['TEMPLATE']
             datacenter = VIM.connect(
                 :host => host['VCENTER_HOST'], :insecure => true,
@@ -191,7 +197,7 @@ class VirtualMachine
     # @return [Hash | String] Returns limits Hash if success or exception message if fails
     def getResourcesAllocationLimits(name = nil)
         begin
-            host = onblock(Host, IONe.new($class).get_vm_host(self.id))
+            host = onblock(Host, IONe.new($client).get_vm_host(self.id))
             host = host.info! || host.to_hash['HOST']['TEMPLATE']
             datacenter = VIM.connect(
                 :host => host['VCENTER_HOST'], :insecure => true,

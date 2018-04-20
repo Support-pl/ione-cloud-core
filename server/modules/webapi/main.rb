@@ -22,7 +22,7 @@ WebApiEnv = Thread.new do
                 doc.html {
                     doc.head {
                         doc.style('TD, TH { border: 1px solid black; }')
-                        doc.style('TH { background: cyan; }')
+                        doc.style('TH { background: #f9ff00; }')
                         doc.style('TABLE { border-collapse: collapse; }')
                     }
                     doc.body {

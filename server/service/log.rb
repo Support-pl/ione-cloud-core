@@ -6,7 +6,7 @@ module IONeLoggerKit
     rescue
     end
     `echo > #{LOG_ROOT}/errors.txt`
-    `echo > #{LOG_ROOT}/sys.log`
+    `echo > #{LOG_ROOT}/sys.log` if !CONF['Other']['key']
     begin
         `echo > #{LOG_ROOT}/activities.log` if File.read("#{LOG_ROOT}/activities.log").split("\n").size >= 1000
     rescue

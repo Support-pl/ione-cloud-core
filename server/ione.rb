@@ -13,15 +13,15 @@ if ROOT.nil? || LOG_ROOT.nil? then
     raise "ENV NOT SET"
 end
 
+puts 'Parsing config file'
+CONF = YAML.load(File.read("#{ROOT}/config.yml")) # IONe configuration constants
+
 puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
 include IONeLoggerKit
 
 puts 'Checking service version'
 VERSION = File.read("#{ROOT}/meta/version.txt") # IONe version
-
-puts 'Parsing config file'
-CONF = YAML.load(File.read("#{ROOT}/config.yml")) # IONe configuration constants
 DEBUG = CONF['Other']['debug'] # IONe debug level
 USERS_GROUP = CONF['OpenNebula']['users-group'] # OpenNebula users group
 TRIAL_SUSPEND_DELAY = CONF['Server']['trial-suspend-delay'] # Trial VMs suspend delay
