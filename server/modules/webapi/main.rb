@@ -85,7 +85,17 @@ WebApiEnv = Thread.new do
         end
 
         get '/api/user/*' do | user |
-            responce("User #{user}")
+            begin
+                data = {
+                    :id => user, :name => onblock(:u, user.to_i) { |u| u.info! || u.name },
+                    :vms => IONe.new($client).get_vm_by_uid(user.to_i)
+                }
+                LOG data, 'DEBUG'
+                responce_html_table(data)
+            rescue => e
+                LOG e.message, 'DEBUG'
+                responce(e.message)
+            end
         end
     end
     run WebApi.run!
