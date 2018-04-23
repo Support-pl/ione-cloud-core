@@ -178,10 +178,20 @@ class VirtualMachine
                 }]
             end
 
-            LOG 'Powering VM Off', 'DEBUG'
-            LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG'
+            LOG 'Powering VM Off', 'DEBUG' if self.status != 'poff'
+            begin
+                LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG' if self.status != 'poff'
+            rescue
+                LOG 'Cannot set VM to state PowerOFF! No changes will be applied', 'DEBUG'
+                return false
+            end
             LOG 'Reconfiguring VM', 'DEBUG'
-            LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
+            begin
+                LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
+            rescue => e
+                LOG "Exception raised while reconfiguring: #{e.message}", 'DEBUG'
+                return false
+            end
             LOG 'Powering VM On', 'DEBUG'
             LOG vm.PowerOnVM_Task.wait_for_completion, 'DEBUG'
 

@@ -34,7 +34,48 @@ WebApiEnv = Thread.new do
                             data.each do | key, value |
                                 doc.tr {
                                     doc.td(key.downcase)
-                                    doc.td(value)
+                                    if value.class != Array && value.class != Hash then
+                                        doc.td(value)
+                                    elsif value.class == Hash
+                                        doc.td {
+                                            doc.table(:style => 'width: 100%'){
+                                                value.each do | k, v |
+                                                    doc.tr {
+                                                        doc.td(k.downcase)
+                                                        doc.td(v)
+                                                    }
+                                                end
+                                            }
+                                        } if !value.keys.include? :link
+                                        doc.td {
+                                            doc.a(:href => value.values.last){
+                                                doc.p(value.values.first)
+                                            }
+                                        } if value.keys.include? :link
+                                    elsif value.class == Array
+                                        doc.td {
+                                            doc.table(:style => 'width: 100%'){
+                                                doc.tr {
+                                                    value[0].keys.each do | k |
+                                                        doc.th(k.to_s.downcase) if k != :link
+                                                        doc.td(k.to_s.downcase) if k == :link
+                                                    end
+                                                }    
+                                                value.each do | element |
+                                                    doc.tr {
+                                                        element.each do | k, v |
+                                                            doc.td(v) if k != :link 
+                                                        end
+                                                        doc.td {
+                                                            doc.a(:href => element.values.last) {
+                                                                doc.p('more')
+                                                            }
+                                                        }
+                                                    }
+                                                end
+                                            }
+                                        }
+                                    end
                                 }
                             end
                         }
@@ -77,6 +118,7 @@ WebApiEnv = Thread.new do
             LOG "WebAPI | User: #{user}, VM: #{vm}", 'DEBUG'
             begin
                 data = IONe.new($client).get_vm_data(vm.to_i)
+                data['OWNERID'] = {:id => data['OWNERID'], :link => "/api/user/#{data['OWNERID']}"}
             rescue => e
                 LOG e.message, 'DEBUG'
             end
@@ -88,8 +130,9 @@ WebApiEnv = Thread.new do
             begin
                 data = {
                     :id => user, :name => onblock(:u, user.to_i) { |u| u.info! || u.name },
-                    :vms => IONe.new($client).get_vm_by_uid(user.to_i)
+                    :vms => IONe.new($client).get_vms_by_uid(user.to_i)
                 }
+                data[:vms].each { |vm| vm[:link] = "/api/user/#{user}/#{vm[:id]}" }
                 LOG data, 'DEBUG'
                 responce_html_table(data)
             rescue => e
