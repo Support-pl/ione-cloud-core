@@ -54,7 +54,6 @@ class IONe
         LOG_CALL(id, true)
         defer { LOG_CALL(id, false, 'Reinstall') }
         begin
-            installid = id_gen().crypt(params['login'])
             # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
             LOG params.merge!({ :method => 'Reinstall' }).debug_out, 'DEBUG'
             return nil if params['debug'] == 'turn_method_off'
@@ -66,7 +65,7 @@ class IONe
 
             if params['vmid'] * params['groupid'] * params['userid'] * params['templateid'] == 0 then
                 LOG "ReinstallError - some params are nil", 'Reinstall'
-                return "ReinstallError - some params are nil" || kill_proc("Reinstall_#{installid}")
+                return "ReinstallError - some params are nil"
             end
 
             LOG 'Initializing vm object', 'DEBUG'
@@ -204,7 +203,7 @@ class IONe
     #   Debug is set to true: nil
     #   Template not found Error: {'error' => "TemplateLoadError", 'trace' => (trace << "TemplateLoadError:#{__LINE__ - 1}")(Array<String>)}
     #   User create Error: {'error' => "UserAllocateError", 'trace' => trace(Array<String>)}
-    #   Unknown error: { 'error' => e.message, 'trace' => trace(Array<String>)}
+    #   Unknown error: { 'error' => e.message, 'trace' => trace(Array<String>)} 
     def CreateVMwithSpecs(params, trace = ["#{__method__.to_s} method called:#{__LINE__}"])
         LOG_STAT()
         id = id_gen()
@@ -213,13 +212,12 @@ class IONe
         LOG params.merge!(:method => __method__.to_s).debug_out, 'DEBUG'
         # return
         begin
+            trace << "Checking params types:#{__LINE__ + 1}"
             params['cpu'], params['ram'], params['drive'], params['iops'] = params['cpu'].to_i, params['ram'].to_i, params['drive'].to_i, params['iops'].to_i
 
             ###################### Doing some important system stuff ###############################################################
             
-            installid, err = Time.now.to_i.to_s(16).crypt(params['login']), ""
             return nil if DEBUG
-            # return {'userid' => 666, 'vmid' => 666, 'ip' => '0.0.0.0'}        
             LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}" # Логи
             
             LOG_TEST "Params: #{params.inspect}" if DEBUG # Логи
