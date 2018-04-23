@@ -1,3 +1,5 @@
+require 'net/ssh'
+
 puts 'Initializing FreeNAS class'
 class FreeNAS
     def initialize
