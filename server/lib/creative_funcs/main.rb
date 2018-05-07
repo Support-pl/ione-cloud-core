@@ -88,7 +88,7 @@ class IONe
             context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ', USERNAME = "Administrator"' : nil}\n]\n"
             trace << "Generating specs configuration:#{__LINE__ + 1}"
             context += "VCPU=\"#{params['cpu']}\"\nMEMORY=\"#{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\""
-            context += "DISK=[\n\tIMAGE_ID = \"#{template.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n\tSIZE=\"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\"\n\tOPENNEBULA_MANAGED = \"NO\"]"
+            context += "DISK=[\n\tIMAGE_ID = \"#{template.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n\tSIZE=\"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n\tOPENNEBULA_MANAGED = \"NO\"]"
             LOG "Resulting template:\n#{context}", 'DEBUG'
             
             trace << "Terminating VM:#{__LINE__ + 1}"            

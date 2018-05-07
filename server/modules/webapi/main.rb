@@ -145,5 +145,5 @@ WebApiEnv = Thread.new do
 end
 
 at_exit do
-    WebApiEnv.exit
+    WebApiEnv.kill
 end

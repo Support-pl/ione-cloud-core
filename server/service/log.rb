@@ -64,7 +64,7 @@ module IONeLoggerKit
     $PROC = []
 
     def LOG_CALL(id, called, method = caller_locations(1,1)[0].label)
-        level = 0
+        level, method = 0, method.to_s
         caller_locations.each do | loc |
             loc = loc.label
             if $methods.include? loc then
@@ -79,11 +79,11 @@ module IONeLoggerKit
             end
         end
         if called then
-            $PROC << "#{method}:#{id}"
+            
         elsif !called then
-            $PROC.delete "#{method}:#{id}"
-        end if level < 2
-        msg = "[ #{time()} ] Method #{method.to_s}:#{id} #{called ? 'called' : 'closed'}\n"
+            
+        end 
+        msg = "[ #{time()} ] Method #{called ? $PROC.push("#{method}:#{id}").last : $PROC.delete("#{method}:#{id}")} #{called ? 'called' : 'closed'}\n" if level < 2
         if level > 1  || !called then
             tabs = "                             "
             for i in 0..(level - 3) do

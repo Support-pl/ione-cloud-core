@@ -44,7 +44,7 @@ class IONe
         vmp, vms = VirtualMachinePool.new(@client), []
         vmp.info_all!
         vmp.each do | vm |
-            vms << { :id => vm.id.to_i, :name => vm.name, :ip => GetIP(vm.id.to_i) } if vm.uid(false) == uid
+            vms << { :id => vm.id.to_i, :name => vm.name } if vm.uid(false) == uid
         end
         return vms
     end

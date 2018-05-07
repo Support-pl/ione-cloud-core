@@ -1,5 +1,4 @@
 module WHMCS
-    require 'net/http'
     def whm_call(params)
         params.merge!(username: CONF['WHMCS']['username'], password: CONF['WHMCS']['password'], responsetype: 'json')
         return JSON.parse Net::HTTP.post_form(URI.parse(CONF['WHMCS']['uri']), params).body
