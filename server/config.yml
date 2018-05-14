@@ -33,7 +33,7 @@ Scripts: # Automation scripts to start
   - 'snap-controller'
 
 vCenter:
-  cpu-limits-koef: 1000
+  cpu-limits-koef: 2000
 
 SnapshotController:
   check-period: 3600 # Snapshots check frequency in seconds

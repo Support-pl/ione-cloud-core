@@ -25,12 +25,28 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'get_vm_by_uid') }
-        vmp = VirtualMachinePool.new($client)
+        vmp = VirtualMachinePool.new(@client)
         vmp.info_all!
         vmp.each do | vm |
             return vm.id.to_i if vm.uid(false) == uid
         end
         return 'none'
+    end
+    # Returns user vms by user id
+    # @param [Integer] uid - owner id
+    # @return [Array<Hash>]
+    # @example
+    #   => [{:id => ..., :name => ...}, {:id => ..., :name => ...}, ...]
+    def get_vms_by_uid(uid)
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'get_vm_by_uid') }
+        vmp, vms = VirtualMachinePool.new(@client), []
+        vmp.info_all!
+        vmp.each do | vm |
+            vms << { :id => vm.id.to_i, :name => vm.name } if vm.uid(false) == uid
+        end
+        return vms
     end
     # Returns user id by username
     # @param [String] name - username
@@ -42,7 +58,7 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'get_uid_by_name') }
-        up = UserPool.new($client)
+        up = UserPool.new(@client)
         up.info_all!
         up.each do | u |
             return u.id.to_i if u.name == name
@@ -215,7 +231,7 @@ class IONe
             end
         end
 
-        host_pool, mon = HostPool.new($client), []
+        host_pool, mon = HostPool.new(@client), []
         host_pool.info!
         host_pool.each do | host |
             host = host.to_hash['HOST']

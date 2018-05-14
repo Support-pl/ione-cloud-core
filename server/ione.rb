@@ -146,5 +146,9 @@ puts 'Initializing JSON_RPC server and logic handler'
 server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['Server']['listen-port']}")
 LOG "Server initialized"
 
+# Signal.trap('CLD') do
+#   LOG 'Trying to force stop Sinatra', 'SignalHandler'
+# end
+
 puts 'Pre-init job ended, starting up server'
 server.server_loop # Server start

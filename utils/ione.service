@@ -12,11 +12,13 @@ WorkingDirectory=/root
 OOMScoreAdjust=-1000
 
 Restart=always
+RestartSec=10
 
 ExecStart=/bin/ruby ${IONEROOT}/daemon.rb start
 ExecReload=/bin/ruby ${IONEROOT}/daemon.rb restart
 ExecStop=/bin/ruby ${IONEROOT}/daemon.rb stop
 TimeoutSec=300
+StartLimitBurst=0
 
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target

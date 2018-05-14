@@ -2,13 +2,17 @@ require 'json'
 require 'digest/md5'
 
 puts 'Extending Hash class by out method'
+# Ruby default Hash class
 class Hash
+    # Returns hash as 'pretty generated' JSON String
     def out()
-        return JSON.pretty_generate(self).gsub("\": ", "\" => ")
+        return JSON.pretty_generate(self)
     end
+    # Returns hash as 'pretty generated' JSON String with replaced JSON(':' to '=>' and 'null' to 'nil')
     def debug_out()
         return JSON.pretty_generate(self).gsub("\": ", "\" => ").gsub(" => null", " => nil")
-    end        
+    end
+    # @!visibility private
     def privatise
         result = {}
         self.each do |key, value|
@@ -25,7 +29,9 @@ class Hash
     end
 end
 
+# Ruby default String class
 class String
+    # @!visibility private    
     def private?
         result = false
         for key in CONF['PrivateKeys'] do
@@ -35,8 +41,11 @@ class String
     end
 end
 
+
 puts 'Extending NilClass by add method'
+# Ruby default Nil class
 class NilClass
+    # @!visibility private    
     def +(obj)
         return obj
     end

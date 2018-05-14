@@ -2,7 +2,9 @@
 # @return [String]
 def time(method = 'none')
     return Time.at(Time.now + TRIAL_SUSPEND_DELAY).ctime if method == 'TrialController'
-    return Time.now.ctime
+    out = Time.now.ctime
+    return 'Date-Time Error' if out.nil?
+    return out
 end
 
 # Formats time from seconds from the start of Time to dd:hh:mm:ss format

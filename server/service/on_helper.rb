@@ -94,6 +94,12 @@ module ONeHelper
         LOG "Deploying to #{ds['name']}", 'DEBUG'
         return ds['id']
     end
+    # Returns given cluster hypervisor type
+    # @param [Integer] hostid ID of the host to check
+    # @return [String]
+    # @example
+    #       ClusterType(0) => 'vcenter'
+    #       ClusterType(1) => 'kvm'
     def ClusterType(hostid)
         onblock(:h, hostid) do | host |
             host.info!
@@ -178,17 +184,114 @@ class VirtualMachine
                 }]
             end
 
-            LOG 'Powering VM Off', 'DEBUG'
-            LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG'
-            LOG 'Reconfiguring VM', 'DEBUG'
-            LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
-            LOG 'Powering VM On', 'DEBUG'
-            LOG vm.PowerOnVM_Task.wait_for_completion, 'DEBUG'
+            state = true
+            begin
+                LOG 'Powering VM Off', 'DEBUG'
+                LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG'
+            rescue => e
+                state = false
+            end
+            
+                LOG 'Reconfiguring VM', 'DEBUG'
+                LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
+            
+            begin
+                LOG 'Powering VM On', 'DEBUG'
+                LOG vm.PowerOnVM_Task.wait_for_completion, 'DEBUG'
+            rescue
+            end if state
 
         rescue => e
             return "Reconfigure Error:#{e.message}"
         end
         return nil
+    end
+    # Resize VM without powering off the VM
+    # @param [Hash] spec
+    # @option spec [Integer] :cpu CPU amount to set
+    # @option spec [Integer] :ram RAM amount in MB to set
+    # @option spec [String] :name VM name on vCenter node
+    # @return [Boolean | String]
+    # @note Method returns true if resize action ended correct, false if VM not support hot reconfiguring
+    def hot_resize(spec = {:name => nil})
+        return false if !self.hotAddEnabled?
+        begin
+            host = onblock(Host, IONe.new($client).get_vm_host(self.id))
+            host = host.info! || host.to_hash['HOST']['TEMPLATE']
+            datacenter = VIM.connect(
+                :host => host['VCENTER_HOST'], :insecure => true,
+                :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
+            ).serviceInstance.find_datacenter
+            vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
+            query = {
+                :numCPUs => spec[:cpu],
+                :memoryMB => spec[:ram]
+            }
+            vm.ReconfigVM_Task(:spec => query).wait_for_completion
+            return true
+        rescue => e
+            return "Reconfigure Error:#{e.message}"            
+        end
+    end
+    # Checks if resources hot add enabled
+    # @param [String] name VM name on vCenter node
+    # @note For correct work of this method, you must keep actual vCenter Password at VCENTER_PASSWORD_ACTUAL attribute in OpenNebula
+    # @note Method searches VM by it's default name: one-(id)-(name), if target vm got another name, you should provide it
+    # @return [Hash | String] Returns limits Hash if success or exception message if fails
+    def hotAddEnabled?(name = nil)
+        begin
+            host = onblock(Host, IONe.new($client).get_vm_host(self.id))
+            host = host.info! || host.to_hash['HOST']['TEMPLATE']
+            datacenter = VIM.connect(
+                :host => host['VCENTER_HOST'], :insecure => true,
+                :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
+            ).serviceInstance.find_datacenter
+            vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
+            return {
+                :cpu => vm.config.cpuHotAddEnabled, :ram => vm.config.memoryHotAddEnabled
+            }
+        rescue => e
+            return "Unexpected error, cannot handle it: #{e.message}"
+        end
+    end
+    # Sets resources hot add settings
+    # @param [Hash] spec
+    # @option spec [Boolean] :cpu 
+    # @option spec [Boolean] :ram
+    # @option spec [String]  :name VM name on vCenter node
+    # @return [true | String]
+    def hotResourcesControlConf(spec = {:cpu => true, :ram => true, :name => nil})
+        begin
+            host, name = onblock(Host, IONe.new($client).get_vm_host(self.id)), spec[:name]
+            host = host.info! || host.to_hash['HOST']['TEMPLATE']
+            datacenter = VIM.connect(
+                :host => host['VCENTER_HOST'], :insecure => true,
+                :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
+            ).serviceInstance.find_datacenter
+            vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
+            query = {
+                :cpuHotAddEnabled => spec[:cpu],
+                :memoryHotAddEnabled => spec[:ram]
+            }
+            state = true
+            begin
+                LOG 'Powering VM Off', 'DEBUG'
+                LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG'
+            rescue => e
+                state = false
+            end
+            
+                LOG 'Reconfiguring VM', 'DEBUG'
+                LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
+            
+            begin
+                LOG 'Powering VM On', 'DEBUG'
+                LOG vm.PowerOnVM_Task.wait_for_completion, 'DEBUG'
+            rescue
+            end if state
+        rescue => e
+            return "Unexpected error, cannot handle it: #{e.message}"
+        end
     end
     # Gets resources allocation limits from vCenter node
     # @param [String] name VM name on vCenter node
