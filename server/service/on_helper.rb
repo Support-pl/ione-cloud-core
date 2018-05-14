@@ -94,6 +94,12 @@ module ONeHelper
         LOG "Deploying to #{ds['name']}", 'DEBUG'
         return ds['id']
     end
+    # Returns given cluster hypervisor type
+    # @param [Integer] hostid ID of the host to check
+    # @return [String]
+    # @example
+    #       ClusterType(0) => 'vcenter'
+    #       ClusterType(1) => 'kvm'
     def ClusterType(hostid)
         onblock(:h, hostid) do | host |
             host.info!

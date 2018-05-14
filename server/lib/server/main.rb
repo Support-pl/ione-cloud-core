@@ -44,6 +44,7 @@ class IONe
     def reboot(pa)
         `sh #{ROOT}/service/handlers/reboot_key.sh &` if pa['ss']
     end
+    # Returns active processes list
     def proc
         return $PROC
     end

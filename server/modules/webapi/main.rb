@@ -3,6 +3,7 @@ require 'json'
 # @!visibility private
 WebApiEnv = Thread.new do
     require 'sinatra/base'
+    # WebAPI public functions definition
     class WebApi < Sinatra::Base
         configure do
             set :bind, CONF['WebApi']['bind']

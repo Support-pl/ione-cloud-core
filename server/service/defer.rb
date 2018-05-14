@@ -1,3 +1,4 @@
+# Go-lang defer operator realization
 module Deferable
     # Defer given block at function
     # @note Remember to make your method deferable
