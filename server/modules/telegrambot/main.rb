@@ -5,6 +5,7 @@ require 'telegram/bot'
 $USERS = ['slnt_opp']
 $ACCOUNTS = Hash.new('none')
     $ACCOUNTS['slnt_opp'] = 0
+    $ACCOUNTS['alisupportby'] = 0
 
 require "#{ROOT}/modules/telegrambot/handlers.rb"
 
@@ -24,24 +25,46 @@ tgBotThread = Thread.new do
                 case msg.class.to_s
                 when 'Telegram::Bot::Types::Message'
                     case msg.text
+                    when *['/start', 'Войти в другой аккаунт']
+                        TgHandler.new.start(bot, msg)
+                    when *['Заказать']
+                        TgHandler.new.order(bot, msg)
+                    when *['/help', 'Помощь', 'Help']
+                        TgHandler.new.help(bot, msg) if $USERS.include? msg.from.username
+                    when *['/menu', 'Menu', 'Меню']
+                        TgHandler.new.menu(bot, msg) if $USERS.include? msg.from.username
+                        TgHandler.new.start(bot, msg) if !$USERS.include? msg.from.username
                     when /\/vm \d+/
-                        puts msg.text
                         LOG "TelegramBot | VM#{msg.text.split(' ').last} data required", 'DEBUG'
                         TgHandler.new.vm(bot, msg) if $USERS.include? msg.from.username
-                    when /\/vms \d+/, /\/vms/ then
+                    when /\/vms \d+/, /\/vms/, 'Виртуальные Машины' then
                         LOG "TelegramBot | User #{$ACCOUNTS[msg.from.username].to_s} VMs required", 'DEBUG'
                         TgHandler.new.vms(bot, msg) if $USERS.include? msg.from.username
-                    when '/ping'
+                    
+                    jwhen '/ping'
                         LOG 'TelegramBot | Ping query accepted', 'TelegramBot'
                         bot.api.send_message(
                             chat_id: msg.chat.id,
                             text: 'Ping probe successful?.. or... :)'        
                         )
+                    when *['Аутентификация', '/auth', 'Authentificate']
+                        TgHandler.new.auth(bot, msg) if !$USERS.include? msg.from.username
+                    when /\d+/
+                        TgHandler.new.auth_code_entered(bot, msg)
+                    when nil
+                        if !msg.contact.phone_number.nil? then
+                            TgHandler.new.auth_by_number(bot, msg)
+                        else
+                            puts 'text is nil'
+                        end
                     else
                         puts msg.text
                     end
                 when 'Telegram::Bot::Types::CallbackQuery'
                     case msg.data
+                    when *['/menu', 'Menu', 'Меню']
+                        TgHandler.new.menu(bot, msg) if $USERS.include? msg.from.username
+                        # TgHandler.new.start(bot, msg) if !$USERS.include? msg.from.username
                     when /\/vm \d+/
                         puts msg.data
                         LOG "TelegramBot | VM#{msg.data.split(' ').last} data required", 'DEBUG'
@@ -59,7 +82,7 @@ tgBotThread = Thread.new do
                     when /\/vm_reboot \d+/
                         TgHandler.new.vm_reboot(bot, msg) if $USERS.include? msg.from.username
                     when /\/vm_reboot_sure \d+/
-                        TgHandler.new.vm_reboot_sure(bot, msg) if $USERS.include? msg.from.username  
+                        TgHandler.new.vm_reboot_sure(bot, msg) if $USERS.include? msg.from.username
                     else
                         puts msg.data
                     end
