@@ -144,6 +144,78 @@ end
 
 # OpenNebula::VirtualMachine class
 class VirtualMachine
+    # Actions supported by OpenNebula scheduler
+    SCHEDULABLE_ACTIONS = %w(
+        terminate
+        terminate-hard
+        hold
+        release
+        stop
+        suspend
+        resume
+        reboot
+        reboot-hard
+        poweroff
+        poweroff-hard
+        undeploy
+        undeploy-hard
+        snapshot-create
+    )
+    # Returns allowed actions to schedule
+    # @return [Array]
+    def schedule_actions
+        return SCHEDULABLE_ACTIONS
+    end
+    # Adds actions to OpenNebula internal scheduler, like --schedule in 'onevm' cli utility
+    # @param [String] action - Action which should be scheduled
+    # @param [Integer] time - Time when action schould be perfomed in secs
+    # @param [String] periodic - Not working now
+    # @return true
+    def schedule(action, time, periodic = nil)
+        return 'Unsupported action' if !SCHEDULABLE_ACTIONS.include? action
+        self.info!
+        begin
+            ids = self.to_hash['VM']['USER_TEMPLATE']['SCHED_ACTION']
+            if ids.class == Array then
+                id = ids.last['ID'].to_i + 1
+            elsif ids.class == Hash then
+                id = ids['ID'].to_i + 1
+            elsif ids.class == NilClass then
+                id = ids.to_i
+            else
+                raise
+            end
+        rescue
+            id = 0
+        end
+
+        str_periodic = ''
+
+        template = self.user_template_str
+        template << "\nSCHED_ACTION = [ID = #{id.to_s}, ACTION = #{action}, TIME = #{time}" << str_periodic << "]"
+
+        self.update(template)
+    end
+    # Lists actions scheduled in OpenNebula
+    # @return [NilClass | Hash | Array]
+    def scheduler
+        self.info!
+        return self.to_hash['VM']['USER_TEMPLATE']['SCHED_ACTION']
+    end
+    # Waits until VM will have the given state
+    # @param [Integer] s - VM state to wait for
+    # @param [Integer] lcms_s - VM LCM state to wait for
+    # @return [Boolean]
+    def wait_for_state(s = 3, lcm_s = 3)
+        i = 0
+        until state(vmid) == s && lcm_state(vmid) == lcm_s do
+            return false if i >= 3600
+            sleep(1)
+            i += 1
+            self.info!
+        end
+        return true
+    end
     # Sets resources allocation limits at vCenter node
     # @note For correct work of this method, you must keep actual vCenter Password at VCENTER_PASSWORD_ACTUAL attribute in OpenNebula
     # @note Attention!!! VM will be rebooted at the process

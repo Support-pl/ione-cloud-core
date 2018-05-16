@@ -10,7 +10,7 @@ Server:
   # Port for WHMConnector to listen
   listen-port: '8008'
   # Delay value for trial VMs in seconds
-  trial-suspend-delay: 14400
+  trial-suspend-delay: 86400
 
 Include: # IONe libraries to include
   - 'vmcontrol'

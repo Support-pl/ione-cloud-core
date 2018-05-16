@@ -17,7 +17,7 @@ module IONeLoggerKit
     $log = []
 
     at_exit do
-        File.open("#class{LOG_ROOT}/old.log", 'a') { |file| file.write($log.join("\n")) }
+        File.open("#{LOG_ROOT}/old.log", 'a') { |file| file.write($log.join("\n")) }
     end
 
     # Logging the message to the one of three destinations
@@ -100,11 +100,6 @@ module IONeLoggerKit
                 end
             end
         end
-        if called then
-            
-        elsif !called then
-            
-        end 
         msg = "[ #{time()} ] Method #{called ? $PROC.push("#{method}:#{id}").last : $PROC.delete("#{method}:#{id}")} #{called ? 'called' : 'closed'}\n" if level < 2
         if level > 1  || !called then
             tabs = "                             "
