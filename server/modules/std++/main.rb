@@ -27,6 +27,12 @@ class Hash
         end
         return result
     end
+    def to_sym!
+        self.keys.each do |key| 
+            self[key.to_sym] = self.delete key
+        end
+        return self
+    end
 end
 
 # Ruby default String class

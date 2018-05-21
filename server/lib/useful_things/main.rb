@@ -248,4 +248,13 @@ class IONe
     def getglog
         return $log
     end
+    def get_vm_hotadd_conf(vmid)
+        return onblock(:vm, vmid).hotAddEnabled?
+    end
+    def set_vm_hotadd_conf(params)
+        return onblock(:vm, params['vmid']).hotResourcesControlConf(params.to_sym!)
+    end
+    def vm_hotadd(params)
+        return onblock(:vm, params['vmid']).hot_resize(params.to_sym!)
+    end
 end

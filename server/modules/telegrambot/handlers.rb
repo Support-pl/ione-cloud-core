@@ -34,7 +34,7 @@ class TgHandler
                 chat_id: msg.chat.id,
                 text: "Нет username, добавьте свой в настройках Telegram"     
             )
-            start(bot, msg)
+            auth(bot, msg)
             return
         end
         $CODES[msg.from.username] = 112233 #rand(100000..1000000)
@@ -340,4 +340,7 @@ def array_groupper(arr, div)
         res[i / div] << arr[i]
     end
     return res
+end
+
+def search_whmcs_client_by_number(number)
 end

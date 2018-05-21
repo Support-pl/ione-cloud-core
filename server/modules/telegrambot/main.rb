@@ -8,6 +8,7 @@ $ACCOUNTS = Hash.new('none')
     $ACCOUNTS['alisupportby'] = 0
 
 require "#{ROOT}/modules/telegrambot/handlers.rb"
+require "#{ROOT}/modules/telegrambot/db.rb"
 
 def space_gen(number)
     res = ""
@@ -41,7 +42,7 @@ tgBotThread = Thread.new do
                         LOG "TelegramBot | User #{$ACCOUNTS[msg.from.username].to_s} VMs required", 'DEBUG'
                         TgHandler.new.vms(bot, msg) if $USERS.include? msg.from.username
                     
-                    jwhen '/ping'
+                    when '/ping'
                         LOG 'TelegramBot | Ping query accepted', 'TelegramBot'
                         bot.api.send_message(
                             chat_id: msg.chat.id,

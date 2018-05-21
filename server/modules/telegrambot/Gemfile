@@ -1,1 +1,2 @@
 gem 'telegram-bot-ruby'
+gem 'mysql2'
