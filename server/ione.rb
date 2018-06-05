@@ -15,7 +15,6 @@ end
 
 puts 'Parsing config file'
 CONF = YAML.load(File.read("#{ROOT}/config.yml")) # IONe configuration constants
-CONF['Other']['key'] = true
 
 puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
@@ -23,7 +22,6 @@ include IONeLoggerKit
 
 puts 'Checking service version'
 VERSION = File.read("#{ROOT}/meta/version.txt") # IONe version
-
 DEBUG = CONF['Other']['debug'] # IONe debug level
 USERS_GROUP = CONF['OpenNebula']['users-group'] # OpenNebula users group
 TRIAL_SUSPEND_DELAY = CONF['Server']['trial-suspend-delay'] # Trial VMs suspend delay
@@ -56,6 +54,22 @@ require "#{ROOT}/service/on_helper.rb"
 include ONeHelper
 puts 'Including Deferable rmodule'
 require "#{ROOT}/service/defer.rb"
+
+LOG "", "", false
+LOG("       ################################################################", "", false)
+LOG("       ##                                                            ##", "", false)
+LOG "       ##    Integrated OpenNebula Cloud Server v#{VERSION.chomp}#{" " if VERSION.split(' ').last == 'stable'}     ##", "", false
+LOG("       ##                                                            ##", "", false)
+LOG("       ################################################################", "", false)
+LOG "", "", false
+
+puts 'Generating "at_exit" directive'
+at_exit do
+    LOG("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}")
+    LOG "", "", false
+    LOG("       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
+end
+
 # Main App class. All methods, which must be available as JSON-RPC methods, should be defined in this class
 class IONe
     include Deferable
@@ -74,26 +88,48 @@ begin
         begin
             require "#{ROOT}/lib/#{lib}/main.rb"
         rescue => e
+            LOG "Library \"#{lib}\" was not included | Error: #{e.message}", 'LibraryController'
             puts "Library \"#{lib}\" was not included | Error: #{e.message}"
         end
     end if CONF['Include'].class == Array
 rescue => e
+    LOG "LibraryController fatal error | #{e}", 'LibraryController'
     puts "\tLibraryController fatal error | #{e}"
 end
 
 puts 'Including Modules'
 begin
-    CONF['Other']['debug-modules'].each do | mod |
+    CONF['Modules'].each do | mod |
         puts "\tIncluding #{mod}"    
         begin
             CONF.merge!(YAML.load(File.read("#{ROOT}/modules/#{mod}/config.yml"))) if File.exist?("#{ROOT}/modules/#{mod}/config.yml")
             require "#{ROOT}/modules/#{mod}/main.rb"
         rescue => e
+            LOG "Module \"#{mod}\" was not included | Error: #{e.message}", 'ModuleController'
             puts "Module \"#{mod}\" was not included | Error: #{e.message}"
         end
     end if CONF['Modules'].class == Array
 rescue => e
+    LOG "ModuleController fatal error | #{e}", 'ModuleController'
     puts "\tModuleController fatal error | #{e}"
+end
+
+puts 'Including Scripts'
+begin
+    CONF['Scripts'].each do | script |
+        puts "\tIncluding #{script}"
+        begin
+            Thread.new do
+                require "#{ROOT}/scripts/#{script}/main.rb"
+            end
+        rescue => e
+            LOG "Script \"#{script}\" was not included | Error: #{e.message}", 'ScriptController'
+            puts "\tScript \"#{script}\" was not included | Error: #{e.message}"
+        end
+    end if CONF['Scripts'].class == Array
+rescue => e
+    LOG "ScriptsController fatal error | #{e}", 'ScriptController'
+    puts "ScriptsController fatal error | #{e}"
 end
 
 puts 'Making IONe methods deferable'
@@ -104,3 +140,15 @@ class IONe
 end
 
 $methods = IONe.instance_methods(false).map { | method | method.to_s }
+
+LOG "Initializing JSON-RPC Server..."
+puts 'Initializing JSON_RPC server and logic handler'
+server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['Server']['listen-port']}")
+LOG "Server initialized"
+
+# Signal.trap('CLD') do
+#   LOG 'Trying to force stop Sinatra', 'SignalHandler'
+# end
+
+puts 'Pre-init job ended, starting up server'
+server.server_loop # Server start
