@@ -14,7 +14,8 @@ user\.xml
 *.pid
 
 server/daemon_whm\.rb\.txt
-\.vscode/
 
 rbvmomi\.rb
 app-test\.json
+
+\.vscode/

@@ -248,4 +248,36 @@ class IONe
     def getglog
         return $log
     end
+    # Checks if resources hot add enabled
+    # @param [Integer] name VM ID
+    # @param [String] name VM name on vCenter node
+    # @note For correct work of this method, you must keep actual vCenter Password at VCENTER_PASSWORD_ACTUAL attribute in OpenNebula
+    # @note Method searches VM by it's default name: one-(id)-(name), if target vm got another name, you should provide it
+    # @return [Hash | String] Returns limits Hash if success or exception message if fails
+    def get_vm_hotadd_conf(vmid, name = nil)
+        return onblock(:vm, vmid).hotAddEnabled? name
+    end
+    # Sets resources hot add settings
+    # @param [Hash] spec
+    # @option spec [Boolean] :vmid VM ID
+    # @option spec [Boolean] :cpu 
+    # @option spec [Boolean] :ram
+    # @option spec [String]  :name VM name on vCenter node
+    # @return [true | String]
+    def set_vm_hotadd_conf(params)
+        params.to_sym!
+        return onblock(:vm, params[:vmid]).hotResourcesControlConf(params)
+    end
+    # Resize VM without powering off the VM
+    # @param [Hash] spec
+    # @option spec [Boolean] :vmid VM ID    
+    # @option spec [Integer] :cpu CPU amount to set
+    # @option spec [Integer] :ram RAM amount in MB to set
+    # @option spec [String] :name VM name on vCenter node
+    # @return [Boolean | String]
+    # @note Method returns true if resize action ended correct, false if VM not support hot reconfiguring
+    def vm_hotadd(params)
+        params.to_sym!
+        return onblock(:vm, params[:vmid]).hot_resize(params)
+    end
 end

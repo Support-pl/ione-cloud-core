@@ -10,7 +10,7 @@ Server:
   # Port for WHMConnector to listen
   listen-port: '8008'
   # Delay value for trial VMs in seconds
-  trial-suspend-delay: 14400
+  trial-suspend-delay: 86400
 
 Include: # IONe libraries to include
   - 'vmcontrol'
@@ -19,18 +19,15 @@ Include: # IONe libraries to include
   - 'data_import_handler'
   - 'useful_things'
   - 'creative_funcs'
+  - 'ione-scheduler'
 
 Modules: # IONe modules to connect
   - 'std++'
-  - 'whmcscall'
-  - 'ansible'
-  - 'freenas'
   - 'stat'
-  - 'webapi'
   - 'updatesmanager'
 
 Scripts: # Automation scripts to start
-  - 'snap-controller'
+  # - 'snap-controller'
 
 vCenter:
   cpu-limits-koef: 2000
@@ -38,13 +35,15 @@ vCenter:
 SnapshotController:
   check-period: 3600 # Snapshots check frequency in seconds
 
+DataBase:
+  user: 'root'
+  pass: 'opennebula-db-pass'
+  host: 'localhost'
+
 Other:
   debug: false
   debug-modules:
     - 'std++'
-    - 'whmcscall'
-    - 'ansible'
-    - 'freenas'
     - 'stat'
   
   key: false

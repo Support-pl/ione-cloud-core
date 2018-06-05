@@ -133,45 +133,30 @@ class IONe
                     sleep(30)
                 end
 
+                postDeploy = PostDeployActivities.new
+
                 #LimitsController
 
-                LOG "Executing Limits Configurator for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
-                onblock(:vm, vmid) do | vm |
-                    lim_res = vm.setResourcesAllocationLimits(
-                        cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
-                    )
-                    if !lim_res.nil? then
-                        LOG "Limits was not set, error: #{lim_res}", 'DEBUG'
-                    end
-                end if ClusterType(host) == 'vcenter'
+                LOG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
+                trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
+                postDeploy.LimitsController(params, vmid)
 
                 #endLimitsController
                 #TrialController
                 if params['trial'] then
-                    LOG "VM #{vmid} will be suspended in 4 hours", 'CreateVMwithSpecs -> TrialController'
                     trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                    Thread.new do # Отделение потока с ожидаением и приостановлением машины+пользователя от основного
-                        sleep(TRIAL_SUSPEND_DELAY)
-                        Suspend({'userid' => userid, 'vmid' => vmid}, false)
-                        LOG "TrialVM ##{vmid} suspended", 'CreateVMwithSpecs -> TrialController'
-                    end
+                    postDeploy.TrialController(vmid)
                 end
                 #endTrialController
                 #AnsibleController
+                
                 if params['ansible'] && params['release'] then
-                    trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"            
-                    Thread.new do
-                        until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                            sleep(15)
-                        end
-                        sleep(60)
-                        AnsibleController(params.merge({
-                            'super' => "CreateVMwithSpecs ->", 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
-                        }))
-                    end
-                    LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'CreateVMwithSpecs -> AnsibleController'
+                    trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"
+                    postDeploy.AnsibleController(params, vmid)
                 end
+
                 #endAnsibleController
+
             end if params['release']
             ##### PostDeploy Activity define END #####
 
@@ -206,8 +191,7 @@ class IONe
     #   Unknown error: { 'error' => e.message, 'trace' => trace(Array<String>)} 
     def CreateVMwithSpecs(params, trace = ["#{__method__.to_s} method called:#{__LINE__}"])
         LOG_STAT()
-        id = id_gen()
-        LOG_CALL(id, true, __method__)
+        LOG_CALL(id = id_gen(), true, __method__)
         defer { LOG_CALL(id, false, 'CreateVMwithSpecs') }
         LOG params.merge!(:method => __method__.to_s).debug_out, 'DEBUG'
         # return
@@ -315,49 +299,34 @@ class IONe
             #####   PostDeploy Activity define   #####
             Thread.new do
 
-                until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                    sleep(30)
-                end
+                onblock(:vm, vmid).wait_for_state
+
+                postDeploy = PostDeployActivities.new
 
                 #LimitsController
 
-                LOG "Executing Limits Configurator for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
-                onblock(:vm, vmid) do | vm |
-                    lim_res = vm.setResourcesAllocationLimits(
-                        cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
-                    )
-                    if !lim_res.nil? then
-                        LOG "Limits was not set, error: #{lim_res}", 'DEBUG'
-                    end
-                end if ClusterType(host) == 'vcenter'
+                LOG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
+                trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
+                postDeploy.LimitsController(params, vmid)
 
                 #endLimitsController
                 #TrialController
+
                 if params['trial'] then
-                    LOG "VM #{vmid} will be suspended in 4 hours", 'CreateVMwithSpecs -> TrialController'
                     trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                    Thread.new do # Отделение потока с ожидаением и приостановлением машины+пользователя от основного
-                        sleep(TRIAL_SUSPEND_DELAY)
-                        Suspend({'userid' => userid, 'vmid' => vmid}, false)
-                        LOG "TrialVM ##{vmid} suspended", 'CreateVMwithSpecs -> TrialController'
-                    end
+                    postDeploy.TrialController(params, vmid)
                 end
+
                 #endTrialController
                 #AnsibleController
+
                 if params['ansible'] && params['release'] then
-                    trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"            
-                    Thread.new do
-                        until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                            sleep(15)
-                        end
-                        sleep(60)
-                        AnsibleController(params.merge({
-                            'super' => "CreateVMwithSpecs ->", 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
-                        }))
-                    end
-                    LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'CreateVMwithSpecs -> AnsibleController'
+                    trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"
+                    postDeploy.AnsibleController(params, vmid)
                 end
+
                 #endAnsibleController
+
             end if params['release']
             ##### PostDeploy Activity define END #####
 
@@ -368,5 +337,46 @@ class IONe
             LOG out.debug_out, 'DEBUG'
             return out
         end
+    end
+    class PostDeployActivities
+        include Deferable
+        def AnsibleController(params, vmid)
+            LOG_CALL(id = id_gen(), true, __method__)
+            Thread.new do
+                onblock(:vm, vmid).wait_for_state
+                sleep(60)
+                AnsibleController(params.merge({
+                    'super' => '', 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
+                }))
+            end
+            LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'AnsibleController'
+            LOG_CALL(id, false, 'AnsibleController')
+        end
+        def LimitsController(params, vmid)
+            LOG_CALL(id = id_gen(), true, __method__)
+            defer { LOG_CALL(id, false, 'LimitsController') }
+            onblock(:vm, vmid) do | vm |
+                lim_res = vm.setResourcesAllocationLimits(
+                    cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
+                )
+                if !lim_res.nil? then
+                    LOG "Limits was not set, error: #{lim_res}", 'DEBUG'
+                end
+            end if ClusterType(host) == 'vcenter'
+        end
+        def TrialController(params, vmid)
+            LOG_CALL(id = id_gen(), true, __method__)        
+            LOG "VM #{vmid} suspend action scheduled", 'TrialController'
+            action_time = Time.now.to_i + ( params['trial-suspend-delay'].nil? ?
+                                TRIAL_SUSPEND_DELAY :
+                                params['trial-suspend-delay'] )
+            onblock(:vm, vmid).wait_for_state
+            if !onblock(:vm, vmid).schedule('suspend', action_time).nil? then
+                LOG 'Schduler proccess error', 'TrialController'
+            end
+            LOG_CALL(id, false, 'TrialController')
+        end
+    
+        deferable :LimitsController
     end
 end

@@ -57,8 +57,8 @@ fi
 
 git clone --branch stable https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/ione-cloud.git
 mv ione-cloud/* ./
-rm -rf opennebula
-bundle install --gemfile server/Gemfile
+rm -rf ione-cloud
+bundle install --gemfile ./Gemfile
 
 cp utils/ione /usr/bin
 chmod +x /usr/bin/ione
@@ -76,4 +76,3 @@ mkdir /var/log/ione
 rm -f ./gemtest.rb
 rm -f ./deploy.sh
 rm -f .gitignore
-1
