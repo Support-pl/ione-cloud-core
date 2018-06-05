@@ -161,6 +161,12 @@ class VirtualMachine
         undeploy-hard
         snapshot-create
     )
+    def generate_schedule_str(id, action, time)
+        return "\nSCHED_ACTION=[\n" + 
+        "  ACTION=\"#{action}\",\n" + 
+        "  ID=\"#{id}\",\n" + 
+        "  TIME=\"#{time}\" ]"
+    end
     # Returns allowed actions to schedule
     # @return [Array]
     def schedule_actions
@@ -189,11 +195,29 @@ class VirtualMachine
             id = 0
         end
 
-        str_periodic = ''
+        # str_periodic = ''
 
+        self.update(self.user_template_str << generate_schedule_str(id, action, time))
+    end
+    # Unschedules given action by ID
+    # @note Not working, if action is already initialized
+    def unschedule(id)
+        self.info!
+        schedule_data, object = self.to_hash['VM']['USER_TEMPLATE']['SCHED_ACTION'], nil
+
+        if schedule_data.class == Array then
+            schedule_data.map do | el |
+                object = el if el['ID'] == id.to_s
+            end
+        elsif schedule_data.class == Hash then
+            return 'none' if schedule_data['ID'] != id.to_s
+            object = schedule_data
+        else
+            return 'none'
+        end
+        action, time = object['ACTION'], object['TIME']
         template = self.user_template_str
-        template << "\nSCHED_ACTION = [ID = #{id.to_s}, ACTION = #{action}, TIME = #{time}" << str_periodic << "]"
-
+        template.slice!(generate_schedule_str(id, action, time))
         self.update(template)
     end
     # Lists actions scheduled in OpenNebula

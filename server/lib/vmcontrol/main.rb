@@ -11,11 +11,13 @@ class IONe
     # @param [Array<String>] trace
     # @return [nil | Array] Returns message and trace if Exception
     def Suspend(params, log = true, trace = ["Suspend method called:#{__LINE__}"])
+        trace << "Generating sys objects:#{__LINE__ + 1}"
         LOG_STAT()
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'Suspend') }
         begin
+            trace << "Printing debug info:#{__LINE__ + 1}"
             LOG "Suspending VM#{params['vmid']}", "Suspend" if log
             LOG "Params: #{params.inspect} | log = #{log}", "Suspend" if log
             trace << "Creating VM object:#{__LINE__ + 1}"
@@ -159,13 +161,16 @@ class IONe
     # Powers On given VM if powered off, or unsuspends if suspended by ID
     # @param [Integer] vmid
     # @return [nil | OpenNebula::Error]
-    def Resume(vmid)
+    def Resume(vmid, trial = false)
         LOG_STAT()
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'Resume') }
 
-        return onblock(VirtualMachine, vmid.to_i).resume
+        onblock(VirtualMachine, vmid.to_i) do | vm |
+            vm.unschedule(0) if trial
+            return vm.resume
+        end
     end
     # Removes choosen snapshot for given VM
     # @param [Integer] vmid - VM ID

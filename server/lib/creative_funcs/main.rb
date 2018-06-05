@@ -370,7 +370,10 @@ class IONe
             action_time = Time.now.to_i + ( params['trial-suspend-delay'].nil? ?
                                 TRIAL_SUSPEND_DELAY :
                                 params['trial-suspend-delay'] )
-            onblock(:vm, vmid).schedule('suspend', action_time)
+            onblock(:vm, vmid).wait_for_state
+            if !onblock(:vm, vmid).schedule('suspend', action_time).nil? then
+                LOG 'Schduler proccess error', 'TrialController'
+            end
             LOG_CALL(id, false, 'TrialController')
         end
     

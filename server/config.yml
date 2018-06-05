@@ -19,6 +19,7 @@ Include: # IONe libraries to include
   - 'data_import_handler'
   - 'useful_things'
   - 'creative_funcs'
+  - 'ione-scheduler'
 
 Modules: # IONe modules to connect
   - 'std++'
@@ -28,7 +29,6 @@ Modules: # IONe modules to connect
   - 'stat'
   - 'webapi'
   - 'updatesmanager'
-#  - 'telegrambot'
 
 Scripts: # Automation scripts to start
   - 'snap-controller'
@@ -38,6 +38,11 @@ vCenter:
 
 SnapshotController:
   check-period: 3600 # Snapshots check frequency in seconds
+
+DataBase:
+  user: 'root'
+  pass: 'opennebula'
+  host: 'localhost'
 
 Other:
   debug: false

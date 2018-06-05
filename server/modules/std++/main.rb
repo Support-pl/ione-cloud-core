@@ -27,9 +27,11 @@ class Hash
         end
         return result
     end
+    # Replaces string key to symbols
+    # @return [Hash]
     def to_sym!
         self.keys.each do |key| 
-            self[key.to_sym] = self.delete key
+            self[key.to_sym] = self.delete key if key.class == String
         end
         return self
     end
