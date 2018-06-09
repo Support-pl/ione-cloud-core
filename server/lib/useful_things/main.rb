@@ -85,7 +85,7 @@ class IONe
     # @example
     #   => String('example-node-vcenter') => Host was found
     #   => nil => Host wasn't found
-    def get_vm_host(vmid) # Получение имени кластера, которому принадлежит ВМ
+    def get_vm_host(vmid)
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'get_vm_host') }
@@ -184,7 +184,7 @@ class IONe
     # @example
     #   DatastoresMonitoring('sys') => [{"id"=>101, "name"=>"NASX", "full_size"=>"16TB", "used"=>"3.94TB", "type"=>"HDD", "deploy"=>"TRUE"}, ...]
     #   DatastoresMonitoring('ing') => String("WrongTypeExeption: type 'ing' not exists")
-    def DatastoresMonitoring(type) # Мониторинг занятости дисков на NAS*
+    def DatastoresMonitoring(type)
         LOG_STAT()
         id = id_gen()
         LOG_CALL(id, true, __method__)

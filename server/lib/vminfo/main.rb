@@ -1,5 +1,5 @@
 ########################################################
-#   Методы для получения информации о ВМ и Аккаунтах   #
+#           Getters for VM's and Users info            #
 ########################################################
 
 puts 'Extending Handler class by VM and User info getters'
@@ -60,7 +60,7 @@ class IONe
         defer { LOG_CALL(id, false, 'GetVMIDbyIP') }
         vm_pool = VirtualMachinePool.new(@client)
         vm_pool.info_all!
-        vm_pool.each do |vm| # Прочесываем пул, пока не найдем ВМ с IP равным заданному
+        vm_pool.each do |vm|
             break if nil
             begin
                 return vm.id if ip.chomp == GetIP(vm.id).chomp
@@ -126,17 +126,17 @@ class IONe
             vm.info!
             vm_hash = vm.to_hash['VM']
             return {
-                # "Имя, владелец, id владельца машины"
+                # "Name, owner, owner id"
                 'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'],
-                # IP, кластер и упрощенное состояние ВМ
+                # IP, host and vm state
                 'IP' => GetIP(vmid), 'HOST' => get_vm_host(vmid), 'STATE' => LCM_STATE(vmid) != 0 ? LCM_STATE_STR(vmid) : STATE_STR(vmid),
-                # Технические характеристики ВМ
+                # VM specs
                 'CPU' => vm_hash['TEMPLATE']['VCPU'], 'RAM' => vm_hash['TEMPLATE']['MEMORY'],
-                # Данные об истории появления ВМ
+                # VM creation hist
                 'IMPORTED' => vm_hash['TEMPLATE']['IMPORTED'].nil? ? 'NO' : 'YES'
             }
-        end if vmid.class != VirtualMachine # Если приходит vmid
-        vm, vmid = vmid, vmid.id # Если приходит объект
+        end if vmid.class != VirtualMachine # if vmid
+        vm, vmid = vmid, vmid.id # if vm object
         vm_hash = vm.to_hash['VM']
         {
             'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'],

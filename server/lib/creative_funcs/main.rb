@@ -56,7 +56,6 @@ class IONe
         LOG_CALL(id, true)
         defer { LOG_CALL(id, false, 'Reinstall') }
         begin
-            # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
             LOG params.merge!({ :method => 'Reinstall' }).debug_out, 'DEBUG'
             return nil if params['debug'] == 'turn_method_off'
             return { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } if params['debug'] == 'data'   
@@ -204,9 +203,9 @@ class IONe
             ###################### Doing some important system stuff ###############################################################
             
             return nil if DEBUG
-            LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}" # Логи
+            LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}"
             
-            LOG_TEST "Params: #{params.inspect}" if DEBUG # Логи
+            LOG_TEST "Params: #{params.inspect}" if DEBUG
             
             trace << "Checking template:#{__LINE__ + 1}"
             onblock(:t, params['templateid']) do | t |

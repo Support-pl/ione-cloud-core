@@ -17,7 +17,6 @@ yum install -y git make automake gcc gcc-c++ kernel-devel ruby-devel zeromq zero
 gem install zmqjsonrpc
 sed -i 's/enabled\=0/enabled\=1/g'  /etc/yum.repos.d/opennebula.repo
 
-# предусмотреть варианты yum.repos.d
 
 # Creating gem-test file
 

@@ -21,9 +21,7 @@
 1. Download deploy.sh script from our repository
 
 ```sh
-$ curl # скачать файл deploy.sh из нашего репозитория
 $ sh ./deploy.sh # Run this script from the directory where you wish to IONe be placed  
-# Привести здесь пример вывода программы при правильной и неправильной установки
 ```
 
 After the scripts will end its work, you will have:
