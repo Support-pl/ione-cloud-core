@@ -42,6 +42,6 @@ class IONe
                 `cp -rf /tmp/ione_current/* #{ROOT}/`                
             end
         end
-        return 'Update proccess started, check logs for information'
+        'Update proccess started, check logs for information'
     end
 end

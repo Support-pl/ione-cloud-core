@@ -17,7 +17,7 @@ module ONeHelper
         def matches(child, name, exact = false)
             is_vm = child.class == RbVmomi::VIM::VirtualMachine
             name_matches = (name == "*") || (exact ? (child.name == name) : (child.name.include? name))
-            return is_vm && name_matches
+            is_vm && name_matches
         end
         found = []
         folder.children.each do |child|
@@ -29,6 +29,14 @@ module ONeHelper
         end
       
         found.flatten
+    end
+
+    def get_vcenter_dc(host)
+        host = host.to_hash!['HOST']['TEMPLATE']
+        VIM.connect(
+            :host => host['VCENTER_HOST'], :insecure => true,
+            :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
+        ).serviceInstance.find_datacenter
     end
 
 
@@ -51,7 +59,7 @@ module ONeHelper
     #   p vm.class
     #       => #<OpenNebula::VirtualMachine:0x00000004c4ead8>
     def get_pool_element(type, id, client)
-        return type.new(type.build_xml(id), client)
+        type.new(type.build_xml(id), client)
     end
 
     # Generates any 'Pool' element object or yields it
@@ -80,7 +88,7 @@ module ONeHelper
         if block_given?
             yield get_pool_element(object, id, client)
         else
-            return get_pool_element(object, id, client)
+            get_pool_element(object, id, client)
         end
     end
     # Returns random Datastore ID filtered by disk type
@@ -92,7 +100,7 @@ module ONeHelper
         dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' } if ds_type != nil
         ds = dss[rand(dss.size)]
         LOG "Deploying to #{ds['name']}", 'DEBUG'
-        return ds['id']
+        ds['id']
     end
     # Returns given cluster hypervisor type
     # @param [Integer] hostid ID of the host to check
@@ -103,7 +111,7 @@ module ONeHelper
     def ClusterType(hostid)
         onblock(:h, hostid) do | host |
             host.info!
-            return host.to_hash['HOST']['TEMPLATE']['HYPERVISOR']
+            host.to_hash['HOST']['TEMPLATE']['HYPERVISOR']
         end
     end
 end
@@ -118,7 +126,7 @@ class User
     # @note Method sets quota to 'used' values by default
     # @return nil
     def update_quota_by_vm(spec = {})
-        quota = (self.info! || self.to_hash)['USER']['VM_QUOTA']['VM']
+        quota = self.to_hash!['USER']['VM_QUOTA']['VM']
         if quota.nil? then
             quota = Hash.new
         end
@@ -138,7 +146,7 @@ class Template
     # @return [Boolean]
     def win?
         self.info!
-        return self.to_hash['VMTEMPLATE']['TEMPLATE']['USER_INPUTS'].include? 'USERNAME'
+        self.to_hash['VMTEMPLATE']['TEMPLATE']['USER_INPUTS'].include? 'USERNAME'
     end
 end
 
@@ -162,7 +170,7 @@ class VirtualMachine
         snapshot-create
     )
     def generate_schedule_str(id, action, time)
-        return "\nSCHED_ACTION=[\n" + 
+        "\nSCHED_ACTION=[\n" + 
         "  ACTION=\"#{action}\",\n" + 
         "  ID=\"#{id}\",\n" + 
         "  TIME=\"#{time}\" ]"
@@ -170,7 +178,7 @@ class VirtualMachine
     # Returns allowed actions to schedule
     # @return [Array]
     def schedule_actions
-        return SCHEDULABLE_ACTIONS
+        SCHEDULABLE_ACTIONS
     end
     # Adds actions to OpenNebula internal scheduler, like --schedule in 'onevm' cli utility
     # @param [String] action - Action which should be scheduled
@@ -180,20 +188,21 @@ class VirtualMachine
     def schedule(action, time, periodic = nil)
         return 'Unsupported action' if !SCHEDULABLE_ACTIONS.include? action
         self.info!
-        begin
-            ids = self.to_hash['VM']['USER_TEMPLATE']['SCHED_ACTION']
-            if ids.class == Array then
-                id = ids.last['ID'].to_i + 1
-            elsif ids.class == Hash then
-                id = ids['ID'].to_i + 1
-            elsif ids.class == NilClass then
-                id = ids.to_i
-            else
-                raise
+        id = 
+            begin
+                ids = self.to_hash['VM']['USER_TEMPLATE']['SCHED_ACTION']
+                if ids.class == Array then
+                    ids.last['ID'].to_i + 1
+                elsif ids.class == Hash then
+                    ids['ID'].to_i + 1
+                elsif ids.class == NilClass then
+                    ids.to_i
+                else
+                    raise
+                end
+            rescue
+                0
             end
-        rescue
-            id = 0
-        end
 
         # str_periodic = ''
 
@@ -224,7 +233,7 @@ class VirtualMachine
     # @return [NilClass | Hash | Array]
     def scheduler
         self.info!
-        return self.to_hash['VM']['USER_TEMPLATE']['SCHED_ACTION']
+        self.to_hash['VM']['USER_TEMPLATE']['SCHED_ACTION']
     end
     # Waits until VM will have the given state
     # @param [Integer] s - VM state to wait for
@@ -238,7 +247,7 @@ class VirtualMachine
             i += 1
             self.info!
         end
-        return true
+        true
     end
     # Sets resources allocation limits at vCenter node
     # @note For correct work of this method, you must keep actual vCenter Password at VCENTER_PASSWORD_ACTUAL attribute in OpenNebula
@@ -261,11 +270,8 @@ class VirtualMachine
         return 'Unsupported query' if IONe.new($client).get_vm_data(self.id)['IMPORTED'] == 'YES'        
         begin
             query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
-            host = host.info! || host.to_hash['HOST']['TEMPLATE']
-            datacenter = VIM.connect(
-                :host => host['VCENTER_HOST'], :insecure => true,
-                :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
-            ).serviceInstance.find_datacenter
+            datacenter = get_vcenter_dc(host)
+
             vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
             disk = vm.disks.first
 
@@ -300,7 +306,7 @@ class VirtualMachine
         rescue => e
             return "Reconfigure Error:#{e.message}"
         end
-        return nil
+        nil
     end
     # Resize VM without powering off the VM
     # @param [Hash] spec
@@ -313,11 +319,8 @@ class VirtualMachine
         return false if !self.hotAddEnabled?
         begin
             host = onblock(Host, IONe.new($client).get_vm_host(self.id))
-            host = host.info! || host.to_hash['HOST']['TEMPLATE']
-            datacenter = VIM.connect(
-                :host => host['VCENTER_HOST'], :insecure => true,
-                :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
-            ).serviceInstance.find_datacenter
+            datacenter = get_vcenter_dc(host)
+
             vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
             query = {
                 :numCPUs => spec[:cpu],
@@ -337,11 +340,8 @@ class VirtualMachine
     def hotAddEnabled?(name = nil)
         begin
             host = onblock(Host, IONe.new($client).get_vm_host(self.id))
-            host = host.info! || host.to_hash['HOST']['TEMPLATE']
-            datacenter = VIM.connect(
-                :host => host['VCENTER_HOST'], :insecure => true,
-                :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
-            ).serviceInstance.find_datacenter
+            datacenter = get_vcenter_dc(host)
+
             vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
             return {
                 :cpu => vm.config.cpuHotAddEnabled, :ram => vm.config.memoryHotAddEnabled
@@ -359,11 +359,8 @@ class VirtualMachine
     def hotResourcesControlConf(spec = {:cpu => true, :ram => true, :name => nil})
         begin
             host, name = onblock(Host, IONe.new($client).get_vm_host(self.id)), spec[:name]
-            host = host.info! || host.to_hash['HOST']['TEMPLATE']
-            datacenter = VIM.connect(
-                :host => host['VCENTER_HOST'], :insecure => true,
-                :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
-            ).serviceInstance.find_datacenter
+            datacenter = get_vcenter_dc(host)
+
             vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
             query = {
                 :cpuHotAddEnabled => spec[:cpu],
@@ -386,7 +383,7 @@ class VirtualMachine
             rescue
             end if state
         rescue => e
-            return "Unexpected error, cannot handle it: #{e.message}"
+            "Unexpected error, cannot handle it: #{e.message}"
         end
     end
     # Gets resources allocation limits from vCenter node
@@ -397,16 +394,13 @@ class VirtualMachine
     def getResourcesAllocationLimits(name = nil)
         begin
             host = onblock(Host, IONe.new($client).get_vm_host(self.id))
-            host = host.info! || host.to_hash['HOST']['TEMPLATE']
-            datacenter = VIM.connect(
-                :host => host['VCENTER_HOST'], :insecure => true,
-                :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
-            ).serviceInstance.find_datacenter
+            datacenter = get_vcenter_dc(host)
+
             vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
             vm_disk = vm.disks.first
-            return {cpu: vm.config.cpuAllocation.limit, ram: vm.config.cpuAllocation.limit, iops: vm_disk.storageIOAllocation.limit}
+            {cpu: vm.config.cpuAllocation.limit, ram: vm.config.cpuAllocation.limit, iops: vm_disk.storageIOAllocation.limit}
         rescue => e
-            return "Unexpected error, cannot handle it: #{e.message}"
+            "Unexpected error, cannot handle it: #{e.message}"
         end
     end
     # Returns owner user ID
@@ -414,18 +408,38 @@ class VirtualMachine
     # @return [Integer]
     def uid(info = true)
         self.info! if info
-        return self.to_hash['VM']['UID'].to_i
+        self.to_hash['VM']['UID'].to_i
     end
     # Gives info about snapshots availability
     # @return [Boolean]
     def got_snapshot?
         self.info!
-        return !self.to_hash['VM']['TEMPLATE']['SNAPSHOT'].nil?
+        !self.to_hash['VM']['TEMPLATE']['SNAPSHOT'].nil?
     end
     # Returns all available snapshots
     # @return [Array<Hash>, Hash, nil]
     def list_snapshots
-        out = self.info! || self.to_hash['VM']['TEMPLATE']['SNAPSHOT']
-        return out.class == Array ? out : [ out ]
+        out = self.to_hash!['VM']['TEMPLATE']['SNAPSHOT']
+        out.class == Array ? out : [ out ]
+    end
+    def state!
+        self.info! || self.state
+    end
+    def lcm_state!
+        self.info! || self.lcm_state
+    end
+    def state_str!
+        self.info! || self.state_str
+    end
+    def lcm_state_str!
+        self.info! || self.lcm_state_str
+    end    
+end
+
+# OpenNebula::XMLElement class
+class XMLElement
+    # Calls info! method and returns a hash representing the object
+    def to_hash!
+        self.info! || self.to_hash
     end
 end

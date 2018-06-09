@@ -40,7 +40,7 @@ vm = OpenNebula::VirtualMachine.new(xml, $client)
 
 rc = vm.allocate(template)
 result = rc if OpenNebula.is_error?(rc)
-while true do
+loop do
     vm.update("
         NIC = [
         BRIDGE = \"#{print 'Ввести название сети(btk-unlim/btk-inet): ' || gets.to_s.chomp}\",

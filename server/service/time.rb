@@ -4,7 +4,7 @@ def time(method = 'none')
     return Time.at(Time.now + TRIAL_SUSPEND_DELAY).ctime if method == 'TrialController'
     out = Time.now.ctime
     return 'Date-Time Error' if out.nil?
-    return out
+    out
 end
 
 # Formats time from seconds from the start of Time to dd:hh:mm:ss format
@@ -17,5 +17,5 @@ def fmt_time(sec)
     hours = (sec / 3600.0).to_i
     sec -= hours * 3600
     minutes = (sec / 60.0).to_i
-    return "#{days}d:#{hours}h:#{minutes}m:#{sec % 60}s"
+    "#{days}d:#{hours}h:#{minutes}m:#{sec % 60}s"
 end

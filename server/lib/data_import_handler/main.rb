@@ -21,8 +21,8 @@ class IONe
             vm = get_pool_element(VirtualMachine, params['vmid'], @client)
             vm.chown(userid, USERS_GROUP)
             user = User.new(User.build_xml(userid), @client)
-            used = (vm.info! || vm.to_hash)['VM']['TEMPLATE']
-            user_quota = (user.info! || user.to_hash)['USER']['VM_QUOTA']
+            used = vm.to_hash!['VM']['TEMPLATE']
+            user_quota = user.to_hash!['USER']['VM_QUOTA']
             begin
                 user.set_quota(
                     "VM=[
@@ -39,7 +39,7 @@ class IONe
                 LOG userid, 'DEBUG'
             end
         end
-        return params.map! do |el|
+        params.map! do |el|
             el = IMPORT(el)
         end
     end

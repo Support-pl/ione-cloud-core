@@ -45,7 +45,7 @@ module IONeLoggerKit
 
         $log << "#{msg} | #{destination}"
         puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
-        return true
+        true
     end
     # Logging the message to the one of three destinations
     # @param [String] msg Message you want to log
@@ -73,7 +73,7 @@ module IONeLoggerKit
 
         $log << "#{msg} | #{destination}"
         puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
-        return true
+        true
     end
 
     # Processes list are active now 
@@ -102,15 +102,12 @@ module IONeLoggerKit
         end
         msg = "[ #{time()} ] Method #{called ? $PROC.push("#{method}:#{id}").last : $PROC.delete("#{method}:#{id}")} #{called ? 'called' : 'closed'}\n" if level < 2
         if level > 1  || !called then
-            tabs = "                             "
-            for i in 0..(level - 3) do
-                tabs += "    "
-            end
+            tabs = (0..(level - 3)).to_a.inject("                             "){|tabs, i| tabs +  "    "}
             msg = "#{tabs}|-- Method #{method.to_s}:#{id} #{called ? 'called' : 'closed'}\n"
         end
 
         File.open(LOG_ROOT + '/sys.log', 'a'){ |log| log.write msg }
-        return true
+        true
     end
 
     # ID counter
@@ -119,7 +116,7 @@ module IONeLoggerKit
     # ID generator
     # @return [String] heximal number
     def id_gen
-        return ($id += 1).to_s(16)
+        ($id += 1).to_s(16)
     end
 end
 
@@ -130,7 +127,7 @@ class IONe
         LOG_STAT()        
         LOG "Log file content has been copied remotely", "activity_log"
         log = File.read("#{LOG_ROOT}/activities.log")
-        return log
+        log
     end
     # Logs given message to activities.log
     # @param [String] msg - your message
@@ -138,6 +135,6 @@ class IONe
     def log(msg)
         LOG_STAT()        
         LOG(msg, "RemoteLOG")
-        return msg
+        msg
     end
 end

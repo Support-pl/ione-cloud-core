@@ -19,7 +19,7 @@ def Schedule(time, action, *params)
         "INSERT INTO action (method, params, time)
          VALUES ('#{action}', '#{JSON.generate(params)}', '#{time}')"
     )
-    return @db_client.query('SELECT * FROM action').to_a.last['id']
+    @db_client.query('SELECT * FROM action').to_a.last['id']
 end
 
 def Unschedule(id)
@@ -30,7 +30,7 @@ end
 
 def Invoke(action)
     Unschedule(action['id'])
-    return IONe.new($client).send(action['method'], *(JSON.parse(action['params'])))
+    IONe.new($client).send(action['method'], *(JSON.parse(action['params'])))
 end
 
 Thread.new do
@@ -39,7 +39,13 @@ Thread.new do
         @db_client.query(
             "SELECT * FROM action WHERE time < #{Time.now.to_i}"
             ).to_a.each do | action |
-                Invoke(action)
+                result = 
+                    begin
+                       Invoke(action)
+                    rescue => e
+                       e.message
+                    end
+                LOG "Calling #{action['method']}(#{JSON.parse(action['params']).to_s}), result:\n#{result.to_s}", 'IONeScheduler'
             end
 
         sleep(30)
