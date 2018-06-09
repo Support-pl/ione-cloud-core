@@ -1,8 +1,8 @@
 # Integrated OpenNebula Cloud Server API and toolkit documentation
 [Homepage](https://ione-cloud.net)
-[GitHub](https://github.com)
+[Docs](https://docs.ione-cloud.net)
+[GitHub](https://github.com/ione-cloud)
 [Creators](https://support.by)
-[Author](http://slntopp.xyz)
 
 ## Synopsis
 
