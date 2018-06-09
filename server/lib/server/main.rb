@@ -11,7 +11,7 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'locks_stat') }
-        return $thread_locks
+        $thread_locks
     end
     # Returns current running IONe Cloud Server version
     # @return [String]
@@ -20,7 +20,7 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'version') }
-        return VERSION
+        VERSION
     end
     # Returns IONe Cloud Server uptime(formated)
     # @return [String]
@@ -29,7 +29,7 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'uptime') }
-        return fmt_time(Time.now.to_i - STARTUP_TIME)
+        fmt_time(Time.now.to_i - STARTUP_TIME)
     end
     # Returns CONF Hash as JSON, with crypted private data
     # @return [String] JSON
@@ -38,7 +38,7 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'conf') }
-        return CONF.privatise.out
+        CONF.privatise.out
     end
     # @api private
     def reboot(pa)
@@ -46,6 +46,6 @@ class IONe
     end
     # Returns active processes list
     def proc
-        return $PROC
+        $PROC
     end
 end

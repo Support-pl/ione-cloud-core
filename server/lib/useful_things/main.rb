@@ -13,7 +13,7 @@ class IONe
         if msg == "PING" then
             return "PONG"
         end
-        return "DONE"
+        "DONE"
     end
     # Returns vmid by owner id
     # @param [Integer] uid - owner id
@@ -30,7 +30,7 @@ class IONe
         vmp.each do | vm |
             return vm.id.to_i if vm.uid(false) == uid
         end
-        return 'none'
+        'none'
     end
     # Returns user vms by user id
     # @param [Integer] uid - owner id
@@ -46,7 +46,7 @@ class IONe
         vmp.each do | vm |
             vms << { :id => vm.id.to_i, :name => vm.name } if vm.uid(false) == uid
         end
-        return vms
+        vms
     end
     # Returns user id by username
     # @param [String] name - username
@@ -63,7 +63,7 @@ class IONe
         up.each do | u |
             return u.id.to_i if u.name == name
         end
-        return 'none'        
+        'none'        
     end
     # Returns vmid, userid and VM IP by owner username
     # @param [String] name - username
@@ -77,7 +77,7 @@ class IONe
         defer { LOG_CALL(id, false, 'get_vm_by_uname') }
         userid = get_uid_by_name(name)
         vmid = get_vm_by_uid(userid)
-        return { :vmid => vmid, :userid => userid, :ip => GetIP(vmid) }
+        { :vmid => vmid, :userid => userid, :ip => GetIP(vmid) }
     end
     # Returns host name, where VM has been deployed
     # @param [Integer] vmid - VM ID
@@ -94,7 +94,7 @@ class IONe
             vm = vm.to_hash['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
             return vm.last['HOSTNAME'] if vm.class == Array # If history consists of 2 or more lines - returns last
             return vm['HOSTNAME'] if vm.class == Hash # If history consists of only one line - returns it
-            return nil # Returns NilClass if did not found anything - possible if vm is at HOLD or PENDING state
+            nil # Returns NilClass if did not found anything - possible if vm is at HOLD or PENDING state
         end
     end
     # Returns VM listing with some additional data, available nodes list and free IP-addresses in AddressPool
@@ -142,7 +142,7 @@ class IONe
                 break if vn.nil?
                 begin
                     # This, generates list of free addresses in given VN
-                    vn = (vn.info! || vn.to_hash)["VNET"]["AR_POOL"]["AR"][0]
+                    vn = vn.to_hash!["VNET"]["AR_POOL"]["AR"][0]
                     next if (vn['IP'] && vn['SIZE']).nil?
                     pool = ((vn["IP"].split('.').last.to_i)..(vn["IP"].split('.').last.to_i + vn["SIZE"].to_i)).to_a.map! { |item| vn['IP'].split('.').slice(0..2).join('.') + "." + item.to_s }
                     leases = vn['LEASES']['LEASE'].map {|lease| lease['IP']}
@@ -175,7 +175,7 @@ class IONe
         defer { LOG_CALL(id, false, 'GetUserInfo') }
         onblock(User, userid) do |user|
             user.info!
-            return user.to_xml
+            user.to_xml
         end
     end
     # Returns monitoring information about datastores
@@ -210,7 +210,7 @@ class IONe
                 'deploy' => img.to_hash['DATASTORE']['TEMPLATE']['DEPLOY']
             } if img.short_type_str == type && img.id > 2
         end
-        return mon
+        mon
     end
     # Returns monitoring information about nodes
     # @return [Array<Hash>]
@@ -242,11 +242,11 @@ class IONe
                 :cpu => "#{(host.to_hash['HOST_SHARE']['USED_CPU'].to_f / host.to_hash['HOST_SHARE']['TOTAL_CPU'].to_f * 100).round(2).to_s}%"
             }
         end
-        return mon
+        mon
     end
     # @api private
     def getglog
-        return $log
+        $log
     end
     # Checks if resources hot add enabled
     # @param [Integer] name VM ID
@@ -255,7 +255,7 @@ class IONe
     # @note Method searches VM by it's default name: one-(id)-(name), if target vm got another name, you should provide it
     # @return [Hash | String] Returns limits Hash if success or exception message if fails
     def get_vm_hotadd_conf(vmid, name = nil)
-        return onblock(:vm, vmid).hotAddEnabled? name
+        onblock(:vm, vmid).hotAddEnabled? name
     end
     # Sets resources hot add settings
     # @param [Hash] spec
@@ -266,7 +266,7 @@ class IONe
     # @return [true | String]
     def set_vm_hotadd_conf(params)
         params.to_sym!
-        return onblock(:vm, params[:vmid]).hotResourcesControlConf(params)
+        onblock(:vm, params[:vmid]).hotResourcesControlConf(params)
     end
     # Resize VM without powering off the VM
     # @param [Hash] spec
@@ -278,6 +278,6 @@ class IONe
     # @note Method returns true if resize action ended correct, false if VM not support hot reconfiguring
     def vm_hotadd(params)
         params.to_sym!
-        return onblock(:vm, params[:vmid]).hot_resize(params)
+        onblock(:vm, params[:vmid]).hot_resize(params)
     end
 end

@@ -6,11 +6,11 @@ puts 'Extending Hash class by out method'
 class Hash
     # Returns hash as 'pretty generated' JSON String
     def out()
-        return JSON.pretty_generate(self)
+        JSON.pretty_generate(self)
     end
     # Returns hash as 'pretty generated' JSON String with replaced JSON(':' to '=>' and 'null' to 'nil')
     def debug_out()
-        return JSON.pretty_generate(self).gsub("\": ", "\" => ").gsub(" => null", " => nil")
+        JSON.pretty_generate(self).gsub("\": ", "\" => ").gsub(" => null", " => nil")
     end
     # @!visibility private
     def privatise
@@ -25,7 +25,7 @@ class Hash
                 result[key] = value
             end
         end
-        return result
+        result
     end
     # Replaces string key to symbols
     # @return [Hash]
@@ -33,7 +33,7 @@ class Hash
         self.keys.each do |key| 
             self[key.to_sym] = self.delete key if key.class == String
         end
-        return self
+        self
     end
 end
 
@@ -45,7 +45,7 @@ class String
         for key in CONF['PrivateKeys'] do
             result = result || self.include?(key)
         end
-        return result
+        result
     end
 end
 
@@ -55,6 +55,6 @@ puts 'Extending NilClass by add method'
 class NilClass
     # @!visibility private    
     def +(obj)
-        return obj
+        obj
     end
 end

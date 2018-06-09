@@ -17,16 +17,18 @@ class IONe
         defer { LOG_CALL(id, false, 'UserCreate') }
         user = User.new(User.build_xml(0), client) # Generates user template using oneadmin user object
         groupid = nil
-        begin
-            allocation_result = user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [USERS_GROUP, groupid]) # Создание и размещение в пул нового пользователя login:pass
-        rescue => e
-            raise e.message
+        allocation_result =
+            begin
+                user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [USERS_GROUP, groupid]) # Allocating new user with login:pass
+            rescue => e
+                e.message
+            end
+        if !allocation_result.nil? then
+            LOG allocation_result.message, 'DEBUG' #If allocation was successful, allocate method returned nil
             return 0
         end
-    
-        LOG allocation_result.message, 'DEBUG' if !allocation_result.nil? # В случае неудачного размещения будет ошибка, при удачном nil
         return user.id, user if object
-        return user.id
+        user.id
     end
     # Creates VM for Old OpenNebula account and with old IP address
     # @param [Hash] params - all needed data for VM reinstall
@@ -73,7 +75,7 @@ class IONe
             vm = onblock(VirtualMachine, params['vmid'])
             LOG 'Collecting data from old template', 'DEBUG'
             trace << "Collecting data from old template:#{__LINE__ + 1}"            
-            nic, context = vm.info! || vm.to_hash['VM']['TEMPLATE']['NIC'], vm.to_hash['VM']['TEMPLATE']['CONTEXT']
+            nic, context = vm.to_hash!['VM']['TEMPLATE']['NIC'], vm.to_hash['VM']['TEMPLATE']['CONTEXT']
             
             LOG 'Initializing template obj'
             LOG 'Generating new template', 'DEBUG'

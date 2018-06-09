@@ -37,9 +37,9 @@ class IONe
                     )
             end
             trace << "Killing proccess:#{__LINE__ + 1}"
-            return 0
+            0
         rescue => e
-            return e.message, trace
+            e.message, trace
         end
     end
     # Suspends VirtualMachine only
@@ -59,24 +59,26 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'Unsuspend') }
-        begin
-            LOG "Resuming VM ##{params['vmid']}", "Resume"
-            trace << "Creating VM object:#{__LINE__ + 1}"            
-            onblock(VirtualMachine, params['vmid'].to_i) do | vm |
-                trace << "Resuming VM:#{__LINE__ + 1}"                
-                vm.resume
-                trace << "Changing user rights:#{__LINE__ + 1}"                
-                vm.chmod(
-                    -1,  1, -1,
-                    -1, -1, -1,
-                    -1, -1, -1
-                )
+        result = 
+            begin
+                LOG "Resuming VM ##{params['vmid']}", "Resume"
+                trace << "Creating VM object:#{__LINE__ + 1}"            
+                onblock(VirtualMachine, params['vmid'].to_i) do | vm |
+                    trace << "Resuming VM:#{__LINE__ + 1}"                
+                    vm.resume
+                    trace << "Changing user rights:#{__LINE__ + 1}"                
+                    vm.chmod(
+                        -1,  1, -1,
+                        -1, -1, -1,
+                        -1, -1, -1
+                    )
+                end
+                trace << "Killing proccess:#{__LINE__ + 1}"            
+                0
+            rescue => e
+                e.message, trace
             end
-            trace << "Killing proccess:#{__LINE__ + 1}"            
-            return 0
-        rescue => e
-            return e.message, trace
-        end
+        result
     end
     # Reboots Virtual Machine
     # @param [Integer] vmid - VirtualMachine ID to reboot
@@ -91,7 +93,7 @@ class IONe
         return "VMID cannot be nil!" if vmid.nil?     
         LOG "Rebooting VM#{vmid}", "Reboot"
         LOG "Params: vmid = #{vmid}, hard = #{hard}", "DEBUG" #if DEBUG
-        return onblock(VirtualMachine, vmid.to_i).reboot(hard) # true означает, что будет вызвана функция reboot-hard
+        onblock(VirtualMachine, vmid.to_i).reboot(hard) # true означает, что будет вызвана функция reboot-hard
     end
     # Terminates(deletes) user account and VM
     # @param [Integer] userid - user to delete
@@ -118,7 +120,7 @@ class IONe
         rescue => err
             return err
         end
-        return 0
+        0
     end
     # Powering off VM
     # @note Don't user OpenNebula::VirtualMachine#shutdown - this method deletes VM's
@@ -131,7 +133,7 @@ class IONe
         defer { LOG_CALL(id, false, 'Shutdown') }
                 
         LOG "Shutting down VM#{vmid}", "Shutdown"
-        return onblock(VirtualMachine, vmid).poweroff
+        onblock(VirtualMachine, vmid).poweroff
     end
     # @!visibility private
     def Release(vmid)
@@ -169,7 +171,7 @@ class IONe
 
         onblock(VirtualMachine, vmid.to_i) do | vm |
             vm.unschedule(0) if trial
-            return vm.resume
+            vm.resume
         end
     end
     # Removes choosen snapshot for given VM
@@ -198,7 +200,7 @@ class IONe
         defer { LOG_CALL(id, false, 'MKSnapshot') }
 
         LOG "Snapshot create-query accepted", 'SnapController' if log
-        return onblock(VirtualMachine, vmid.to_i).snapshot_create(name)
+        onblock(VirtualMachine, vmid.to_i).snapshot_create(name)
     end
     # Reverts choosen snapshot for given VM
     # @param [Integer] vmid - VM ID
@@ -212,6 +214,6 @@ class IONe
         defer { LOG_CALL(id, false, 'RevSnapshot') }
         
         LOG "Snapshot revert-query accepted", 'SnapController' if log
-        return onblock(VirtualMachine, vmid.to_i).snapshot_revert(snapid.to_i)
+        onblock(VirtualMachine, vmid.to_i).snapshot_revert(snapid.to_i)
     end
 end

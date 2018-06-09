@@ -1,6 +1,6 @@
 begin
     LOG 'Snapshot Controller has been initialized', 'SnapController'
-    while true do
+    loop do
         begin
             $snap_controller_status = 'ACTIVE'
             vm_pool = VirtualMachinePool.new($client)

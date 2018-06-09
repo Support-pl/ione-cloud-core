@@ -13,7 +13,7 @@ module Deferable
     #   end
     def defer &block
         @defered_methods << block
-        return true
+        true
     end
 
     # @!visibility private

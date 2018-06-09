@@ -263,11 +263,12 @@ Functions, classes and variables defined at __main__ scope available everywhere 
 
 ```rb
 client = OpenNebula::Client.new('oneadmin:secret')
-while true do # Rebooting VM #777 every hour if it's at the state RUNNING
+loop do # Rebooting VM #777 every hour if it's at the state RUNNING
   onblock(:vm, 777, client) do | vm |
     vm.info!
     vm.reboot if vm.lcm_state_str == 'RUNNING'
   end
+  sleep(30)
 end
 ```
 
