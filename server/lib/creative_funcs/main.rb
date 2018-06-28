@@ -124,14 +124,11 @@ class IONe
 
                 host = params['host'].nil? ? $default_host : params['host']
 
-                LOG 'Deploying VM to the host', 'DEBUG'
                 onblock(:vm, vmid) do | vm |
-                    vm.deploy(host, false, ChooseDS(params['ds_type'])) if params['release']
-                end
-
-                LOG 'Waiting until VM will be deployed', 'DEBUG'
-                until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                    sleep(30)
+                    LOG 'Deploying VM to the host', 'DEBUG'
+                    vm.deploy(host, false, ChooseDS(params['ds_type']))
+                    LOG 'Waiting until VM will be deployed', 'DEBUG'
+                    vm.wait_for_state
                 end
 
                 postDeploy = PostDeployActivities.new
@@ -140,20 +137,20 @@ class IONe
 
                 LOG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
                 trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
-                postDeploy.LimitsController(params, vmid)
+                postDeploy.LimitsController(params, vmid, host)
 
                 #endLimitsController
                 #TrialController
                 if params['trial'] then
                     trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                    postDeploy.TrialController(vmid)
+                    postDeploy.TrialController(params, vmid, host)
                 end
                 #endTrialController
                 #AnsibleController
                 
                 if params['ansible'] && params['release'] then
                     trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"
-                    postDeploy.AnsibleController(params, vmid)
+                    postDeploy.AnsibleController(params, vmid, host)
                 end
 
                 #endAnsibleController
@@ -300,7 +297,11 @@ class IONe
             #####   PostDeploy Activity define   #####
             Thread.new do
 
+                LOG "Starting PostDeploy Activities for VM#{vmid}", 'DEBUG'
+                
                 onblock(:vm, vmid).wait_for_state
+
+                LOG "VM is active now, let it go", 'DEBUG'
 
                 postDeploy = PostDeployActivities.new
 
@@ -308,14 +309,14 @@ class IONe
 
                 LOG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
                 trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
-                postDeploy.LimitsController(params, vmid)
+                postDeploy.LimitsController(params, vmid, host)
 
                 #endLimitsController
                 #TrialController
 
                 if params['trial'] then
                     trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                    postDeploy.TrialController(params, vmid)
+                    postDeploy.TrialController(params, vmid, host)
                 end
 
                 #endTrialController
@@ -323,7 +324,7 @@ class IONe
 
                 if params['ansible'] && params['release'] then
                     trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"
-                    postDeploy.AnsibleController(params, vmid)
+                    postDeploy.AnsibleController(params, vmid, host)
                 end
 
                 #endAnsibleController
@@ -341,7 +342,7 @@ class IONe
     end
     class PostDeployActivities
         include Deferable
-        def AnsibleController(params, vmid)
+        def AnsibleController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)
             Thread.new do
                 onblock(:vm, vmid).wait_for_state
@@ -353,7 +354,7 @@ class IONe
             LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'AnsibleController'
             LOG_CALL(id, false, 'AnsibleController')
         end
-        def LimitsController(params, vmid)
+        def LimitsController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)
             defer { LOG_CALL(id, false, 'LimitsController') }
             onblock(:vm, vmid) do | vm |
@@ -365,7 +366,7 @@ class IONe
                 end
             end if ClusterType(host) == 'vcenter'
         end
-        def TrialController(params, vmid)
+        def TrialController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)        
             LOG "VM #{vmid} suspend action scheduled", 'TrialController'
             action_time = Time.now.to_i + ( params['trial-suspend-delay'].nil? ?

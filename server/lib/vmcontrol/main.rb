@@ -39,7 +39,7 @@ class IONe
             trace << "Killing proccess:#{__LINE__ + 1}"
             0
         rescue => e
-            e.message, trace
+            return e.message, trace
         end
     end
     # Suspends VirtualMachine only
@@ -76,7 +76,7 @@ class IONe
                 trace << "Killing proccess:#{__LINE__ + 1}"            
                 0
             rescue => e
-                e.message, trace
+                return e.message, trace
             end
         result
     end

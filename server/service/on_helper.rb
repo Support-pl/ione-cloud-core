@@ -30,6 +30,29 @@ module ONeHelper
       
         found.flatten
     end
+    # Searches Instances at vCenter by name at given folder
+    # @param [RbVmomi::VIM::Folder] folder - folder where search
+    # @param [String] name - DS name at vCenter
+    # @param [Boolean] exact
+    # @return [Array<RbVmomi::VIM::Datastore>]
+    def recursive_find_ds(folder, name, exact = false)
+        # @!visibility private
+        def matches(child, name, exact = false)
+            is_ds = child.class == RbVmomi::VIM::Datastore
+            name_matches = (name == "*") || (exact ? (child.name == name) : (child.name.include? name))
+            is_ds && name_matches
+        end
+        found = []
+        folder.children.each do |child|
+          if matches(child, name, exact)
+            found << child
+          elsif child.class == RbVmomi::VIM::Folder
+            found << recursive_find_vm(child, name, exact)
+          end
+        end
+      
+        found.flatten
+    end
 
     def get_vcenter_dc(host)
         host = host.to_hash!['HOST']['TEMPLATE']
@@ -241,7 +264,7 @@ class VirtualMachine
     # @return [Boolean]
     def wait_for_state(s = 3, lcm_s = 3)
         i = 0
-        until state(vmid) == s && lcm_state(vmid) == lcm_s do
+        until state() == s && lcm_state() == lcm_s do
             return false if i >= 3600
             sleep(1)
             i += 1
@@ -307,6 +330,33 @@ class VirtualMachine
             return "Reconfigure Error:#{e.message}"
         end
         nil
+    end
+    def is_at_ds?(ds_name)
+        query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
+        datacenter = get_vcenter_dc(host)
+        begin
+            datastore = recursive_find_ds(datacenter.datastoreFolder, ds_name, true).first
+        rescue => e
+            return 'Invalid DS name.'
+        end
+        self.info!
+        search_template = "VirtualMachine(\"#{self.deploy_id}\")"
+        datastore.vm.each do | vm |
+            return true if vm.to_s == search_template
+        end
+        false
+    end
+    def get_vms_vcenter_ds(name = nil)
+        query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
+        datastores = get_vcenter_dc(host).datastoreFolder.children
+        
+        self.info!
+        search_template = "VirtualMachine(\"#{self.deploy_id}\")"
+        datastores.each do | ds |
+            ds.vm.each do | vm |
+                return ds.name if vm.to_s == search_template
+            end
+        end
     end
     # Resize VM without powering off the VM
     # @param [Hash] spec

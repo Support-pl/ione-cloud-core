@@ -111,7 +111,7 @@ class IONe
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'LCM_STATE_STR') }
 
-        onblock(:vm, vmid.to_i)lcm_state_str!
+        onblock(:vm, vmid.to_i).lcm_state_str!
     end
     # Getting VM most important data
     # @param [Integer] vmid - VM ID
