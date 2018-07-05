@@ -54,6 +54,9 @@ module ONeHelper
         found.flatten
     end
 
+    # Returns VIM::Datacenter for host
+    # @param [OpenNebula::Host] host
+    # @return [Datacenter]
     def get_vcenter_dc(host)
         host = host.to_hash!['HOST']['TEMPLATE']
         VIM.connect(
@@ -61,7 +64,31 @@ module ONeHelper
             :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
         ).serviceInstance.find_datacenter
     end
+    # Returns Datastore IP and Path
+    # @param [Integer] host - host ID
+    # @param [String] name - Datastore name
+    # @return [String, String] ip, path
+    def get_ds_vdata(host, name)
+        get_vcenter_dc(onblock(:h, host)).datastoreFolder.children.each do | ds |
+            next if ds.name != name
+            begin
+                return ds.info.nas.remoteHost, ds.info.nas.remotePath
+            rescue => e
+                return nil
+            end
+        end
+        nil
+    end
 
+    # Prints given objects classes
+    # @param [Array] args
+    # @return [NilClass]
+    def putc(*args)
+        args.each do | el |
+            puts el.class
+        end
+        nil
+    end
 
     # {#onblock} supported instances list 
     ON_INSTANCES = {
@@ -346,7 +373,9 @@ class VirtualMachine
         end
         false
     end
-    def get_vms_vcenter_ds(name = nil)
+    # Gets the datastore, where VM allocated is
+    # @return [String] DS name
+    def get_vms_vcenter_ds
         query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
         datastores = get_vcenter_dc(host).datastoreFolder.children
         
@@ -358,7 +387,7 @@ class VirtualMachine
             end
         end
     end
-    # Resize VM without powering off the VM
+    # Resizes VM without powering off the VM
     # @param [Hash] spec
     # @option spec [Integer] :cpu CPU amount to set
     # @option spec [Integer] :ram RAM amount in MB to set
