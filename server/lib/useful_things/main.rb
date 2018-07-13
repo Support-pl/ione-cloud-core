@@ -192,6 +192,7 @@ class IONe
         return "WrongTypeExeption: type '#{type}' not exists" if type != 'sys' && type != 'img'
 
         # @!visibility private
+        # Converts MB to GB
         def sizeConvert(mb)
             if mb.to_f / 1024 > 768 then
                 return "#{(mb.to_f / 1048576.0).round(2).to_s}TB"
@@ -223,6 +224,7 @@ class IONe
         defer { LOG_CALL(id, false, 'HostsMonitoring') }
 
         # @!visibility private
+        # Converts MB to GB
         def sizeConvert(mb)
             if mb.to_f / 1048576 > 768 then
                 return "#{(mb.to_f / 1073741824.0).round(2).to_s}TB"
@@ -245,11 +247,12 @@ class IONe
         mon
     end
     # @api private
+    # Returns current server session LOG
     def getglog
         $log
     end
     # Checks if resources hot add enabled
-    # @param [Integer] name VM ID
+    # @param [Integer] vmid VM ID
     # @param [String] name VM name on vCenter node
     # @note For correct work of this method, you must keep actual vCenter Password at VCENTER_PASSWORD_ACTUAL attribute in OpenNebula
     # @note Method searches VM by it's default name: one-(id)-(name), if target vm got another name, you should provide it
@@ -258,22 +261,22 @@ class IONe
         onblock(:vm, vmid).hotAddEnabled? name
     end
     # Sets resources hot add settings
-    # @param [Hash] spec
-    # @option spec [Boolean] :vmid VM ID
-    # @option spec [Boolean] :cpu 
-    # @option spec [Boolean] :ram
-    # @option spec [String]  :name VM name on vCenter node
+    # @param [Hash] params
+    # @option params [Boolean] :vmid VM ID
+    # @option params [Boolean] :cpu 
+    # @option params [Boolean] :ram
+    # @option params [String]  :name VM name on vCenter node
     # @return [true | String]
     def set_vm_hotadd_conf(params)
         params.to_sym!
         onblock(:vm, params[:vmid]).hotResourcesControlConf(params)
     end
     # Resize VM without powering off the VM
-    # @param [Hash] spec
-    # @option spec [Boolean] :vmid VM ID    
-    # @option spec [Integer] :cpu CPU amount to set
-    # @option spec [Integer] :ram RAM amount in MB to set
-    # @option spec [String] :name VM name on vCenter node
+    # @param [Hash] params
+    # @option params [Boolean] :vmid VM ID    
+    # @option params [Integer] :cpu CPU amount to set
+    # @option params [Integer] :ram RAM amount in MB to set
+    # @option params [String] :name VM name on vCenter node
     # @return [Boolean | String]
     # @note Method returns true if resize action ended correct, false if VM not support hot reconfiguring
     def vm_hotadd(params)

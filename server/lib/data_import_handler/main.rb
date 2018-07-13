@@ -1,5 +1,6 @@
 puts 'Extending Handler class by IMPORT func'
 class IONe
+    # Imports wild VM
     def IMPORT(params)
         LOG params, 'DEBUG'
         # return nil

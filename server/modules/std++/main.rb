@@ -13,6 +13,7 @@ class Hash
         JSON.pretty_generate(self).gsub("\": ", "\" => ").gsub(" => null", " => nil")
     end
     # @!visibility private
+    # Crypts all private keys data, such as passwords. Configurable
     def privatise
         result = {}
         self.each do |key, value|
@@ -39,7 +40,8 @@ end
 
 # Ruby default String class
 class String
-    # @!visibility private    
+    # @!visibility private
+    # Checks is key configured as private
     def private?
         result = false
         for key in CONF['PrivateKeys'] do
@@ -53,7 +55,8 @@ end
 puts 'Extending NilClass by add method'
 # Ruby default Nil class
 class NilClass
-    # @!visibility private    
+    # @!visibility private   
+    # Rebind for + method for NilClass 
     def +(obj)
         obj
     end

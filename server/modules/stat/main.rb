@@ -12,6 +12,7 @@ at_exit do
 end
 
 puts 'Initializing stat-method'
+# Logging calls to stat-data and sys.log
 def LOG_STAT(method = caller_locations(1,1)[0].label, time = Time.now.to_i)
     $data[method] = {} if $data[method].nil?
     $data[method]['calls'] = [] if $data[method]['calls'].nil?
@@ -25,6 +26,7 @@ end
 
 puts 'Extending Handler class by statistic-getter'
 class IONe
+    # Returns calls statisctics
     def GetStatistics(params = {})
         return JSON.pretty_generate($data) if params['method'].nil? && params['json'] == true
         return $data if params['method'].nil?

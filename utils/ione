@@ -9,6 +9,7 @@ require 'zmqjsonrpc'
 uri = "tcp://localhost:#{CONF['Server']['listen-port']}"
 client = ZmqJsonRpc::Client.new(uri)
 
+# Prints given log file
 def print_log(target)
     puts "#{LOG_ROOT}/#{target}" if ARGV[1] == 'path'
     return if ARGV[1] == 'path'

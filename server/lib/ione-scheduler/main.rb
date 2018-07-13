@@ -1,6 +1,6 @@
 require 'mysql2'
 
-# service #
+# Generates class from string class-name
 def class_from_string(str)
     str.split('::').inject(Object) do |mod, class_name|
       mod.const_get(class_name)
@@ -12,6 +12,7 @@ end
     :host => CONF['DataBase']['host'], :database => 'ioneschedule'
 )
 
+# Schedules action
 def Schedule(time, action, *params)
     # action = action.split('.')
 
@@ -22,12 +23,14 @@ def Schedule(time, action, *params)
     @db_client.query('SELECT * FROM action').to_a.last['id']
 end
 
+# Unschedules action
 def Unschedule(id)
     @db_client.query(
         "DELETE FROM action WHERE id=#{id}"
     )
 end
 
+# Invokes scheduled action
 def Invoke(action)
     Unschedule(action['id'])
     IONe.new($client).send(action['method'], *(JSON.parse(action['params'])))

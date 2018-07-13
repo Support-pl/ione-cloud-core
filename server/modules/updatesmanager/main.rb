@@ -1,4 +1,5 @@
 class IONe
+    # Updates IONe from Github
     def IONeUpdate(token, trace = ["Update Process starter:#{__LINE__}"])
         return 'Wrong token!' if token != CONF['UpdatesManager']['update-token']
         LOG_TEST "IONe update query accepted"

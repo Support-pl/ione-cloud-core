@@ -5,6 +5,7 @@
 puts 'Extending Handler class by server-info getters'
 class IONe
     # @api private    
+    # Returns thread locks stats
     def locks_stat(key = nil)
         LOG_STAT()
         id = id_gen()

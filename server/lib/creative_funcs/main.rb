@@ -88,7 +88,7 @@ class IONe
             trace << "Generating credentials and network context:#{__LINE__ + 1}"
             context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ', USERNAME = "Administrator"' : nil}\n]\n"
             trace << "Generating specs configuration:#{__LINE__ + 1}"
-            context += "VCPU=\"#{params['cpu']}\"\nMEMORY=\"#{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\""
+            context += "VCPU=\"#{params['cpu']}\"\nMEMORY=\"#{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\"\n"
             context += "DISK=[\n\tIMAGE_ID = \"#{template.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n\tSIZE=\"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n\tOPENNEBULA_MANAGED = \"NO\"]"
             LOG "Resulting template:\n#{context}", 'DEBUG'
             
@@ -340,8 +340,11 @@ class IONe
             return out
         end
     end
+    # Class for pst-deploy activities methods
+    #   All methods will receive creative methods params, new vm ID, and host, where VM was deployed
     class PostDeployActivities
         include Deferable
+        # Executes given playbooks at fresh-deployed vm
         def AnsibleController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)
             Thread.new do
@@ -354,6 +357,7 @@ class IONe
             LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'AnsibleController'
             LOG_CALL(id, false, 'AnsibleController')
         end
+        # If Cluster type is vCenter, sets up Limits at the node
         def LimitsController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)
             defer { LOG_CALL(id, false, 'LimitsController') }
@@ -366,6 +370,7 @@ class IONe
                 end
             end if ClusterType(host) == 'vcenter'
         end
+        # If VM is trial, starts time and schedule suspend method
         def TrialController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)        
             LOG "VM #{vmid} suspend action scheduled", 'TrialController'

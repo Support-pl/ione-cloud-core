@@ -85,7 +85,7 @@ OpenNebula:
   credentials: 'oneadmin:secret' # oneadmin and password(or auth-token) for oneadmin
   endpoint: 'http://localhost:2633/RPC2' # RPC endpoint for OpenNebula
   users-group: 1 # Main group for Basic Users
-  users-vms-ssh-port: 52222 # Default SSH-port at VMs instantiated from your templates
+  users-vms-ssh-port: 22 # Default SSH-port at VMs instantiated from your templates
   default-node-id: 0 # ID of the node, vms to deploy by default
   base-vnc-port: 5900 # Base VNC-port number. VMs will get port for VNC by formula: {{ base-vnc-port }} + {{ vmid }}
 ```
@@ -95,7 +95,7 @@ OpenNebula:
 ```yaml
 Server:
   # Port for IONe to listen
-  listen-port: '8008'
+  listen-port: '8080'
 ```
 
 * Include
@@ -387,18 +387,12 @@ $IONELOGROOT/:
 
 ### Available modules
 
-1. Ansible
+1. [Ansible](https://github.com/ione-cloud/ione-ansible)
 
-2. FreeNAS
-
-3. WHMCS API caller
+2. [WHMCS API caller](https://github.com/ione-cloud/ione-whmcsapi)
 
 ### Available solutions based on IONe
 
-1. WHMCS Automation Module (PaaS)
-
-2. OpenNebula Provisioning IOS App
-
-3. Telegram OpenNebula Control Bot
+1. {file:WHMCS.md WHMCS Automation Module (PaaS)}
 
 ## LICENSE

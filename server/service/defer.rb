@@ -17,12 +17,14 @@ module Deferable
     end
 
     # @!visibility private
+    # Extends self by given class Methods
     def self.included(mod)
         mod.extend ClassMethods
     end
 
     # @!visibility private    
     module ClassMethods
+        # Makes method deferable
         def deferable method
             original_method = instance_method(method)
             define_method(method) do |*args|

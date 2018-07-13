@@ -82,11 +82,13 @@ class IONe
 end
 
 puts 'Including Libs'
+LOG 'Including Libs:'
 begin
     CONF['Include'].each do | lib |
         puts "\tIncluding #{lib}"    
         begin
             require "#{ROOT}/lib/#{lib}/main.rb"
+            LOG "\t - #{lib} -- included"
         rescue => e
             LOG "Library \"#{lib}\" was not included | Error: #{e.message}", 'LibraryController'
             puts "Library \"#{lib}\" was not included | Error: #{e.message}"
@@ -98,12 +100,14 @@ rescue => e
 end
 
 puts 'Including Modules'
+LOG 'Including Modules:'
 begin
     CONF['Modules'].each do | mod |
         puts "\tIncluding #{mod}"    
         begin
             CONF.merge!(YAML.load(File.read("#{ROOT}/modules/#{mod}/config.yml"))) if File.exist?("#{ROOT}/modules/#{mod}/config.yml")
             require "#{ROOT}/modules/#{mod}/main.rb"
+            LOG "\t - #{mod} -- included"
         rescue => e
             LOG "Module \"#{mod}\" was not included | Error: #{e.message}", 'ModuleController'
             puts "Module \"#{mod}\" was not included | Error: #{e.message}"

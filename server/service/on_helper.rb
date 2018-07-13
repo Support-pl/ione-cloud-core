@@ -14,6 +14,7 @@ module ONeHelper
     # @note Source https://github.com/MarkArbogast/vsphere-helper/blob/master/lib/vsphere_helper/helpers.rb#L51-#L68
     def recursive_find_vm(folder, name, exact = false)
         # @!visibility private
+        # Comparator for object names
         def matches(child, name, exact = false)
             is_vm = child.class == RbVmomi::VIM::VirtualMachine
             name_matches = (name == "*") || (exact ? (child.name == name) : (child.name.include? name))
@@ -37,6 +38,7 @@ module ONeHelper
     # @return [Array<RbVmomi::VIM::Datastore>]
     def recursive_find_ds(folder, name, exact = false)
         # @!visibility private
+        # Comparator for object names
         def matches(child, name, exact = false)
             is_ds = child.class == RbVmomi::VIM::Datastore
             name_matches = (name == "*") || (exact ? (child.name == name) : (child.name.include? name))
@@ -219,6 +221,7 @@ class VirtualMachine
         undeploy-hard
         snapshot-create
     )
+    # Generates template for OpenNebula scheduler record
     def generate_schedule_str(id, action, time)
         "\nSCHED_ACTION=[\n" + 
         "  ACTION=\"#{action}\",\n" + 
@@ -287,7 +290,7 @@ class VirtualMachine
     end
     # Waits until VM will have the given state
     # @param [Integer] s - VM state to wait for
-    # @param [Integer] lcms_s - VM LCM state to wait for
+    # @param [Integer] lcm_s - VM LCM state to wait for
     # @return [Boolean]
     def wait_for_state(s = 3, lcm_s = 3)
         i = 0
@@ -358,6 +361,7 @@ class VirtualMachine
         end
         nil
     end
+    # Checks if vm is on given vCenter Datastore
     def is_at_ds?(ds_name)
         query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
         datacenter = get_vcenter_dc(host)
@@ -418,7 +422,7 @@ class VirtualMachine
     # @return [Hash | String] Returns limits Hash if success or exception message if fails
     def hotAddEnabled?(name = nil)
         begin
-            host = onblock(Host, IONe.new($client).get_vm_host(self.id))
+            host = onblock(:h, IONe.new($client).get_vm_host(self.id))
             datacenter = get_vcenter_dc(host)
 
             vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
@@ -501,15 +505,19 @@ class VirtualMachine
         out = self.to_hash!['VM']['TEMPLATE']['SNAPSHOT']
         out.class == Array ? out : [ out ]
     end
+    # Returns actual state without calling info! method
     def state!
         self.info! || self.state
     end
+    # Returns actual lcm state without calling info! method
     def lcm_state!
         self.info! || self.lcm_state
     end
+    # Returns actual state as string without calling info! method
     def state_str!
         self.info! || self.state_str
     end
+    # Returns actual lcm state as string without calling info! method
     def lcm_state_str!
         self.info! || self.lcm_state_str
     end    

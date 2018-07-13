@@ -12,7 +12,7 @@ require "opennebula"
 include OpenNebula
 ###########################################
 # OpenNebula credentials
-CREDENTIALS = 'oneadmin:Nhb500Gznmcjn'
+CREDENTIALS = 'oneadmin:secret'
 # XML_RPC endpoint where OpenNebula is listening
 ENDPOINT = 'http://localhost:2633/RPC2'
 $client = Client.new(CREDENTIALS, ENDPOINT)

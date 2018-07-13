@@ -136,6 +136,7 @@ class IONe
         onblock(VirtualMachine, vmid).poweroff
     end
     # @!visibility private
+    # Releases hold-state VM
     def Release(vmid)
         LOG_STAT()
         id = id_gen()
