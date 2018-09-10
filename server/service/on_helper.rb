@@ -151,7 +151,7 @@ module ONeHelper
         dss = IONe.new($client).DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
         dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' } if ds_type != nil
         ds = dss[rand(dss.size)]
-        LOG "Deploying to #{ds['name']}", 'DEBUG'
+        LOG_DEBUG "Deploying to #{ds['name']}"
         ds['id']
     end
     # Returns given cluster hypervisor type
@@ -319,7 +319,7 @@ class VirtualMachine
     #       => 'Reconfigure Unsuccessed' -- Some of specs didn't changed
     #       => 'Reconfigure Error:{error message}' -- Exception has been generated while proceed, check your configuration
     def setResourcesAllocationLimits(spec)
-        LOG spec.debug_out, 'DEBUG'
+        LOG_DEBUG spec.debug_out
         return 'Unsupported query' if IONe.new($client).get_vm_data(self.id)['IMPORTED'] == 'YES'        
         begin
             query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
@@ -341,18 +341,18 @@ class VirtualMachine
 
             state = true
             begin
-                LOG 'Powering VM Off', 'DEBUG'
-                LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Powering VM Off'
+                LOG_DEBUG vm.PowerOffVM_Task.wait_for_completion
             rescue => e
                 state = false
             end
             
-                LOG 'Reconfiguring VM', 'DEBUG'
-                LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Reconfiguring VM'
+                LOG_DEBUG vm.ReconfigVM_Task(:spec => query).wait_for_completion
             
             begin
-                LOG 'Powering VM On', 'DEBUG'
-                LOG vm.PowerOnVM_Task.wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Powering VM On'
+                LOG_DEBUG vm.PowerOnVM_Task.wait_for_completion
             rescue
             end if state
 
@@ -451,18 +451,18 @@ class VirtualMachine
             }
             state = true
             begin
-                LOG 'Powering VM Off', 'DEBUG'
-                LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Powering VM Off'
+                LOG_DEBUG vm.PowerOffVM_Task.wait_for_completion
             rescue => e
                 state = false
             end
             
-                LOG 'Reconfiguring VM', 'DEBUG'
-                LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Reconfiguring VM'
+                LOG_DEBUG vm.ReconfigVM_Task(:spec => query).wait_for_completion
             
             begin
-                LOG 'Powering VM On', 'DEBUG'
-                LOG vm.PowerOnVM_Task.wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Powering VM On'
+                LOG_DEBUG vm.PowerOnVM_Task.wait_for_completion
             rescue
             end if state
         rescue => e

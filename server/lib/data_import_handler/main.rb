@@ -2,7 +2,7 @@ puts 'Extending Handler class by IMPORT func'
 class IONe
     # Imports wild VM
     def IMPORT(params)
-        LOG params, 'DEBUG'
+        LOG_DEBUG params
         # return nil
         if params.class == Hash
             begin
@@ -36,8 +36,8 @@ class IONe
             vm.rename("user_#{params['serviceid'].to_s}_vm")
             return { params['serviceid'].to_s => [userid, params['vmid']] }
             rescue
-                LOG params, 'DEBUG'
-                LOG userid, 'DEBUG'
+                LOG_DEBUG params
+                LOG_DEBUG userid
             end
         end
         params.map! do |el|

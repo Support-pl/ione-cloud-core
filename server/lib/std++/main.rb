@@ -51,6 +51,14 @@ class String
     end
 end
 
+# Basic class 
+class BasicObject
+    # Returns objects self
+    def itself
+     self
+    end
+end 
+
 
 puts 'Extending NilClass by add method'
 # Ruby default Nil class

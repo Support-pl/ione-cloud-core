@@ -36,9 +36,9 @@ class IONe
                 `rm -rf /tmp/ione`
                 `rm -rf #{ROOT}/../utils`
 
-                LOG_TEST "Update successful, current version: #{File.read("#{ROOT}/meta/version.txt").chomp}\nChanges will be applied after rebooting the server."
+                LOG_COLOR "Update successful, current version: #{File.read("#{ROOT}/meta/version.txt").chomp}\nChanges will be applied after rebooting the server.", 'IONeUpdate', 'lightgreen'
             rescue => e
-                LOG_TEST "Update unsuccessful!!! Nothing will changed. Error: #{e.message}. Traceback is at debug.log"
+                LOG_ERROR "Update unsuccessful!!! Nothing will changed. Error: #{e.message}. Traceback is at debug.log"
                 LOG trace.join(",\n")
                 `cp -rf /tmp/ione_current/* #{ROOT}/`                
             end

@@ -102,6 +102,7 @@ Server:
 
 ```yaml
 Include: # IONe libraries to include 
+  - 'std++'
   - 'vmcontrol'
   - 'vminfo'
   - 'server'
@@ -116,7 +117,6 @@ See more, about IONe libraries [here](#label-Managing+modules+and+libraries).
 
 ```yaml
 Modules: # IONe modules to connect
-  - 'std++'
   - 'ansible'
   - 'freenas'
   - 'stat'
