@@ -13,9 +13,11 @@ fi
 #echo -n '5..' && sleep 1 && echo -n '4..' && sleep 1 && echo -n '3..' && sleep 1 && echo -n '2..' && sleep 1 && echo -n '1..' && sleep 1 && echo 'Go'
 
 sed -i 's/enabled\=1/enabled\=0/g'  /etc/yum.repos.d/opennebula.repo
+sed -i 's/enabled\=1/enabled\=0/g'  /etc/yum.repos.d/vonecloud.repo
 yum install -y git make automake gcc gcc-c++ kernel-devel ruby-devel zeromq zeromq-devel
 gem install zmqjsonrpc
 sed -i 's/enabled\=0/enabled\=1/g'  /etc/yum.repos.d/opennebula.repo
+sed -i 's/enabled\=0/enabled\=1/g'  /etc/yum.repos.d/vonecloud.repo
 
 # предусмотреть варианты yum.repos.d
 
