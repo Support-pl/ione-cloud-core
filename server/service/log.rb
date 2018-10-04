@@ -1,6 +1,7 @@
 # IONe built-in logger functions 
 module IONeLoggerKit
     require "#{ROOT}/service/time.rb"
+    require "colorize"
 
     begin
         `mkdir #{LOG_ROOT}`
@@ -37,12 +38,37 @@ module IONeLoggerKit
             destination = "#{LOG_ROOT}/activities.log"
         end
         msg = msg.to_s
-        msg = "[ #{time(method)} ] " + msg if _time
+        msg = "[ #{time()} ] " + msg if _time
         msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
 
         File.open(destination, 'a'){ |log| log.write msg + "\n" }
         File.open("#{LOG_ROOT}/suspend.log", 'a'){ |log| log.write msg + "\n" } if method == 'Suspend'
 
+        $log << "#{msg} | #{destination}"
+        puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
+        true
+    end
+    # Logging the message with choosen color and font to the one of two destinations
+    # Check out 'colorize' gem for available colors and fonts 
+    def LOG_COLOR(msg, method = caller_locations(1,1)[0].label, color = 'red', font = 'bold')
+        destination = "#{LOG_ROOT}/activities.log"
+        destination = "#{LOG_ROOT}/snapshot.log" if method == "SnapController"
+        msg = msg.to_s.send(color).send(font)
+        msg = "[ #{time()} ] " + msg
+        msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
+
+        File.open(destination, 'a'){ |log| log.write msg + "\n" }
+        File.open("#{LOG_ROOT}/suspend.log", 'a'){ |log| log.write msg + "\n" } if method == 'Suspend'
+
+        $log << "#{msg} | #{destination}"
+        puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
+        true
+    end
+    alias LOG_ERROR LOG_COLOR
+    def LOG_DEBUG(msg, method = 'DEBUG', _time = true)
+        destination = "#{LOG_ROOT}/debug.log"
+        msg = "[ #{time()} ] #{msg}"
+        File.open(destination, 'a'){ |log| log.write msg + "\n" }
         $log << "#{msg} | #{destination}"
         puts "Should be logged, params - #{method}, #{_time}, #{destination}:\n#{msg}" if DEBUG
         true
@@ -65,7 +91,7 @@ module IONeLoggerKit
             destination = "#{LOG_ROOT}/activities.log"
         end
         msg = msg.to_s
-        msg = "[ #{time(method)} ] " + msg if _time
+        msg = "[ #{time()} ] " + msg if _time
         msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
 
         File.open(destination, 'a'){ |log| log.write msg + "\n" }

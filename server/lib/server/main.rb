@@ -1,11 +1,11 @@
 ########################################################
-#   Методы для получения информации работе сервера     #
-#         и управления некоторыми функциями            #
+#       Server control and info-getting methods        #
 ########################################################
 
 puts 'Extending Handler class by server-info getters'
 class IONe
     # @api private    
+    # Returns thread locks stats
     def locks_stat(key = nil)
         LOG_STAT()
         id = id_gen()

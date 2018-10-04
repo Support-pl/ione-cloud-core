@@ -1,8 +1,8 @@
 # Integrated OpenNebula Cloud Server API and toolkit documentation
 [Homepage](https://ione-cloud.net)
-[GitHub](https://github.com)
+[Docs](https://docs.ione-cloud.net)
+[GitHub](https://github.com/ione-cloud)
 [Creators](https://support.by)
-[Author](http://slntopp.xyz)
 
 ## Synopsis
 
@@ -21,9 +21,7 @@
 1. Download deploy.sh script from our repository
 
 ```sh
-$ curl # скачать файл deploy.sh из нашего репозитория
 $ sh ./deploy.sh # Run this script from the directory where you wish to IONe be placed  
-# Привести здесь пример вывода программы при правильной и неправильной установки
 ```
 
 After the scripts will end its work, you will have:
@@ -87,7 +85,7 @@ OpenNebula:
   credentials: 'oneadmin:secret' # oneadmin and password(or auth-token) for oneadmin
   endpoint: 'http://localhost:2633/RPC2' # RPC endpoint for OpenNebula
   users-group: 1 # Main group for Basic Users
-  users-vms-ssh-port: 52222 # Default SSH-port at VMs instantiated from your templates
+  users-vms-ssh-port: 22 # Default SSH-port at VMs instantiated from your templates
   default-node-id: 0 # ID of the node, vms to deploy by default
   base-vnc-port: 5900 # Base VNC-port number. VMs will get port for VNC by formula: {{ base-vnc-port }} + {{ vmid }}
 ```
@@ -97,13 +95,14 @@ OpenNebula:
 ```yaml
 Server:
   # Port for IONe to listen
-  listen-port: '8008'
+  listen-port: '8080'
 ```
 
 * Include
 
 ```yaml
 Include: # IONe libraries to include 
+  - 'std++'
   - 'vmcontrol'
   - 'vminfo'
   - 'server'
@@ -118,7 +117,6 @@ See more, about IONe libraries [here](#label-Managing+modules+and+libraries).
 
 ```yaml
 Modules: # IONe modules to connect
-  - 'std++'
   - 'ansible'
   - 'freenas'
   - 'stat'
@@ -389,18 +387,12 @@ $IONELOGROOT/:
 
 ### Available modules
 
-1. Ansible
+1. [Ansible](https://github.com/ione-cloud/ione-ansible)
 
-2. FreeNAS
-
-3. WHMCS API caller
+2. [WHMCS API caller](https://github.com/ione-cloud/ione-whmcsapi)
 
 ### Available solutions based on IONe
 
-1. WHMCS Automation Module (PaaS)
-
-2. OpenNebula Provisioning IOS App
-
-3. Telegram OpenNebula Control Bot
+1. {file:WHMCS.md WHMCS Automation Module (PaaS)}
 
 ## LICENSE

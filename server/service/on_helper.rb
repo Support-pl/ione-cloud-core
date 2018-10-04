@@ -14,6 +14,7 @@ module ONeHelper
     # @note Source https://github.com/MarkArbogast/vsphere-helper/blob/master/lib/vsphere_helper/helpers.rb#L51-#L68
     def recursive_find_vm(folder, name, exact = false)
         # @!visibility private
+        # Comparator for object names
         def matches(child, name, exact = false)
             is_vm = child.class == RbVmomi::VIM::VirtualMachine
             name_matches = (name == "*") || (exact ? (child.name == name) : (child.name.include? name))
@@ -30,7 +31,34 @@ module ONeHelper
       
         found.flatten
     end
+    # Searches Instances at vCenter by name at given folder
+    # @param [RbVmomi::VIM::Folder] folder - folder where search
+    # @param [String] name - DS name at vCenter
+    # @param [Boolean] exact
+    # @return [Array<RbVmomi::VIM::Datastore>]
+    def recursive_find_ds(folder, name, exact = false)
+        # @!visibility private
+        # Comparator for object names
+        def matches(child, name, exact = false)
+            is_ds = child.class == RbVmomi::VIM::Datastore
+            name_matches = (name == "*") || (exact ? (child.name == name) : (child.name.include? name))
+            is_ds && name_matches
+        end
+        found = []
+        folder.children.each do |child|
+          if matches(child, name, exact)
+            found << child
+          elsif child.class == RbVmomi::VIM::Folder
+            found << recursive_find_vm(child, name, exact)
+          end
+        end
+      
+        found.flatten
+    end
 
+    # Returns VIM::Datacenter for host
+    # @param [OpenNebula::Host] host
+    # @return [Datacenter]
     def get_vcenter_dc(host)
         host = host.to_hash!['HOST']['TEMPLATE']
         VIM.connect(
@@ -38,7 +66,31 @@ module ONeHelper
             :user => host['VCENTER_USER'], :password => host['VCENTER_PASSWORD_ACTUAL']
         ).serviceInstance.find_datacenter
     end
+    # Returns Datastore IP and Path
+    # @param [Integer] host - host ID
+    # @param [String] name - Datastore name
+    # @return [String, String] ip, path
+    def get_ds_vdata(host, name)
+        get_vcenter_dc(onblock(:h, host)).datastoreFolder.children.each do | ds |
+            next if ds.name != name
+            begin
+                return ds.info.nas.remoteHost, ds.info.nas.remotePath
+            rescue => e
+                return nil
+            end
+        end
+        nil
+    end
 
+    # Prints given objects classes
+    # @param [Array] args
+    # @return [NilClass]
+    def putc(*args)
+        args.each do | el |
+            puts el.class
+        end
+        nil
+    end
 
     # {#onblock} supported instances list 
     ON_INSTANCES = {
@@ -99,7 +151,7 @@ module ONeHelper
         dss = IONe.new($client).DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
         dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' } if ds_type != nil
         ds = dss[rand(dss.size)]
-        LOG "Deploying to #{ds['name']}", 'DEBUG'
+        LOG_DEBUG "Deploying to #{ds['name']}"
         ds['id']
     end
     # Returns given cluster hypervisor type
@@ -169,6 +221,7 @@ class VirtualMachine
         undeploy-hard
         snapshot-create
     )
+    # Generates template for OpenNebula scheduler record
     def generate_schedule_str(id, action, time)
         "\nSCHED_ACTION=[\n" + 
         "  ACTION=\"#{action}\",\n" + 
@@ -237,11 +290,11 @@ class VirtualMachine
     end
     # Waits until VM will have the given state
     # @param [Integer] s - VM state to wait for
-    # @param [Integer] lcms_s - VM LCM state to wait for
+    # @param [Integer] lcm_s - VM LCM state to wait for
     # @return [Boolean]
     def wait_for_state(s = 3, lcm_s = 3)
         i = 0
-        until state(vmid) == s && lcm_state(vmid) == lcm_s do
+        until state() == s && lcm_state() == lcm_s do
             return false if i >= 3600
             sleep(1)
             i += 1
@@ -266,7 +319,7 @@ class VirtualMachine
     #       => 'Reconfigure Unsuccessed' -- Some of specs didn't changed
     #       => 'Reconfigure Error:{error message}' -- Exception has been generated while proceed, check your configuration
     def setResourcesAllocationLimits(spec)
-        LOG spec.debug_out, 'DEBUG'
+        LOG_DEBUG spec.debug_out
         return 'Unsupported query' if IONe.new($client).get_vm_data(self.id)['IMPORTED'] == 'YES'        
         begin
             query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
@@ -288,18 +341,18 @@ class VirtualMachine
 
             state = true
             begin
-                LOG 'Powering VM Off', 'DEBUG'
-                LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Powering VM Off'
+                LOG_DEBUG vm.PowerOffVM_Task.wait_for_completion
             rescue => e
                 state = false
             end
             
-                LOG 'Reconfiguring VM', 'DEBUG'
-                LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Reconfiguring VM'
+                LOG_DEBUG vm.ReconfigVM_Task(:spec => query).wait_for_completion
             
             begin
-                LOG 'Powering VM On', 'DEBUG'
-                LOG vm.PowerOnVM_Task.wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Powering VM On'
+                LOG_DEBUG vm.PowerOnVM_Task.wait_for_completion
             rescue
             end if state
 
@@ -308,7 +361,37 @@ class VirtualMachine
         end
         nil
     end
-    # Resize VM without powering off the VM
+    # Checks if vm is on given vCenter Datastore
+    def is_at_ds?(ds_name)
+        query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
+        datacenter = get_vcenter_dc(host)
+        begin
+            datastore = recursive_find_ds(datacenter.datastoreFolder, ds_name, true).first
+        rescue => e
+            return 'Invalid DS name.'
+        end
+        self.info!
+        search_template = "VirtualMachine(\"#{self.deploy_id}\")"
+        datastore.vm.each do | vm |
+            return true if vm.to_s == search_template
+        end
+        false
+    end
+    # Gets the datastore, where VM allocated is
+    # @return [String] DS name
+    def get_vms_vcenter_ds
+        query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
+        datastores = get_vcenter_dc(host).datastoreFolder.children
+        
+        self.info!
+        search_template = "VirtualMachine(\"#{self.deploy_id}\")"
+        datastores.each do | ds |
+            ds.vm.each do | vm |
+                return ds.name if vm.to_s == search_template
+            end
+        end
+    end
+    # Resizes VM without powering off the VM
     # @param [Hash] spec
     # @option spec [Integer] :cpu CPU amount to set
     # @option spec [Integer] :ram RAM amount in MB to set
@@ -339,7 +422,7 @@ class VirtualMachine
     # @return [Hash | String] Returns limits Hash if success or exception message if fails
     def hotAddEnabled?(name = nil)
         begin
-            host = onblock(Host, IONe.new($client).get_vm_host(self.id))
+            host = onblock(:h, IONe.new($client).get_vm_host(self.id))
             datacenter = get_vcenter_dc(host)
 
             vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
@@ -368,18 +451,18 @@ class VirtualMachine
             }
             state = true
             begin
-                LOG 'Powering VM Off', 'DEBUG'
-                LOG vm.PowerOffVM_Task.wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Powering VM Off'
+                LOG_DEBUG vm.PowerOffVM_Task.wait_for_completion
             rescue => e
                 state = false
             end
             
-                LOG 'Reconfiguring VM', 'DEBUG'
-                LOG vm.ReconfigVM_Task(:spec => query).wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Reconfiguring VM'
+                LOG_DEBUG vm.ReconfigVM_Task(:spec => query).wait_for_completion
             
             begin
-                LOG 'Powering VM On', 'DEBUG'
-                LOG vm.PowerOnVM_Task.wait_for_completion, 'DEBUG'
+                LOG_DEBUG 'Powering VM On'
+                LOG_DEBUG vm.PowerOnVM_Task.wait_for_completion
             rescue
             end if state
         rescue => e
@@ -422,15 +505,19 @@ class VirtualMachine
         out = self.to_hash!['VM']['TEMPLATE']['SNAPSHOT']
         out.class == Array ? out : [ out ]
     end
+    # Returns actual state without calling info! method
     def state!
         self.info! || self.state
     end
+    # Returns actual lcm state without calling info! method
     def lcm_state!
         self.info! || self.lcm_state
     end
+    # Returns actual state as string without calling info! method
     def state_str!
         self.info! || self.state_str
     end
+    # Returns actual lcm state as string without calling info! method
     def lcm_state_str!
         self.info! || self.lcm_state_str
     end    

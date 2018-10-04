@@ -19,3 +19,5 @@ rbvmomi\.rb
 app-test\.json
 
 \.vscode/
+
+*.yml

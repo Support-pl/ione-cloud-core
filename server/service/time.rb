@@ -1,10 +1,7 @@
 # Returns current time in ctime format
 # @return [String]
-def time(method = 'none')
-    return Time.at(Time.now + TRIAL_SUSPEND_DELAY).ctime if method == 'TrialController'
-    out = Time.now.ctime
-    return 'Date-Time Error' if out.nil?
-    out
+def time
+    Time.now.ctime
 end
 
 # Formats time from seconds from the start of Time to dd:hh:mm:ss format

@@ -1,5 +1,5 @@
 ########################################################
-#        Методы для управления ВМ и Аккаунтами         #
+#            VM's and Users control methods            #
 ########################################################
 
 puts 'Extending Handler class by commerce-useful methods'
@@ -39,7 +39,7 @@ class IONe
             trace << "Killing proccess:#{__LINE__ + 1}"
             0
         rescue => e
-            e.message, trace
+            return e.message, trace
         end
     end
     # Suspends VirtualMachine only
@@ -76,7 +76,7 @@ class IONe
                 trace << "Killing proccess:#{__LINE__ + 1}"            
                 0
             rescue => e
-                e.message, trace
+                return e.message, trace
             end
         result
     end
@@ -93,7 +93,7 @@ class IONe
         return "VMID cannot be nil!" if vmid.nil?     
         LOG "Rebooting VM#{vmid}", "Reboot"
         LOG "Params: vmid = #{vmid}, hard = #{hard}", "DEBUG" #if DEBUG
-        onblock(VirtualMachine, vmid.to_i).reboot(hard) # true означает, что будет вызвана функция reboot-hard
+        onblock(VirtualMachine, vmid.to_i).reboot(hard) # reboots 'hard' if true
     end
     # Terminates(deletes) user account and VM
     # @param [Integer] userid - user to delete
@@ -116,7 +116,7 @@ class IONe
             end
             Delete(userid)
             LOG "Terminating VM#{vmid}", "Terminate"
-            onblock(VirtualMachine, vmid).recover 3 # recover с параметром 3 означает полное удаление с диска
+            onblock(VirtualMachine, vmid).recover 3
         rescue => err
             return err
         end
@@ -136,6 +136,7 @@ class IONe
         onblock(VirtualMachine, vmid).poweroff
     end
     # @!visibility private
+    # Releases hold-state VM
     def Release(vmid)
         LOG_STAT()
         id = id_gen()

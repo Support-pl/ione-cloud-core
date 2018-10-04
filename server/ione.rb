@@ -55,17 +55,21 @@ include ONeHelper
 puts 'Including Deferable rmodule'
 require "#{ROOT}/service/defer.rb"
 
-LOG "", "", false
-LOG("       ################################################################", "", false)
-LOG("       ##                                                            ##", "", false)
-LOG "       ##    Integrated OpenNebula Cloud Server v#{VERSION.chomp}#{" " if VERSION.split(' ').last == 'stable'}     ##", "", false
-LOG("       ##                                                            ##", "", false)
-LOG("       ################################################################", "", false)
-LOG "", "", false
+LOG(
+"\n" +
+"       ################################################################\n".light_green.bold +
+"       ##                                                            ##\n".light_green.bold +
+"       ##".light_green.bold + "       " + "I".red.bold + "ntegrated " + "O".red.bold + "pen" + "Ne".red.bold + "bula Cloud  ".light_cyan +
+                                    "v#{VERSION.chomp}".cyan.underline + "#{" " if VERSION.split(' ').last == 'stable'}        " + "##\n".light_green.bold +
+"       ##                                                            ##\n".light_green.bold +
+"       ################################################################\n".light_green.bold +
+"\n", 'none', false
+)
+
 
 puts 'Generating "at_exit" directive'
 at_exit do
-    LOG("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}")
+    LOG_COLOR("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}", nil)
     LOG "", "", false
     LOG("       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
 end
@@ -82,53 +86,59 @@ class IONe
 end
 
 puts 'Including Libs'
+LOG_COLOR 'Including Libs:', 'none', 'green', 'bold'
 begin
     CONF['Include'].each do | lib |
         puts "\tIncluding #{lib}"    
         begin
             require "#{ROOT}/lib/#{lib}/main.rb"
+            LOG_COLOR "\t - #{lib} -- included", 'none', 'green', 'itself'
         rescue => e
-            LOG "Library \"#{lib}\" was not included | Error: #{e.message}", 'LibraryController'
+            LOG_COLOR "Library \"#{lib}\" was not included | Error: #{e.message}", 'LibraryController'
             puts "Library \"#{lib}\" was not included | Error: #{e.message}"
         end
     end if CONF['Include'].class == Array
 rescue => e
-    LOG "LibraryController fatal error | #{e}", 'LibraryController'
+    LOG_ERROR "LibraryController fatal error | #{e}", 'LibraryController', 'red', 'underline'
     puts "\tLibraryController fatal error | #{e}"
 end
 
 puts 'Including Modules'
+LOG_COLOR 'Including Modules:', 'none', 'green', 'bold'
 begin
     CONF['Modules'].each do | mod |
         puts "\tIncluding #{mod}"    
         begin
             CONF.merge!(YAML.load(File.read("#{ROOT}/modules/#{mod}/config.yml"))) if File.exist?("#{ROOT}/modules/#{mod}/config.yml")
             require "#{ROOT}/modules/#{mod}/main.rb"
+            LOG_COLOR "\t - #{mod} -- included", 'none', 'green', 'itself'
         rescue => e
-            LOG "Module \"#{mod}\" was not included | Error: #{e.message}", 'ModuleController'
+            LOG_COLOR "Module \"#{mod}\" was not included | Error: #{e.message}", 'ModuleController'
             puts "Module \"#{mod}\" was not included | Error: #{e.message}"
         end
     end if CONF['Modules'].class == Array
 rescue => e
-    LOG "ModuleController fatal error | #{e}", 'ModuleController'
+    LOG_ERROR "ModuleController fatal error | #{e}", 'ModuleController', 'red', 'underline'
     puts "\tModuleController fatal error | #{e}"
 end
 
 puts 'Including Scripts'
+LOG_COLOR 'Starting scripts:', 'none', 'green', 'bold'
 begin
     CONF['Scripts'].each do | script |
         puts "\tIncluding #{script}"
         begin
             Thread.new do
                 require "#{ROOT}/scripts/#{script}/main.rb"
+                LOG_COLOR "\t - #{script} -- initialized", 'none', 'green', 'itself'
             end
         rescue => e
-            LOG "Script \"#{script}\" was not included | Error: #{e.message}", 'ScriptController'
-            puts "\tScript \"#{script}\" was not included | Error: #{e.message}"
+            LOG_COLOR "Script \"#{script}\" was not started | Error: #{e.message}", 'ScriptController', 'green', 'itself'
+            puts "\tScript \"#{script}\" was not started | Error: #{e.message}"
         end
     end if CONF['Scripts'].class == Array
 rescue => e
-    LOG "ScriptsController fatal error | #{e}", 'ScriptController'
+    LOG_ERROR "ScriptsController fatal error | #{e}", 'ScriptController', 'red', 'underline'
     puts "ScriptsController fatal error | #{e}"
 end
 
@@ -144,7 +154,7 @@ $methods = IONe.instance_methods(false).map { | method | method.to_s }
 LOG "Initializing JSON-RPC Server..."
 puts 'Initializing JSON_RPC server and logic handler'
 server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['Server']['listen-port']}")
-LOG "Server initialized"
+LOG_COLOR "Server initialized", 'none', 'green'
 
 # Signal.trap('CLD') do
 #   LOG 'Trying to force stop Sinatra', 'SignalHandler'

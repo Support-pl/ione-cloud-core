@@ -24,7 +24,7 @@ class IONe
                 e.message
             end
         if !allocation_result.nil? then
-            LOG allocation_result.message, 'DEBUG' #If allocation was successful, allocate method returned nil
+            LOG_DEBUG allocation_result.message #If allocation was successful, allocate method returned nil
             return 0
         end
         return user.id, user if object
@@ -56,8 +56,7 @@ class IONe
         LOG_CALL(id, true)
         defer { LOG_CALL(id, false, 'Reinstall') }
         begin
-            # Сделать проверку на корректность присланных данных: существует ли юзер, существует ли ВМ
-            LOG params.merge!({ :method => 'Reinstall' }).debug_out, 'DEBUG'
+            LOG_DEBUG params.merge!({ :method => 'Reinstall' }).debug_out
             return nil if params['debug'] == 'turn_method_off'
             return { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } if params['debug'] == 'data'   
 
@@ -70,15 +69,15 @@ class IONe
                 return "ReinstallError - some params are nil"
             end
 
-            LOG 'Initializing vm object', 'DEBUG'
+            LOG_DEBUG 'Initializing vm object'
             trace << "Initializing old VM onject:#{__LINE__ + 1}"            
             vm = onblock(VirtualMachine, params['vmid'])
-            LOG 'Collecting data from old template', 'DEBUG'
+            LOG_DEBUG 'Collecting data from old template'
             trace << "Collecting data from old template:#{__LINE__ + 1}"            
             nic, context = vm.to_hash!['VM']['TEMPLATE']['NIC'], vm.to_hash['VM']['TEMPLATE']['CONTEXT']
             
-            LOG 'Initializing template obj'
-            LOG 'Generating new template', 'DEBUG'
+            LOG_DEBUG 'Initializing template obj'
+            LOG_DEBUG 'Generating new template'
             trace << "Generating NIC context:#{__LINE__ + 1}"
             context = "NIC = [\n\tIP=\"#{nic['IP']}\",\n\tDNS=\"#{nic['DNS']}\",\n\tGATEWAY=\"#{nic['GATEWAY']}\",\n\tNETWORK=\"#{nic['NETWORK']}\",\n\tNETWORK_UNAME=\"#{nic['NETWORK_UNAME']}\"\n]\n"
             trace << "Generating template object:#{__LINE__ + 1}"            
@@ -89,18 +88,18 @@ class IONe
             trace << "Generating credentials and network context:#{__LINE__ + 1}"
             context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ', USERNAME = "Administrator"' : nil}\n]\n"
             trace << "Generating specs configuration:#{__LINE__ + 1}"
-            context += "VCPU=\"#{params['cpu']}\"\nMEMORY=\"#{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\""
+            context += "VCPU=\"#{params['cpu']}\"\nMEMORY=\"#{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\"\n"
             context += "DISK=[\n\tIMAGE_ID = \"#{template.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n\tSIZE=\"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n\tOPENNEBULA_MANAGED = \"NO\"]"
-            LOG "Resulting template:\n#{context}", 'DEBUG'
+            LOG_DEBUG "Resulting template:\n#{context}"
             
             trace << "Terminating VM:#{__LINE__ + 1}"            
             vm.terminate(true)
-            LOG 'Waiting until terminate process will over', 'Reinstall'
+            LOG_COLOR 'Waiting until terminate process will over', 'Reinstall', 'lightyellow'
             trace << ":#{__LINE__ + 1}"            
             until STATE_STR(params['vmid']) == 'DONE' do
                 sleep(0.2)
             end if params['release']
-            LOG 'Creating new VM', 'DEBUG'
+            LOG_DEBUG 'Creating new VM'
             trace << "Instantiating template:#{__LINE__ + 1}"
             vmid = template.instantiate(params['login'] + '_vm', false, context)
             
@@ -125,36 +124,33 @@ class IONe
 
                 host = params['host'].nil? ? $default_host : params['host']
 
-                LOG 'Deploying VM to the host', 'DEBUG'
                 onblock(:vm, vmid) do | vm |
-                    vm.deploy(host, false, ChooseDS(params['ds_type'])) if params['release']
-                end
-
-                LOG 'Waiting until VM will be deployed', 'DEBUG'
-                until STATE(vmid) == 3 && LCM_STATE(vmid) == 3 do
-                    sleep(30)
+                    LOG_DEBUG 'Deploying VM to the host'
+                    vm.deploy(host, false, ChooseDS(params['ds_type']))
+                    LOG_DEBUG 'Waiting until VM will be deployed'
+                    vm.wait_for_state
                 end
 
                 postDeploy = PostDeployActivities.new
 
                 #LimitsController
 
-                LOG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
+                LOG_DEBUG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}"
                 trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
-                postDeploy.LimitsController(params, vmid)
+                postDeploy.LimitsController(params, vmid, host)
 
                 #endLimitsController
                 #TrialController
                 if params['trial'] then
                     trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                    postDeploy.TrialController(vmid)
+                    postDeploy.TrialController(params, vmid, host)
                 end
                 #endTrialController
                 #AnsibleController
                 
                 if params['ansible'] && params['release'] then
                     trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"
-                    postDeploy.AnsibleController(params, vmid)
+                    postDeploy.AnsibleController(params, vmid, host)
                 end
 
                 #endAnsibleController
@@ -195,7 +191,7 @@ class IONe
         LOG_STAT()
         LOG_CALL(id = id_gen(), true, __method__)
         defer { LOG_CALL(id, false, 'CreateVMwithSpecs') }
-        LOG params.merge!(:method => __method__.to_s).debug_out, 'DEBUG'
+        LOG_DEBUG params.merge!(:method => __method__.to_s).debug_out
         # return
         begin
             trace << "Checking params types:#{__LINE__ + 1}"
@@ -204,15 +200,15 @@ class IONe
             ###################### Doing some important system stuff ###############################################################
             
             return nil if DEBUG
-            LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}" # Логи
+            LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}"
             
-            LOG_TEST "Params: #{params.inspect}" if DEBUG # Логи
+            LOG_TEST "Params: #{params.inspect}" if DEBUG
             
             trace << "Checking template:#{__LINE__ + 1}"
             onblock(:t, params['templateid']) do | t |
                 result = t.info!
                 if params['templateid'] == 0 || result != nil then
-                    LOG_TEST "Error: TemplateLoadError"
+                    LOG_ERROR "Error: TemplateLoadError" 
                     return {'error' => "TemplateLoadError", 'trace' => (trace << "TemplateLoadError:#{__LINE__ - 1}")}
                 end
             end
@@ -229,7 +225,7 @@ class IONe
             if params['nouser'].nil? || !params['nouser'] then
                 trace << "Creating new user:#{__LINE__ + 1}"
                 userid, user = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client, true) if params['test'].nil?
-                LOG_TEST "Error: UserAllocateError" if userid == 0
+                LOG_ERROR "Error: UserAllocateError" if userid == 0
                 trace << "UserAllocateError:#{__LINE__ - 2}" if userid == 0
                 return {'error' => "UserAllocateError", 'trace' => trace} if userid == 0
             else
@@ -270,17 +266,17 @@ class IONe
                 begin
                     vm.chown(userid, USERS_GROUP)
                 rescue
-                    LOG "CHOWN error, params: #{userid}, #{vm}", 'DEBUG'
+                    LOG_DEBUG "CHOWN error, params: #{userid}, #{vm}"
                 end
                 win = onblock(:t, params['templateid']).win?
-                LOG "Instantiating VM as#{win ? nil : ' not'} Windows", 'DEBUG'
+                LOG_DEBUG "Instantiating VM as#{win ? nil : ' not'} Windows"
                 trace << "Setting VM context:#{__LINE__ + 2}"
                 begin
                     vm.updateconf(
                         "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ', USERNAME = "Administrator"' : nil} ]"
                     )
                 rescue => e
-                    LOG "Context configuring error: #{e.message}", 'DEBUG'
+                    LOG_DEBUG "Context configuring error: #{e.message}"
                 end
                     
                 trace << "Setting VM VNC settings:#{__LINE__ + 2}"
@@ -289,7 +285,7 @@ class IONe
                         "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{(CONF['OpenNebula']['base-vnc-port'] + vmid).to_s}\", TYPE=\"VNC\" ]"
                     ) # Configuring VNC
                 rescue => e
-                    LOG "VNC configuring error: #{e.message}", 'DEBUG'
+                    LOG_DEBUG "VNC configuring error: #{e.message}"
                 end
 
                 trace << "Deploying VM:#{__LINE__ + 1}"            
@@ -301,22 +297,26 @@ class IONe
             #####   PostDeploy Activity define   #####
             Thread.new do
 
+                LOG_DEBUG "Starting PostDeploy Activities for VM#{vmid}"
+                
                 onblock(:vm, vmid).wait_for_state
+
+                LOG_DEBUG "VM is active now, let it go"
 
                 postDeploy = PostDeployActivities.new
 
                 #LimitsController
 
-                LOG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}", 'DEBUG'
+                LOG_DEBUG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}"
                 trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
-                postDeploy.LimitsController(params, vmid)
+                postDeploy.LimitsController(params, vmid, host)
 
                 #endLimitsController
                 #TrialController
 
                 if params['trial'] then
                     trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                    postDeploy.TrialController(params, vmid)
+                    postDeploy.TrialController(params, vmid, host)
                 end
 
                 #endTrialController
@@ -324,7 +324,7 @@ class IONe
 
                 if params['ansible'] && params['release'] then
                     trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"
-                    postDeploy.AnsibleController(params, vmid)
+                    postDeploy.AnsibleController(params, vmid, host)
                 end
 
                 #endAnsibleController
@@ -336,13 +336,16 @@ class IONe
             return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
         rescue => e
             out = { :exeption => e.message, :trace => trace << 'END_TRACE' }
-            LOG out.debug_out, 'DEBUG'
+            LOG_DEBUG out.debug_out
             return out
         end
     end
+    # Class for pst-deploy activities methods
+    #   All methods will receive creative methods params, new vm ID, and host, where VM was deployed
     class PostDeployActivities
         include Deferable
-        def AnsibleController(params, vmid)
+        # Executes given playbooks at fresh-deployed vm
+        def AnsibleController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)
             Thread.new do
                 onblock(:vm, vmid).wait_for_state
@@ -351,10 +354,11 @@ class IONe
                     'super' => '', 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
                 }))
             end
-            LOG "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'AnsibleController'
+            LOG_COLOR "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'AnsibleController', 'lightyellow'
             LOG_CALL(id, false, 'AnsibleController')
         end
-        def LimitsController(params, vmid)
+        # If Cluster type is vCenter, sets up Limits at the node
+        def LimitsController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)
             defer { LOG_CALL(id, false, 'LimitsController') }
             onblock(:vm, vmid) do | vm |
@@ -362,11 +366,12 @@ class IONe
                     cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
                 )
                 if !lim_res.nil? then
-                    LOG "Limits was not set, error: #{lim_res}", 'DEBUG'
+                    LOG_ERROR "Limits was not set, error: #{lim_res}"
                 end
             end if ClusterType(host) == 'vcenter'
         end
-        def TrialController(params, vmid)
+        # If VM is trial, starts time and schedule suspend method
+        def TrialController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)        
             LOG "VM #{vmid} suspend action scheduled", 'TrialController'
             action_time = Time.now.to_i + ( params['trial-suspend-delay'].nil? ?
@@ -374,7 +379,7 @@ class IONe
                                 params['trial-suspend-delay'] )
             onblock(:vm, vmid).wait_for_state
             if !onblock(:vm, vmid).schedule('suspend', action_time).nil? then
-                LOG 'Schduler proccess error', 'TrialController'
+                LOG_ERROR 'Scheduler proccess error', 'TrialController'
             end
             LOG_CALL(id, false, 'TrialController')
         end
