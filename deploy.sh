@@ -55,7 +55,7 @@ else
     echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 fi
 
-git clone --branch stable https://slnt_opp:Jago322==@bitbucket.org/slnt_opp/ione-cloud.git
+git clone --branch stable https://github.com/ione-cloud/ione-cloud-core.git
 mv ione-cloud/* ./
 rm -rf ione-cloud
 bundle install --gemfile ./Gemfile
