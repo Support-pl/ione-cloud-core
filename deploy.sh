@@ -1,13 +1,6 @@
 # Installing system libs, tools and gems
 
 echo "Attention: make, automake, gcc, gcc-c++, kernel-devel, ruby-devel, zeromq, zeromq-devel libs and zmqjsonrpc gem will be installed."
-echo "Also whmconnect user and /home/whmconnect dir will be created."
-read -p "Are you sure?[Y/n]" -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Y]$ ]]
-then
-    [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
-fi
 
 #echo -n "You have 5 sec before some dangerous stuff will started..."
 #echo -n '5..' && sleep 1 && echo -n '4..' && sleep 1 && echo -n '3..' && sleep 1 && echo -n '2..' && sleep 1 && echo -n '1..' && sleep 1 && echo 'Go'
@@ -18,8 +11,6 @@ yum install -y git make automake gcc gcc-c++ kernel-devel ruby-devel zeromq zero
 gem install zmqjsonrpc
 sed -i 's/enabled\=0/enabled\=1/g'  /etc/yum.repos.d/opennebula.repo
 sed -i 's/enabled\=0/enabled\=1/g'  /etc/yum.repos.d/vonecloud.repo
-
-# предусмотреть варианты yum.repos.d
 
 # Creating gem-test file
 
@@ -58,19 +49,21 @@ else
 fi
 
 git clone --branch stable https://github.com/ione-cloud/ione-cloud-core.git
-mv ione-cloud/* ./
-rm -rf ione-cloud
-bundle install --gemfile ./Gemfile
+mv ione-cloud-core ione-cloud
+cd ione-cloud
 
-cp utils/ione /usr/bin
+cp -f utils/ione /usr/bin
 chmod +x /usr/bin/ione
 
-echo 'export IONEROOT="/root/server"' >> ~/.bashrc
+DIR=`pwd`
+
+echo >> ~/.bashrc
+echo "export IONEROOT=\"$DIR/server\"" >> ~/.bashrc
 echo 'export IONELOGROOT="/var/log/ione"' >> ~/.bashrc
 systemctl set-environment IONEROOT=$IONEROOT
 systemctl set-environment IONEROOT=$IONELOGROOT
 
-mv utils/ione.service /lib/systemd/system/ione.service
+cp -f utils/ione.service /lib/systemd/system/ione.service
 systemctl daemon-reload
 
 mkdir /var/log/ione
