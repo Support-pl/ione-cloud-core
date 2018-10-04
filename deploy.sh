@@ -61,7 +61,6 @@ echo >> ~/.bashrc
 echo "export IONEROOT=\"$DIR/server\"" >> ~/.bashrc
 echo 'export IONELOGROOT="/var/log/ione"' >> ~/.bashrc
 systemctl set-environment IONEROOT=$IONEROOT
-systemctl set-environment IONEROOT=$IONELOGROOT
 
 cp -f utils/ione.service /lib/systemd/system/ione.service
 systemctl daemon-reload
