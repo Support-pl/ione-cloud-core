@@ -1,6 +1,7 @@
 ruby '2.0.0'
 
 source 'https://rubygems.org'
+gem 'nokogiri', '1.6.8.1'
 gem 'json'
 gem 'net-ssh', '~> 4.2'
 gem 'net-sftp', '~> 2.1', '>= 2.1.2'

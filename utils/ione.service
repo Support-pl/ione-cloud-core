@@ -1,5 +1,6 @@
 [Unit]
 Description=Integrated OpenNebula Cloud Server
+After=opennebula.service
 
 [Service]
 Environment=RACK_ENV=production

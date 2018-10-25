@@ -5,11 +5,11 @@ puts 'Extending Hash class by out method'
 # Ruby default Hash class
 class Hash
     # Returns hash as 'pretty generated' JSON String
-    def out()
+    def out
         JSON.pretty_generate(self)
     end
     # Returns hash as 'pretty generated' JSON String with replaced JSON(':' to '=>' and 'null' to 'nil')
-    def debug_out()
+    def debug_out
         JSON.pretty_generate(self).gsub("\": ", "\" => ").gsub(" => null", " => nil")
     end
     # @!visibility private
@@ -28,13 +28,29 @@ class Hash
         end
         result
     end
-    # Replaces string key to symbols
+    # Replaces string keys with symbol keys
     # @return [Hash]
     def to_sym!
         self.keys.each do |key| 
             self[key.to_sym] = self.delete key if key.class == String
         end
         self
+    end    
+    # Replaces all keys with string keys
+    # @return [Hash]
+    def to_s!
+        self.keys.each do |key| 
+            self[key.to_s] = self.delete key if key.class != String
+        end
+        self
+    end
+    # Returns array of values with given keys
+    # @param [Array] keys - Array of values
+    # @return [Array]
+    def get *keys
+        keys.collect do | key |
+            self[key]
+        end
     end
 end
 

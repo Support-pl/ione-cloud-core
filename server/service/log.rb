@@ -55,6 +55,7 @@ module IONeLoggerKit
         destination = "#{LOG_ROOT}/snapshot.log" if method == "SnapController"
         msg = msg.to_s.send(color).send(font)
         msg = "[ #{time()} ] " + msg
+        method.slice!('block in ')
         msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
 
         File.open(destination, 'a'){ |log| log.write msg + "\n" }

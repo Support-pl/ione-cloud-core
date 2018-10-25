@@ -14,7 +14,7 @@ if ROOT.nil? || LOG_ROOT.nil? then
 end
 
 puts 'Parsing config file'
-CONF = YAML.load(File.read("#{ROOT}/config.yml")) # IONe configuration constants
+CONF = YAML.load_file("#{ROOT}/config.yml") # IONe configuration constants
 
 puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
