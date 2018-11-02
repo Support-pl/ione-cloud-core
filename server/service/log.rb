@@ -50,12 +50,12 @@ module IONeLoggerKit
     end
     # Logging the message with choosen color and font to the one of two destinations
     # Check out 'colorize' gem for available colors and fonts 
-    def LOG_COLOR(msg, method = caller_locations(1,1)[0].label, color = 'red', font = 'bold')
+    def LOG_COLOR(msg, method = caller_locations(1,1)[0].label.dup, color = 'red', font = 'bold')
         destination = "#{LOG_ROOT}/activities.log"
         destination = "#{LOG_ROOT}/snapshot.log" if method == "SnapController"
         msg = msg.to_s.send(color).send(font)
         msg = "[ #{time()} ] " + msg
-        method.slice!('block in ')
+        method.slice!('block in '.dup)
         msg += " [ #{method} ]" if method != 'none' && method != "" && method != nil
 
         File.open(destination, 'a'){ |log| log.write msg + "\n" }

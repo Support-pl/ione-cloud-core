@@ -62,7 +62,8 @@ class IONe
 
             LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
             trace << "Checking params:#{__LINE__ + 1}"
-            params['vmid'], params['groupid'], params['userid'], params['templateid'] = params['vmid'].to_i, params['groupid'].to_i, params['userid'].to_i, params['templateid'].to_i
+            params['vmid'], params['groupid'], params['userid'], params['templateid'] = params.get('vmid', 'groupid', 'userid', 'templateid').map { |el| el.to_i }
+            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
 
             if params['vmid'] * params['groupid'] * params['userid'] * params['templateid'] == 0 then
                 LOG "ReinstallError - some params are nil", 'Reinstall'
@@ -88,9 +89,13 @@ class IONe
             trace << "Generating credentials and network context:#{__LINE__ + 1}"
             context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ', USERNAME = "Administrator"' : nil}\n]\n"
             trace << "Generating specs configuration:#{__LINE__ + 1}"
-            context += "VCPU=\"#{params['cpu']}\"\nMEMORY=\"#{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\"\n"
-            context += "DISK=[\n\tIMAGE_ID = \"#{template.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n\tSIZE=\"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n\tOPENNEBULA_MANAGED = \"NO\"]"
-            LOG_DEBUG "Resulting template:\n#{context}"
+            context += "VCPU = #{params['cpu']}\n" \
+                        "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
+                        "DISK = [ \n" \
+                        "IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
+                        "SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n" \
+                        "OPENNEBULA_MANAGED = \"NO\"\t]"
+            LOG_DEBUG "Resulting capacity template:\n#{context}"
             
             trace << "Terminating VM:#{__LINE__ + 1}"            
             vm.terminate(true)
@@ -195,7 +200,7 @@ class IONe
         # return
         begin
             trace << "Checking params types:#{__LINE__ + 1}"
-            params['cpu'], params['ram'], params['drive'], params['iops'] = params['cpu'].to_i, params['ram'].to_i, params['drive'].to_i, params['iops'].to_i
+            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
 
             ###################### Doing some important system stuff ###############################################################
             
@@ -238,12 +243,16 @@ class IONe
             trace << "Creating new VM:#{__LINE__ + 1}"
             onblock(:t, params['templateid']) do | t |
                 t.info!
-                specs = "VCPU = #{params['cpu']}
-                MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}
-                DISK = [
-                    IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",
-                    SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",
-                    OPENNEBULA_MANAGED = \"NO\"]"
+                specs = ""
+                unless t['/VMTEMPLATE/TEMPLATE/CAPACITY'] == 'FIXED' then
+                specs = "VCPU = #{params['cpu']}\n" \
+                        "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
+                        "DISK = [ \n" \
+                        "IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
+                        "SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n" \
+                        "OPENNEBULA_MANAGED = \"NO\"\t]"
+                end
+                LOG_DEBUG "Resulting capacity template:\n" + specs
                 vmid = t.instantiate("#{params['login']}_vm", true, specs + "\n" + params['user-template'].to_s)
             end
 
