@@ -302,6 +302,9 @@ class VirtualMachine
         end
         true
     end
+
+    #!@group vCenterHelper
+
     # Sets resources allocation limits at vCenter node
     # @note For correct work of this method, you must keep actual vCenter Password at VCENTER_PASSWORD_ACTUAL attribute in OpenNebula
     # @note Attention!!! VM will be rebooted at the process
@@ -486,6 +489,9 @@ class VirtualMachine
             "Unexpected error, cannot handle it: #{e.message}"
         end
     end
+
+    #!@endgroup
+
     # Returns owner user ID
     # @param [Boolean] info method doesn't get object full info one more time -- usefull if collecting data from pool
     # @return [Integer]
