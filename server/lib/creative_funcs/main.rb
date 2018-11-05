@@ -236,6 +236,8 @@ class IONe
             else
                 userid, user = params['userid'], onblock(:u, params['userid'])
             end
+            LOG_TEST "New User account created"
+
             ##### Creating new User END #####
             
             #####   Creating and Configuring VM   #####
@@ -251,20 +253,19 @@ class IONe
                         "IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
                         "SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n" \
                         "OPENNEBULA_MANAGED = \"NO\"\t]"
+
+                trace << "Updating user quota:#{__LINE__ + 1}"
+                user.update_quota_by_vm(
+                    'append' => true, 'cpu' => params['cpu'],
+                    'ram' => params['ram'] * (params['units'] == 'GB' ? 1024 : 1),
+                    'drive' => params['drive'] * (params['units'] == 'GB' ? 1024 : 1)
+                )
                 end
                 LOG_DEBUG "Resulting capacity template:\n" + specs
                 vmid = t.instantiate("#{params['login']}_vm", true, specs + "\n" + params['user-template'].to_s)
             end
 
             raise "Template instantiate Error: #{vmid.message}" if vmid.class != Fixnum
-
-            trace << "Updating user quota:#{__LINE__ + 1}"
-            user.update_quota_by_vm(
-                'append' => true, 'cpu' => params['cpu'],
-                'ram' => params['ram'] * (params['units'] == 'GB' ? 1024 : 1),
-                'drive' => params['drive'] * (params['units'] == 'GB' ? 1024 : 1)
-            )
-            LOG_TEST "New User account created"
             
             host = params['host'].nil? ? $default_host : params['host']
 
@@ -273,7 +274,8 @@ class IONe
             onblock(:vm, vmid) do | vm |
                 trace << "Changing VM owner:#{__LINE__ + 1}"
                 begin
-                    vm.chown(userid, USERS_GROUP)
+                    r = vm.chown(userid, USERS_GROUP)
+                    raise r.message unless r.nil?
                 rescue
                     LOG_DEBUG "CHOWN error, params: #{userid}, #{vm}"
                 end
