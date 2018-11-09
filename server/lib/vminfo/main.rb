@@ -18,37 +18,36 @@ class IONe
     end
     # Returns VM's IP by ID
     # @param [Integer] vmid - VM ID
-    # @return [String] IP
-    def GetIP(vmid)
-        LOG_STAT()
-        id = id_gen()
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, 'GetIP') }
-        onblock(:vm, vmid) do |vm|
-            vm.info!
-            vm, ip = vm.to_hash['VM'], 'nil'
-            begin
-                # If VM was created using OpenNebula template
-                ip = vm['TEMPLATE']['NIC']['IP'] if !vm['TEMPLATE']['NIC']['IP'].nil?
-                return ip if !ip.include?(':')
-            rescue # If not, this action will raise HashRead exception
-            end
-            begin
-                # If VM was imported correctly, IP address will be readed by the monitoring system
-                ip = vm['MONITORING']['GUEST_IP'] if !vm['MONITORING']['GUEST_IP'].nil? && !vm['MONITORING']['GUEST_IP'].include?(':')
-                # Monitoring can read IPv6 address, so let us make the check
-                return ip if !ip.include?(':')
-            rescue
-            end
-            begin
-                # Also IP can be stored at the another place in monitoring, but here all IP's are stored 
-                ip = vm['MONITORING']['GUEST_IP_ADDRESSES'].split(',').first if !vm['MONITORING']['GUEST_IP_ADDRESSES'].nil?
-                return ip if !ip.include?(':')
-            rescue
-            end
-            return 'nil' if ip.nil? || ip.include?(':')
-            return ip if !ip.include?(':')
+    # @return [String] IP !!!!!!!!!!
+    def GetIP(vm_ref)
+        vm = case vm_ref
+             when OpenNebula::VirtualMachine
+                vm_ref.to_hash
+             when Fixnum, String
+                onblock(:vm, vm_ref).to_hash!
+             when Hash
+                vm_ref
+             end['VM']
+        begin
+            # If VM was created using OpenNebula template
+            ip = IPAddr.new vm['TEMPLATE']['NIC']['IP']
+            return ip.to_s if ip.ipv4? && !ip.local?
+        rescue # If not, this action will raise HashRead exception
         end
+        begin
+            # Also IP can be stored at the another place in monitoring, but here all IP's are stored 
+            ips = vm['MONITORING']['GUEST_IP_ADDRESSES'].split(',').map! { |ip| IPAddr.new ip }
+            return ips.detect { |ip| ip.ipv4? && !ip.local? }.to_s
+        rescue
+        end
+        begin
+            # If VM was imported correctly, IP address will be readed by the monitoring system
+            ip = IPAddr.new vm['MONITORING']['GUEST_IP']
+            # Monitoring can read IPv6 address, so let us make the check
+            return ip.to_s if ip.ipv4? && !ip.local?
+        rescue
+        end
+        return ""
     end
     # Getting VM ID by IP
     # @param [String] ip - IP address
@@ -73,55 +72,30 @@ class IONe
     # @param [Integer] vmid - VM ID
     # @return [Integer] State
     def STATE(vmid) 
-        LOG_STAT()
-        id = id_gen()
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, 'STATE') }
-
         onblock(:vm, vmid.to_i).state!
     end
     # Getting VM state string by ID
     # @param [Integer] vmid - VM ID
     # @return [String] State
     def STATE_STR(vmid)
-        LOG_STAT()
-        id = id_gen()
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, 'STATE_STR') }
-
         onblock(:vm, vmid.to_i).state_str!
     end
     # Getting VM LCM state number by ID
     # @param [Integer] vmid - VM ID
     # @return [Integer] State
     def LCM_STATE(vmid)
-        LOG_STAT()
-        id = id_gen()
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, 'LCM_STATE') }
-
         onblock(:vm, vmid.to_i).lcm_state!
     end
     # Getting VM LCM state string by ID
     # @param [Integer] vmid - VM ID
     # @return [String] State
     def LCM_STATE_STR(vmid)
-        LOG_STAT()
-        id = id_gen()
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, 'LCM_STATE_STR') }
-
         onblock(:vm, vmid.to_i).lcm_state_str!
     end
     # Getting VM most important data
     # @param [Integer] vmid - VM ID
     # @return [Hash] Data(name, owner-name, owner-id, ip, host, state, cpu, ram, imported)
     def get_vm_data(vmid)
-        LOG_STAT()
-        id = id_gen()
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, 'get_vm_data') }
-
         onblock(:vm, vmid) do | vm |
             vm.info!
             vm_hash = vm.to_hash['VM']

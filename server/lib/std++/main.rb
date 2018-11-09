@@ -85,3 +85,10 @@ class NilClass
         obj
     end
 end
+
+class IPAddr
+    def local?
+        a, b, c, d = self.to_s.split('.')
+        return (a == '10') || (a == '192' && b == '168') || (a == '172' && (16..31) === b.to_i )
+    end
+end

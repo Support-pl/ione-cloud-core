@@ -86,14 +86,10 @@ class IONe
     #   => String('example-node-vcenter') => Host was found
     #   => nil => Host wasn't found
     def get_vm_host(vmid)
-        id = id_gen()
-        LOG_CALL(id, true, __method__)
-        defer { LOG_CALL(id, false, 'get_vm_host') }
         onblock(:vm, vmid, @client) do | vm |
-            vm.info!
-            vm = vm.to_hash['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
-            return vm.last['HOSTNAME'] if vm.class == Array # If history consists of 2 or more lines - returns last
-            return vm['HOSTNAME'] if vm.class == Hash # If history consists of only one line - returns it
+            history = vm.to_hash!['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
+            return history['HOSTNAME'] if history.class == Hash # If history consists of only one line - returns it
+            return history.last['HOSTNAME'] if history.class == Array # If history consists of 2 or more lines - returns last
             nil # Returns NilClass if did not found anything - possible if vm is at HOLD or PENDING state
         end
     end
@@ -112,27 +108,35 @@ class IONe
     #               :vmid => 0, :userid => 0, :host => 'example-node0',
     #               :login => 'username', :ip => '192.168.10.3', :state => 'RUNNING'
     #           }, ...], ['example-node0', 'example-node1', ...], ['192.168.10.2', '192.168.10.4', '192.168.10.5', ...]
-    def compare_info(vms = [])
+    def compare_info vms = []
         LOG_STAT()
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'compare_info') }
         info = []
         infot = Thread.new do
-            vm_pool = VirtualMachinePool.new(@client)
-            vm_pool.info_all!
+            unless vms.empty? then
+                vm_pool = vms.map! do |vmid| 
+                    onblock(:vm, vmid) {| vm | vm.info! || vm }
+                end
+            else
+                vm_pool = VirtualMachinePool.new(@client)
+                vm_pool.info_all!
+            end
             vm_pool.each do |vm| # Creating VM list from VirtualMachine Pool Object
-                break if vm.nil?
-                next if !vms.empty? && !vms.include?(vm.id)
-                vm_hash = vm.to_hash['VM']
+                begin
                 info << {
-                    :vmid => vm.id, :userid => vm.uid, :host => get_vm_host(vm.id),
-                    :login => vm_hash['UNAME'], :ip => GetIP(vm.id), :state => (vm.lcm_state != 0 ? vm.lcm_state_str : vm.state_str)
+                    :vmid => vm.id, :userid => vm.uid(false, true), :host => get_vm_host(vm.id),
+                    :login => vm.uname(false, true), :ip => GetIP(vm), :state => (vm.lcm_state != 0 ? vm.lcm_state_str : vm.state_str)
                 }
+                rescue
+                    binding.pry
+                    break
+                end
             end
         end
 
-        return info if !vms.empty?
+        return info || infot.join unless vms.empty?
 
         free = []
         freet = Thread.new do
@@ -163,6 +167,7 @@ class IONe
 
         freet.join
         infot.join
+
         return info, hosts, free
     end
     # Returns User template in XML
