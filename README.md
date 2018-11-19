@@ -4,8 +4,6 @@
 [GitHub](https://github.com/ione-cloud)
 [Creators](https://support.by)
 
-## Synopsis
-
 ## Feature List
 
 **1. Automate processes inside your OpenNebula Cloud**

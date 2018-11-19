@@ -1,6 +1,7 @@
 require 'zmqjsonrpc'
 require 'yaml'
 require 'json'
+require 'ipaddr'
 
 STARTUP_TIME = Time.now().to_i # IONe server start time
 
@@ -14,7 +15,7 @@ if ROOT.nil? || LOG_ROOT.nil? then
 end
 
 puts 'Parsing config file'
-CONF = YAML.load(File.read("#{ROOT}/config.yml")) # IONe configuration constants
+CONF = YAML.load_file("#{ROOT}/config.yml") # IONe configuration constants
 
 puts 'Including log-library'
 require "#{ROOT}/service/log.rb"
@@ -130,11 +131,11 @@ begin
         begin
             Thread.new do
                 require "#{ROOT}/scripts/#{script}/main.rb"
-                LOG_COLOR "\t - #{script} -- initialized", 'none', 'green', 'itself'
             end
-        rescue => e
-            LOG_COLOR "Script \"#{script}\" was not started | Error: #{e.message}", 'ScriptController', 'green', 'itself'
-            puts "\tScript \"#{script}\" was not started | Error: #{e.message}"
+                LOG_COLOR "\t - #{script} -- initialized", 'none', 'green', 'itself'
+            rescue => e
+                LOG_COLOR "Script \"#{script}\" was not started | Error: #{e.message}", 'ScriptController', 'green', 'itself'
+                puts "\tScript \"#{script}\" was not started | Error: #{e.message}"
         end
     end if CONF['Scripts'].class == Array
 rescue => e
