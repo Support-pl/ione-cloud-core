@@ -1,6 +1,7 @@
 require 'zmqjsonrpc'
 require 'yaml'
 require 'json'
+require 'ipaddr'
 
 STARTUP_TIME = Time.now().to_i # IONe server start time
 
@@ -130,11 +131,11 @@ begin
         begin
             Thread.new do
                 require "#{ROOT}/scripts/#{script}/main.rb"
-                LOG_COLOR "\t - #{script} -- initialized", 'none', 'green', 'itself'
             end
-        rescue => e
-            LOG_COLOR "Script \"#{script}\" was not started | Error: #{e.message}", 'ScriptController', 'green', 'itself'
-            puts "\tScript \"#{script}\" was not started | Error: #{e.message}"
+                LOG_COLOR "\t - #{script} -- initialized", 'none', 'green', 'itself'
+            rescue => e
+                LOG_COLOR "Script \"#{script}\" was not started | Error: #{e.message}", 'ScriptController', 'green', 'itself'
+                puts "\tScript \"#{script}\" was not started | Error: #{e.message}"
         end
     end if CONF['Scripts'].class == Array
 rescue => e

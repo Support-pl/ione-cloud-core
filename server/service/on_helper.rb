@@ -169,7 +169,7 @@ module ONeHelper
 end
 
 # OpenNebula::User class
-class User
+class OpenNebula::User
     # Sets user quota by his existing VMs and/or appends new vm specs to it
     # @param [Hash] spec
     # @option spec [Boolean]          'append'  Set it true if you wish to append specs
@@ -193,7 +193,7 @@ class User
 end
 
 # OpenNebula::Template class
-class Template
+class OpenNebula::Template
     # Checks given template OS type by User Input
     # @return [Boolean]
     def win?
@@ -203,7 +203,7 @@ class Template
 end
 
 # OpenNebula::VirtualMachine class
-class VirtualMachine
+class OpenNebula::VirtualMachine
     # Actions supported by OpenNebula scheduler
     SCHEDULABLE_ACTIONS = %w(
         terminate
@@ -495,9 +495,15 @@ class VirtualMachine
     # Returns owner user ID
     # @param [Boolean] info method doesn't get object full info one more time -- usefull if collecting data from pool
     # @return [Integer]
-    def uid(info = true)
+    def uid(info = true, from_pool = false)
         self.info! if info
-        self.to_hash['VM']['UID'].to_i
+        return @xml[0].children[1].text.to_i unless from_pool
+        @xml.children[1].text.to_i
+    end
+    def uname(info = true, from_pool = false)
+        self.info! if info
+        return @xml[0].children[3].text.to_i unless from_pool
+        @xml.children[3].text
     end
     # Gives info about snapshots availability
     # @return [Boolean]
@@ -530,7 +536,7 @@ class VirtualMachine
 end
 
 # OpenNebula::XMLElement class
-class XMLElement
+class OpenNebula::XMLElement
     # Calls info! method and returns a hash representing the object
     def to_hash!
         self.info! || self.to_hash
