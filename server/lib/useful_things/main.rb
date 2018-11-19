@@ -28,7 +28,7 @@ class IONe
         vmp = VirtualMachinePool.new(@client)
         vmp.info_all!
         vmp.each do | vm |
-            return vm.id.to_i if vm.uid(false) == uid
+            return vm.id.to_i if vm.uid(false, true) == uid
         end
         'none'
     end
