@@ -135,9 +135,11 @@ See more, about IONe automation scripts [here](#label-Creating+automation+script
 
 ```yaml
 vCenter:
-  cpu-limits-koef: 1000
+  cpu-limits-koef: 1000 # By editing this key, you may configure the CPU units, which are used at vCenter VM limits configuration {VirtualMachine#getResourcesAllocationLimits methods}.
+  drives-iops: # Type here default IOps value for each drive type
+    HDD: 1000
+    SSD: 5000
 ```
-By editing this key, you may configure the CPU units, which are used at vCenter VM limits configuration {VirtualMachine#getResourcesAllocationLimits methods}.
 
 * SnapshotController
 
@@ -382,6 +384,15 @@ $IONELOGROOT/:
 /lib/systemd/system/:
 |-- ione.service # IONe SystemD service
 ```
+
+### Additional setup
+
+  1. **Datastores**. 
+    Every system datastore must have the next attributes:
+    * DEPLOY - TRUE or FALSE, if set to false, this datastore will not be used for deployments
+    * DRIVE_TYPE - SSD, HDD, NVMe, etc. Used for CreateVMwithSpecs and Reinstall when choosing DS for deployment
+  2. **VM Templates**
+    * PAAS_ACCESSIBLE
 
 ### Available modules
 

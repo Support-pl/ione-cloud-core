@@ -11,7 +11,7 @@ class IONe
     #       Object set to true:     777, OpenNebula::User(777)
     #   Error:                      "[one.user.allocation] Error ...", maybe caused if user with given name already exists
     #   Error:                      0
-    def UserCreate(login, pass, groupid = nil, client = $client, object = false)
+    def UserCreate(login, pass, groupid = nil, client = @client, object = false)
         id = id_gen()
         LOG_CALL(id, true)
         defer { LOG_CALL(id, false, 'UserCreate') }
@@ -34,6 +34,7 @@ class IONe
     # @param [Hash] params - all needed data for VM reinstall
     # @option params [Integer] :vmid - VirtualMachine for Reinstall ID
     # @option params [Integer] :userid - new Virtual Machine owner
+    # @option params [String] :username - Administrator username for Windows Machines
     # @option params [String] :passwd Password for new Virtual Machine 
     # @option params [Integer] :templateid - templateid for Instantiate
     # @option params [Integer] :cpu vCPU cores amount for new VM
@@ -64,7 +65,15 @@ class IONe
             trace << "Checking params:#{__LINE__ + 1}"
             params['vmid'], params['groupid'], params['userid'], params['templateid'] = params.get('vmid', 'groupid', 'userid', 'templateid').map { |el| el.to_i }
             params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
-
+            
+            begin
+                params['iops'] = params['iops'] || CONF['vCenter']['drive-types'][params['ds-type']]
+            rescue
+                LOG_DEBUG "No vCenter configuration found"
+            end
+            
+            params['username'] = params['username'] || 'Administrator'
+            
             if params['vmid'] * params['groupid'] * params['userid'] * params['templateid'] == 0 then
                 LOG "ReinstallError - some params are nil", 'Reinstall'
                 return "ReinstallError - some params are nil"
@@ -87,7 +96,7 @@ class IONe
             trace << "Checking OS type:#{__LINE__ + 1}"            
             win = template.win?
             trace << "Generating credentials and network context:#{__LINE__ + 1}"
-            context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ', USERNAME = "Administrator"' : nil}\n]\n"
+            context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ", USERNAME = \"#{params['username']}\"" : nil}\n]\n"
             trace << "Generating specs configuration:#{__LINE__ + 1}"
             context += "VCPU = #{params['cpu']}\n" \
                         "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
@@ -201,6 +210,14 @@ class IONe
         begin
             trace << "Checking params types:#{__LINE__ + 1}"
             params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
+            
+            begin
+                params['iops'] = params['iops'] || CONF['vCenter']['drive-types'][params['ds-type']]
+            rescue
+                LOG_DEBUG "No vCenter configuration found"
+            end
+
+            params['username'] = params['username'] || 'Administrator'
 
             ###################### Doing some important system stuff ###############################################################
             
@@ -284,7 +301,7 @@ class IONe
                 trace << "Setting VM context:#{__LINE__ + 2}"
                 begin
                     vm.updateconf(
-                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ', USERNAME = "Administrator"' : nil} ]"
+                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ", USERNAME = \"#{params['username']}\"" : nil} ]"
                     )
                 rescue => e
                     LOG_DEBUG "Context configuring error: #{e.message}"
