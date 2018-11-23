@@ -63,8 +63,11 @@ class IONe
 
             LOG "Reinstalling VM#{params['vmid']}", 'Reinstall'
             trace << "Checking params:#{__LINE__ + 1}"
+            if params.get('vmid', 'groupid', 'userid', 'templateid').include?(nil) then
+                LOG "ReinstallError - some params are nil", 'Reinstall'
+                return "ReinstallError - some params are nil"
+            end
             params['vmid'], params['groupid'], params['userid'], params['templateid'] = params.get('vmid', 'groupid', 'userid', 'templateid').map { |el| el.to_i }
-            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
             
             begin
                 params['iops'] = params['iops'] || CONF['vCenter']['drive-types'][params['ds-type']]
@@ -72,15 +75,13 @@ class IONe
                 LOG_DEBUG "No vCenter configuration found"
             end
             
+            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
+            
             params['username'] = params['username'] || 'Administrator'
             
-            if params['vmid'] * params['groupid'] * params['userid'] * params['templateid'] == 0 then
-                LOG "ReinstallError - some params are nil", 'Reinstall'
-                return "ReinstallError - some params are nil"
-            end
 
             LOG_DEBUG 'Initializing vm object'
-            trace << "Initializing old VM onject:#{__LINE__ + 1}"            
+            trace << "Initializing old VM object:#{__LINE__ + 1}"            
             vm = onblock(VirtualMachine, params['vmid'])
             LOG_DEBUG 'Collecting data from old template'
             trace << "Collecting data from old template:#{__LINE__ + 1}"            
@@ -101,14 +102,14 @@ class IONe
             context += "VCPU = #{params['cpu']}\n" \
                         "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
                         "DISK = [ \n" \
-                        "IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
+                        "IMAGE_ID = \"#{template.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
                         "SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n" \
                         "OPENNEBULA_MANAGED = \"NO\"\t]"
             LOG_DEBUG "Resulting capacity template:\n#{context}"
             
             trace << "Terminating VM:#{__LINE__ + 1}"            
             vm.terminate(true)
-            LOG_COLOR 'Waiting until terminate process will over', 'Reinstall', 'lightyellow'
+            LOG_COLOR 'Waiting until terminate process will over', 'Reinstall', 'light_yellow'
             trace << ":#{__LINE__ + 1}"            
             until STATE_STR(params['vmid']) == 'DONE' do
                 sleep(0.2)
@@ -209,13 +210,14 @@ class IONe
         # return
         begin
             trace << "Checking params types:#{__LINE__ + 1}"
-            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
             
             begin
                 params['iops'] = params['iops'] || CONF['vCenter']['drive-types'][params['ds-type']]
             rescue
                 LOG_DEBUG "No vCenter configuration found"
             end
+            
+            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
 
             params['username'] = params['username'] || 'Administrator'
 
@@ -382,7 +384,7 @@ class IONe
                     'super' => '', 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
                 }))
             end
-            LOG_COLOR "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'AnsibleController', 'lightyellow'
+            LOG_COLOR "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'AnsibleController', 'light_yellow'
             LOG_CALL(id, false, 'AnsibleController')
         end
         # If Cluster type is vCenter, sets up Limits at the node

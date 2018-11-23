@@ -34,8 +34,14 @@ module Deferable
                 begin
                     original_method.bind(self).(*args)
                 ensure
-                    @defered_methods.each {|m| m.call }
-                    @defered_methods = @@defered_method_stack.pop
+                    begin
+                        @defered_methods.each {|m| m.call }
+                        @defered_methods = @@defered_method_stack.pop
+                    rescue => e
+                        LOG_DEBUG "Error in DEFER:\n"
+                        LOG_DEBUG e.message
+                        LOG_DEBUG e.backtrace
+                    end
                 end
             end
         end

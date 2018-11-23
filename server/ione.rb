@@ -30,9 +30,9 @@ TRIAL_SUSPEND_DELAY = CONF['Server']['trial-suspend-delay'] # Trial VMs suspend 
 USERS_VMS_SSH_PORT = CONF['OpenNebula']['users-vms-ssh-port'] # Default SSH port at OpenNebula Virtual Machines 
 $default_host = CONF['OpenNebula']['default-node-id'] # Default host to deploy
 
-puts 'Setting up Enviroment(OpenNebula API)'
+puts 'Setting up Environment(OpenNebula API)'
 ###########################################
-# Setting up Enviroment                   #
+# Setting up Environment                   #
 ###########################################
 ONE_LOCATION=ENV["ONE_LOCATION"] # OpenNebula location
 if !ONE_LOCATION
@@ -53,7 +53,7 @@ $client = Client.new(CREDENTIALS, ENDPOINT) # oneadmin auth-client
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
 include ONeHelper
-puts 'Including Deferable rmodule'
+puts 'Including Deferable module'
 require "#{ROOT}/service/defer.rb"
 
 LOG(
@@ -70,9 +70,13 @@ LOG(
 
 puts 'Generating "at_exit" directive'
 at_exit do
-    LOG_COLOR("Server was stoppped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}", nil)
-    LOG "", "", false
-    LOG("       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
+    begin
+        LOG_COLOR("Server was stopped. Uptime: #{fmt_time(Time.now.to_i - STARTUP_TIME)}", "")
+        LOG "", "", false
+        LOG("       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++", "", false)
+    rescue => e
+        LOG_DEBUG e.message
+    end
 end
 
 # Main App class. All methods, which must be available as JSON-RPC methods, should be defined in this class

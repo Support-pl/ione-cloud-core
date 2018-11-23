@@ -107,7 +107,7 @@ module IONeLoggerKit
     $PROC = []
 
     # Puts processes to process list and deletes them out
-    # @param [Integer] id Process id, you should generate it usind id_gen function
+    # @param [Integer] id Process id, you should generate it using id_gen function
     # @param [Boolean] called If true adds process to list, of false deletes
     # @param [String | Object] method Method name or _method_ object. This function trying to get method-name automatically
     # @return [Boolean] true

@@ -1,5 +1,5 @@
 ###########################################
-# Setting up Enviroment                   #
+# Setting up Environment                   #
 ###########################################
 ONE_LOCATION=ENV["ONE_LOCATION"]
 if !ONE_LOCATION

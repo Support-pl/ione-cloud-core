@@ -71,7 +71,7 @@ class IONe
     # @example
     #   => {:vmid => Integer, :userid => Integer, :ip => String} => User and VM found
     #   => {:vmid => 'none', :userid => 'none', :ip => String}
-    def get_vm_by_uname(name)
+    def get_vm_by_uname name
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'get_vm_by_uname') }
@@ -85,11 +85,25 @@ class IONe
     # @example
     #   => String('example-node-vcenter') => Host was found
     #   => nil => Host wasn't found
-    def get_vm_host(vmid)
+    def get_vm_host vmid
         onblock(:vm, vmid, @client) do | vm |
             history = vm.to_hash!['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
             return history['HOSTNAME'] if history.class == Hash # If history consists of only one line - returns it
             return history.last['HOSTNAME'] if history.class == Array # If history consists of 2 or more lines - returns last
+            nil # Returns NilClass if did not found anything - possible if vm is at HOLD or PENDING state
+        end
+    end
+    # Returns datastore name, where VM has been deployed
+    # @param [Integer] vmid - VM ID
+    # @return [String | nil]
+    # @example
+    #   => String('example-ds-vcenter') => Host was found
+    #   => nil => Host wasn't found
+    def get_vm_ds vmid
+        onblock(:vm, vmid, @client) do | vm |
+            h = vm.to_hash!['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
+            return h['DS_ID'] if h.class == Hash # If history consists of only one line - returns it
+            return h.last['DS_ID'] if h.class == Array # If history consists of 2 or more lines - returns last
             nil # Returns NilClass if did not found anything - possible if vm is at HOLD or PENDING state
         end
     end

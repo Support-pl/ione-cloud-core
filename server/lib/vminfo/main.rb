@@ -94,18 +94,20 @@ class IONe
     end
     # Getting VM most important data
     # @param [Integer] vmid - VM ID
-    # @return [Hash] Data(name, owner-name, owner-id, ip, host, state, cpu, ram, imported)
+    # @return [Hash] Data(name, owner-name, owner-id, group id, ip, host, state, cpu, ram, datastore type, disk size imported)
     def get_vm_data(vmid)
         onblock(:vm, vmid) do | vm |
             vm.info!
             vm_hash = vm.to_hash['VM']
             return {
-                # "Name, owner, owner id"
-                'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'],
+                # "Name, owner, owner id, group id"
+                'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'], 'GROUPID' => vm_hash['GID'],
                 # IP, host and vm state
                 'IP' => GetIP(vmid), 'HOST' => get_vm_host(vmid), 'STATE' => LCM_STATE(vmid) != 0 ? LCM_STATE_STR(vmid) : STATE_STR(vmid),
                 # VM specs
                 'CPU' => vm_hash['TEMPLATE']['VCPU'], 'RAM' => vm_hash['TEMPLATE']['MEMORY'],
+                'DS_TYPE' => begin DatastoresMonitoring('sys').detect{|el| el['id'] == get_vm_ds(vmid).to_i}['type'] rescue nil end,
+                'DRIVE' => begin vm_hash['TEMPLATE']['DISK']['SIZE'] rescue nil end,
                 # VM creation hist
                 'IMPORTED' => vm_hash['TEMPLATE']['IMPORTED'].nil? ? 'NO' : 'YES'
             }
