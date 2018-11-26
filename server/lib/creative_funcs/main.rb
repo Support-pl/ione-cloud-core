@@ -1,17 +1,22 @@
 class IONe
+    def sleep_test(timeout)
+        sleep(timeout)
+        return 'DONE'
+    end
     # Creates new user account
     # @param [String]   login       - login for new OpenNebula User
     # @param [String]   pass        - password for new OpenNebula User
     # @param [Integer]  groupid     - Secondary group for new user
     # @param [OpenNebula::Client] client
     # @param [Boolean]  object      - Returns userid of the new User and object of new User
+    # @param [String]   locale      - Sets given locale for Sunstone
     # @return [Integer | Integer, OpenNebula::User]
     # @example Examples
     #   Success:                    777
     #       Object set to true:     777, OpenNebula::User(777)
     #   Error:                      "[one.user.allocation] Error ...", maybe caused if user with given name already exists
     #   Error:                      0
-    def UserCreate(login, pass, groupid = nil, client = @client, object = false)
+    def UserCreate(login, pass, groupid = nil, locale = nil, client:@client, object:false)
         id = id_gen()
         LOG_CALL(id, true)
         defer { LOG_CALL(id, false, 'UserCreate') }
@@ -27,6 +32,7 @@ class IONe
             LOG_DEBUG allocation_result.message #If allocation was successful, allocate method returned nil
             return 0
         end
+        user.update("SUNSTONE=[ LANG=\"#{locale || CONF['OpenNebula']['users-default-lang']}\" ]", true)
         return user.id, user if object
         user.id
     end
@@ -42,7 +48,7 @@ class IONe
     # @option params [String] :units Units for RAM and drive size, can be 'MB' or 'GB'
     # @option params [Integer] :ram RAM size for new VM
     # @option params [Integer] :drive Drive size for new VM
-    # @option params [String] :ds_type VM deplot target datastore drives type, 'SSD' ot 'HDD'
+    # @option params [String] :ds_type VM deploy target datastore drives type, 'SSD' ot 'HDD'
     # @option params [Bool] :release (false) VM will be started on HOLD if false
     # @param [Array<String>] trace - public trace log
     # @return [Hash, nil, String] 
@@ -189,13 +195,13 @@ class IONe
     # @option params [String] :units Units for RAM and drive size, can be 'MB' or 'GB'
     # @option params [Integer] :ram RAM size for new VM
     # @option params [Integer] :drive Drive size for new VM
-    # @option params [String] :ds_type VM deplot target datastore drives type, 'SSD' or 'HDD'
+    # @option params [String] :ds_type VM deploy target datastore drives type, 'SSD' or 'HDD'
     # @option params [Integer] :groupid Additional group, in which user should be
     # @option params [Boolean] :trial (false) VM will be suspended after TRIAL_SUSPEND_DELAY
     # @option params [Boolean] :release (false) VM will be started on HOLD if false
     # @option params [String]  :user-template Addon template, you may append to default template(Use XML-string as OpenNebula requires)
     # @param [Array<String>] trace - public trace log
-    # @return [Hash, nil] UserID, VMID and IP address if success, or error message and traceback log if error
+    # @return [Hash, nil] UserID, VMID and IP address if success, or error message and backtrace log if error
     # @example Example out
     #   Success: {'userid' => 777, 'vmid' => 123, 'ip' => '0.0.0.0'}
     #   Debug is set to true: nil
@@ -248,7 +254,7 @@ class IONe
             LOG_TEST "Creating new user for #{params['login']}"
             if params['nouser'].nil? || !params['nouser'] then
                 trace << "Creating new user:#{__LINE__ + 1}"
-                userid, user = UserCreate(params['login'], params['password'], params['groupid'].to_i, @client, true) if params['test'].nil?
+                userid, user = UserCreate(params['login'], params['password'], params['groupid'].to_i, object:true) if params['test'].nil?
                 LOG_ERROR "Error: UserAllocateError" if userid == 0
                 trace << "UserAllocateError:#{__LINE__ - 2}" if userid == 0
                 return {'error' => "UserAllocateError", 'trace' => trace} if userid == 0
@@ -365,7 +371,7 @@ class IONe
             LOG_TEST 'Post-Deploy joblist defined, basic installation job ended'
             return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
         rescue => e
-            out = { :exeption => e.message, :trace => trace << 'END_TRACE' }
+            out = { :exception => e.message, :trace => trace << 'END_TRACE' }
             LOG_DEBUG out.debug_out
             return out
         end
@@ -409,7 +415,7 @@ class IONe
                                 params['trial-suspend-delay'] )
             onblock(:vm, vmid).wait_for_state
             if !onblock(:vm, vmid).schedule('suspend', action_time).nil? then
-                LOG_ERROR 'Scheduler proccess error', 'TrialController'
+                LOG_ERROR 'Scheduler process error', 'TrialController'
             end
             LOG_CALL(id, false, 'TrialController')
         end

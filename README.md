@@ -83,6 +83,7 @@ OpenNebula:
   credentials: 'oneadmin:secret' # oneadmin and password(or auth-token) for oneadmin
   endpoint: 'http://localhost:2633/RPC2' # RPC endpoint for OpenNebula
   users-group: 1 # Main group for Basic Users
+  users-default-lang: en_US # Default locale for new users
   users-vms-ssh-port: 22 # Default SSH-port at VMs instantiated from your templates
   default-node-id: 0 # ID of the node, vms to deploy by default
   base-vnc-port: 5900 # Base VNC-port number. VMs will get port for VNC by formula: {{ base-vnc-port }} + {{ vmid }}

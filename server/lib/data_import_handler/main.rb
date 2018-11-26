@@ -6,7 +6,7 @@ class IONe
         # return nil
         if params.class == Hash
             begin
-            userid = UserCreate(params['username'], params['password'], nil, @client)
+            userid = UserCreate(params['username'], params['password'])
             if userid == 0 then
                 up = UserPool.new(@client)
                 up.info_all!
