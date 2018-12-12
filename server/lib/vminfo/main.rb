@@ -17,8 +17,8 @@ class IONe
         vm.info! || vm.to_xml
     end
     # Returns VM's IP by ID
-    # @param [Integer] vmid - VM ID
-    # @return [String] IP !!!!!!!!!!
+    # @param [Integer] vm_ref - VM ID
+    # @return [String] IP address
     def GetIP(vm_ref)
         vm = case vm_ref
              when OpenNebula::VirtualMachine
@@ -93,31 +93,24 @@ class IONe
         onblock(:vm, vmid.to_i).lcm_state_str!
     end
     # Getting VM most important data
-    # @param [Integer] vmid - VM ID
+    # @param [Integer] vm - VM ID
     # @return [Hash] Data(name, owner-name, owner-id, group id, ip, host, state, cpu, ram, datastore type, disk size imported)
-    def get_vm_data(vmid)
-        onblock(:vm, vmid) do | vm |
-            vm.info!
-            vm_hash = vm.to_hash['VM']
-            return {
-                # "Name, owner, owner id, group id"
-                'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'], 'GROUPID' => vm_hash['GID'],
-                # IP, host and vm state
-                'IP' => GetIP(vmid), 'HOST' => get_vm_host(vmid), 'STATE' => LCM_STATE(vmid) != 0 ? LCM_STATE_STR(vmid) : STATE_STR(vmid),
-                # VM specs
-                'CPU' => vm_hash['TEMPLATE']['VCPU'], 'RAM' => vm_hash['TEMPLATE']['MEMORY'],
-                'DS_TYPE' => begin DatastoresMonitoring('sys').detect{|el| el['id'] == get_vm_ds(vmid).to_i}['type'] rescue nil end,
-                'DRIVE' => begin vm_hash['TEMPLATE']['DISK']['SIZE'] rescue nil end,
-                # VM creation hist
-                'IMPORTED' => vm_hash['TEMPLATE']['IMPORTED'].nil? ? 'NO' : 'YES'
-            }
-        end if vmid.class != VirtualMachine # if vmid
-        vm, vmid = vmid, vmid.id # if vm object
+    def get_vm_data(vm)
+        vm = onblock(:vm, vm) if vm.class == Fixnum || vm.class == String
+        vmid = vm.id
+        vm.info!
         vm_hash = vm.to_hash['VM']
-        {
-            'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'],
-            'IP' => GetIP(vmid), 'HOST' => get_vm_host(vmid), 'STATE' => LCM_STATE(vmid) != 0 ? LCM_STATE_STR(vmid) : STATE_STR(vmid),
+        hostname, host_id = get_vm_host(vm, true)
+        return {
+            # "Name, owner, owner id, group id"
+            'NAME' => vm_hash['NAME'], 'OWNER' => vm_hash['UNAME'], 'OWNERID' => vm_hash['UID'], 'GROUPID' => vm_hash['GID'],
+            # IP, host and vm state
+            'IP' => GetIP(vmid), 'HOST_ID' => host_id, 'HOST' => hostname, 'STATE' => vm.lcm_state != 0 ? vm.lcm_state_str : vm.state_str,
+            # VM specs
             'CPU' => vm_hash['TEMPLATE']['VCPU'], 'RAM' => vm_hash['TEMPLATE']['MEMORY'],
+            'DS_TYPE' => begin DatastoresMonitoring('sys').detect{|el| el['id'] == get_vm_ds(vmid).to_i}['type'] rescue nil end,
+            'DRIVE' => begin vm_hash['TEMPLATE']['DISK']['SIZE'] rescue nil end,
+            # VM creation hist
             'IMPORTED' => vm_hash['TEMPLATE']['IMPORTED'].nil? ? 'NO' : 'YES'
         }
     end

@@ -138,9 +138,9 @@ module ONeHelper
             return 'Error: Unknown instance name given' if object.nil?
         end
         if block_given?
-            yield get_pool_element(object, id, client)
+            yield get_pool_element(object, id.to_i, client)
         else
-            get_pool_element(object, id, client)
+            get_pool_element(object, id.to_i, client)
         end
     end
     # Returns random Datastore ID filtered by disk type
@@ -148,7 +148,7 @@ module ONeHelper
     # @param [String] ds_type   - Datastore type, may be HDD or SSD, returns any DS if not given
     # @return [Integer]
     def ChooseDS(ds_type = nil)
-        dss = IONe.new(@client).DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
+        dss = IONe.new($client).DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
         dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' } if ds_type != nil
         ds = dss[rand(dss.size)]
         LOG_DEBUG "Deploying to #{ds['name']}"
@@ -324,45 +324,45 @@ class OpenNebula::VirtualMachine
     def setResourcesAllocationLimits(spec)
         LOG_DEBUG spec.debug_out
         return 'Unsupported query' if IONe.new($client).get_vm_data(self.id)['IMPORTED'] == 'YES'        
-        begin
-            query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
-            datacenter = get_vcenter_dc(host)
+        
+        query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
+        datacenter = get_vcenter_dc(host)
 
-            vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
-            disk = vm.disks.first
+        vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
+        disk = vm.disks.first
 
-            query[:cpuAllocation] = {:limit => spec[:cpu].to_i, :reservation => 0} if !spec[:cpu].nil?
-            query[:memoryAllocation] = {:limit => spec[:ram].to_i} if !spec[:ram].nil?
-            if !spec[:iops].nil? then
-                disk.storageIOAllocation.limit = spec[:iops].to_i
-                disk.backing.sharing = nil
-                query[:deviceChange] = [{
-                        :device => disk,
-                        :operation => :edit
-                }]
-            end
-
-            state = true
-            begin
-                LOG_DEBUG 'Powering VM Off'
-                LOG_DEBUG vm.PowerOffVM_Task.wait_for_completion
-            rescue => e
-                state = false
-            end
-            
-                LOG_DEBUG 'Reconfiguring VM'
-                LOG_DEBUG vm.ReconfigVM_Task(:spec => query).wait_for_completion
-            
-            begin
-                LOG_DEBUG 'Powering VM On'
-                LOG_DEBUG vm.PowerOnVM_Task.wait_for_completion
-            rescue
-            end if state
-
-        rescue => e
-            return "Reconfigure Error:#{e.message}"
+        query[:cpuAllocation] = {:limit => spec[:cpu].to_i, :reservation => 0} if !spec[:cpu].nil?
+        query[:memoryAllocation] = {:limit => spec[:ram].to_i} if !spec[:ram].nil?
+        if !spec[:iops].nil? then
+            disk.storageIOAllocation.limit = spec[:iops].to_i
+            disk.backing.sharing = nil
+            query[:deviceChange] = [{
+                    :device => disk,
+                    :operation => :edit
+            }]
         end
-        nil
+
+        state = true
+        begin
+            LOG_DEBUG 'Powering VM Off'
+            LOG_DEBUG vm.PowerOffVM_Task.wait_for_completion
+        rescue => e
+            state = false
+        end
+        
+            LOG_DEBUG 'Reconfiguring VM'
+            LOG_DEBUG vm.ReconfigVM_Task(:spec => query).wait_for_completion
+        
+        begin
+            LOG_DEBUG 'Powering VM On'
+            LOG_DEBUG vm.PowerOnVM_Task.wait_for_completion
+        rescue
+        end if state
+
+    rescue => e
+        return "Reconfigure Error:#{e.message}<|>Backtrace:#{e.backtrace}"
+    ensure
+        return nil
     end
     # Checks if vm is on given vCenter Datastore
     def is_at_ds?(ds_name)
