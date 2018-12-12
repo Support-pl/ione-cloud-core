@@ -62,7 +62,6 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true)
         defer { LOG_CALL(id, false, 'Reinstall') }
-        begin
             LOG_DEBUG params.merge!({ :method => 'Reinstall' }).debug_out
             return nil if params['debug'] == 'turn_method_off'
             return { 'vmid' => rand(params['vmid'].to_i + 1000), 'vmid_old' => params['vmid'], 'ip' => '0.0.0.0', 'ip_old' => '0.0.0.0' } if params['debug'] == 'data'   
@@ -75,13 +74,14 @@ class IONe
             end
             params['vmid'], params['groupid'], params['userid'], params['templateid'] = params.get('vmid', 'groupid', 'userid', 'templateid').map { |el| el.to_i }
             
+            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
+            
             begin
-                params['iops'] = params['iops'] || CONF['vCenter']['drive-types'][params['ds-type']]
+                params['iops'] = CONF['vCenter']['drive-types'][params['ds_type']]
+                LOG_DEBUG "IOps: #{params['iops'].class.to_s}(#{params['iops']})"
             rescue
                 LOG_DEBUG "No vCenter configuration found"
             end
-            
-            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
             
             params['username'] = params['username'] || 'Administrator'
             
@@ -103,7 +103,7 @@ class IONe
             trace << "Checking OS type:#{__LINE__ + 1}"            
             win = template.win?
             trace << "Generating credentials and network context:#{__LINE__ + 1}"
-            context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ", USERNAME = \"#{params['username']}\"" : nil}\n]\n"
+            context += "CONTEXT = [\n\tPASSWORD=\"#{params['passwd']}\",\n\tETH0_IP=\"#{nic['IP']}\",\n\tETH0_GATEWAY=\"#{nic['GATEWAY']}\",\n\tETH0_DNS=\"#{nic['DNS']}\",\n\tNETWORK=\"YES\"#{ win ? ",\n\tUSERNAME = \"#{params['username']}\"" : nil}\t]\n"
             trace << "Generating specs configuration:#{__LINE__ + 1}"
             context += "VCPU = #{params['cpu']}\n" \
                         "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
@@ -120,10 +120,11 @@ class IONe
             until STATE_STR(params['vmid']) == 'DONE' do
                 sleep(0.2)
             end if params['release']
+            LOG_COLOR "Terminate process is over, new VM is deploying now", 'Reinstall', 'green'
             LOG_DEBUG 'Creating new VM'
             trace << "Instantiating template:#{__LINE__ + 1}"
             vmid = template.instantiate(params['login'] + '_vm', false, context)
-            
+            LOG_DEBUG "New VM ID or an OpenNebula::Error: #{begin vmid.to_str rescue vmid.to_s end}"
             begin    
                 if vmid.class != Fixnum && vmid.include?('IP/MAC') then
                     trace << "Retrying template instantiation:#{__LINE__ + 1}"                
@@ -181,8 +182,8 @@ class IONe
 
             return { 'vmid' => vmid, 'vmid_old' => params['vmid'], 'ip' => GetIP(vmid), 'ip_old' => nic['IP'] }
         rescue => e
+            LOG_ERROR "Error ocurred while Reinstall: #{e.message}"
             return e.message, trace
-        end
     end
     # Creates new virtual machine from the given OS template and resize it to given specs, and new user account, which becomes owner of this VM 
     # @param [Hash] params - all needed data for new User and VM creation
@@ -213,17 +214,16 @@ class IONe
         LOG_CALL(id = id_gen(), true, __method__)
         defer { LOG_CALL(id, false, 'CreateVMwithSpecs') }
         LOG_DEBUG params.merge!(:method => __method__.to_s).debug_out
-        # return
-        begin
             trace << "Checking params types:#{__LINE__ + 1}"
             
+            
+            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
+
             begin
-                params['iops'] = params['iops'] || CONF['vCenter']['drive-types'][params['ds-type']]
+                params['iops'] = params['iops'] == 0 ? CONF['vCenter']['drive-types'][params['ds-type']] : params['iops']
             rescue
                 LOG_DEBUG "No vCenter configuration found"
             end
-            
-            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
 
             params['username'] = params['username'] || 'Administrator'
 
@@ -369,12 +369,11 @@ class IONe
             ##### PostDeploy Activity define END #####
 
             LOG_TEST 'Post-Deploy joblist defined, basic installation job ended'
-            return {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
+            return out = {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
         rescue => e
             out = { :exception => e.message, :trace => trace << 'END_TRACE' }
             LOG_DEBUG out.debug_out
             return out
-        end
     end
     # Class for pst-deploy activities methods
     #   All methods will receive creative methods params, new vm ID, and host, where VM was deployed
@@ -401,8 +400,10 @@ class IONe
                 lim_res = vm.setResourcesAllocationLimits(
                     cpu: params['cpu'] * CONF['vCenter']['cpu-limits-koef'], ram: params['ram'] * (params['units'] == 'GB' ? 1024 : 1), iops: params['iops']
                 )
-                if !lim_res.nil? then
-                    LOG_ERROR "Limits was not set, error: #{lim_res}"
+                unless lim_res.nil? then
+                    err, back = lim_res.split("<|>")
+                    LOG_ERROR "Limits was not set, error: #{err}"
+                    LOG_DEBUG "Limits was not set, error: #{err}\n#{back}"
                 end
             end if ClusterType(host) == 'vcenter'
         end

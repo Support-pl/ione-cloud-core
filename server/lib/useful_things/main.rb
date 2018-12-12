@@ -85,13 +85,13 @@ class IONe
     # @example
     #   => String('example-node-vcenter') => Host was found
     #   => nil => Host wasn't found
-    def get_vm_host vmid
-        onblock(:vm, vmid, @client) do | vm |
-            history = vm.to_hash!['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
-            return history['HOSTNAME'] if history.class == Hash # If history consists of only one line - returns it
-            return history.last['HOSTNAME'] if history.class == Array # If history consists of 2 or more lines - returns last
-            nil # Returns NilClass if did not found anything - possible if vm is at HOLD or PENDING state
-        end
+    def get_vm_host vm, hid = false
+          vm = onblock(:vm, vm, @client) if vm.class == Fixnum
+          history = vm.to_hash!['VM']["HISTORY_RECORDS"]['HISTORY'] # Searching hostname at VM allocation history
+          history = history.last if history.class == Array # If history consists of 2 or more lines - returns last
+          return hid ? [history['HOSTNAME'], history['HID']] : history['HOSTNAME']
+        rescue
+          return nil # Returns NilClass if did not found anything - possible if vm is at HOLD or PENDING state
     end
     # Returns datastore name, where VM has been deployed
     # @param [Integer] vmid - VM ID
