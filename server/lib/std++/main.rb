@@ -54,6 +54,19 @@ class Hash
     end
 end
 
+class Array
+    def to_sym
+        self.map do | el |
+            el.to_sym
+        end
+    end
+    def to_sym!
+        self.map! do | el |
+            el.to_sym
+        end
+    end
+end
+
 # Ruby default String class
 class String
     # @!visibility private

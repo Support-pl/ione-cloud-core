@@ -1,6 +1,7 @@
 require 'zmqjsonrpc'
 require 'yaml'
 require 'json'
+require 'ipaddr'
 
 STARTUP_TIME = Time.now().to_i # IONe server start time
 

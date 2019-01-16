@@ -123,7 +123,9 @@ class IONe
             LOG_COLOR "Terminate process is over, new VM is deploying now", 'Reinstall', 'green'
             LOG_DEBUG 'Creating new VM'
             trace << "Instantiating template:#{__LINE__ + 1}"
-            vmid = template.instantiate(params['login'] + '_vm', false, context)
+            vmid = template.instantiate(
+                ( params['login'] || onblock(:u, params['userid']){ |u| u.info!; u.name }) + '_vm', false, context)
+
             LOG_DEBUG "New VM ID or an OpenNebula::Error: #{begin vmid.to_str rescue vmid.to_s end}"
             begin    
                 if vmid.class != Fixnum && vmid.include?('IP/MAC') then
@@ -153,7 +155,7 @@ class IONe
                     vm.wait_for_state
                 end
 
-                postDeploy = PostDeployActivities.new
+                postDeploy = PostDeployActivities.new @client
 
                 #LimitsController
 
@@ -261,6 +263,7 @@ class IONe
             else
                 userid, user = params['userid'], onblock(:u, params['userid'])
             end
+            params['user_id'] = userid
             LOG_TEST "New User account created"
 
             ##### Creating new User END #####
@@ -339,7 +342,7 @@ class IONe
 
                 LOG_DEBUG "VM is active now, let it go"
 
-                postDeploy = PostDeployActivities.new
+                postDeploy = PostDeployActivities.new @client
 
                 #LimitsController
 
@@ -375,21 +378,64 @@ class IONe
             LOG_DEBUG out.debug_out
             return out
     end
+    def ReinstallTestMethod(params, vmid)
+        postDeploy = PostDeployActivities.new @client
+        #####   PostDeploy Activity define   #####
+
+            host = params['host'].nil? ? $default_host : params['host']
+
+            #AnsibleController
+            
+            if params['ansible'] && params['release'] then
+                postDeploy.AnsibleController(params, vmid, host)
+            end
+
+            #endAnsibleController
+
+        ##### PostDeploy Activity define END #####
+    rescue => e
+        return e.message
+    end
     # Class for pst-deploy activities methods
     #   All methods will receive creative methods params, new vm ID, and host, where VM was deployed
     class PostDeployActivities
+        def initialize client
+            @ione = IONe.new(client)
+        end
         include Deferable
         # Executes given playbooks at fresh-deployed vm
         def AnsibleController(params, vmid, host = nil)
             LOG_CALL(id = id_gen(), true, __method__)
-            Thread.new do
-                onblock(:vm, vmid).wait_for_state
-                sleep(60)
-                AnsibleController(params.merge({
-                    'super' => '', 'host' => "#{GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
-                }))
+            onblock(:vm, vmid).wait_for_state
+            sleep(60)
+            LOG_DEBUG "Ansible Local ID: #{params['ansible_local_id']}"
+            unless params['ansible_local_id'].nil? then
+                LOG_DEBUG('Starting process')
+                install_process =
+                AnsiblePlaybookProcess.new(
+                    playbook_id:    params['ansible_local_id'],
+                    uid:            params['userid'],
+                    hosts:          { vmid => ["#{@ione.GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}"]}, #!!!
+                    vars:           params['ansible_vars'],
+                    comment:        "Post-Deploy Activity - Ansible",
+                    auth:           'default'
+                )
+                LOG_DEBUG "Proc ID #{install_process.install_id}"
+                install_process.run
+                LOG_DEBUG "Runned"
+                params['ansible-service']
+            else
+                Thread.new do
+                    AnsibleController(params.merge({
+                        'super' => '', 'host' => "#{@ione.GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
+                    }))
+                end
             end
             LOG_COLOR "Install-thread started, you should wait until the #{params['ansible-service']} will be installed", 'AnsibleController', 'light_yellow'
+        rescue => e
+            LOG_DEBUG e.message
+            LOG_DEBUG e.backtrace
+        ensure
             LOG_CALL(id, false, 'AnsibleController')
         end
         # If Cluster type is vCenter, sets up Limits at the node
