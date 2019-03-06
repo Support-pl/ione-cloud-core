@@ -94,12 +94,25 @@ module ONeHelper
 
     # {#onblock} supported instances list 
     ON_INSTANCES = {
-        :vm => VirtualMachine,
-        :t  => Template,
-        :h  => Host,
-        :u  => User,
-        :vn => VirtualNetwork
-        }
+        :vm  => VirtualMachine,
+        :t   => Template,
+        :h   => Host,
+        :u   => User,
+        :vn  => VirtualNetwork,
+        :ds  => Datastore,
+        :mpa => MarketPlaceApp,
+        :ma  => MarketPlace,
+        :vr  => VirtualRouter,
+        :vdc => Vdc,
+        :sg  => SecurityGroup,
+        :z   => Zone,
+        :d   => Document,
+        :c   => Cluster,
+        :acl => Acl,
+        :g   => Group,
+        :i   => Image,
+        :p   => Pool
+    }
 
     # Generates any 'Pool' element object
     # @param [Class] type - object class to create
@@ -148,7 +161,7 @@ module ONeHelper
     # @param [String] ds_type   - Datastore type, may be HDD or SSD, returns any DS if not given
     # @return [Integer]
     def ChooseDS(ds_type = nil)
-        dss = IONe.new($client).DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
+        dss = IONe.new($client, $db).DatastoresMonitoring('sys').sort! { | ds | 100 * ds['used'].to_f / ds['full_size'].to_f }
         dss.delete_if { |ds| ds['type'] != ds_type || ds['deploy'] != 'TRUE' } if ds_type != nil
         ds = dss[rand(dss.size)]
         LOG_DEBUG "Deploying to #{ds['name']}"
@@ -189,6 +202,10 @@ class OpenNebula::User
                 SYSTEM_DISK_SIZE=\"#{spec['drive'].to_i + quota['SYSTEM_DISK_SIZE_USED'].to_i}\", 
                 VMS=\"#{spec['append'].nil? ? quota['VMS_USED'].to_s : (quota['VMS_USED'].to_i + 1).to_s}\" ]"
         )
+    end
+    def name!
+        info!
+        name
     end
 end
 
@@ -323,9 +340,9 @@ class OpenNebula::VirtualMachine
     #       => 'Reconfigure Error:{error message}' -- Exception has been generated while proceed, check your configuration
     def setResourcesAllocationLimits(spec)
         LOG_DEBUG spec.debug_out
-        return 'Unsupported query' if IONe.new($client).get_vm_data(self.id)['IMPORTED'] == 'YES'        
+        return 'Unsupported query' if IONe.new($client, $db).get_vm_data(self.id)['IMPORTED'] == 'YES'        
         
-        query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
+        query, host = {}, onblock(Host, IONe.new($client, $db).get_vm_host(self.id))
         datacenter = get_vcenter_dc(host)
 
         vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
@@ -366,7 +383,7 @@ class OpenNebula::VirtualMachine
     end
     # Checks if vm is on given vCenter Datastore
     def is_at_ds?(ds_name)
-        query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
+        query, host = {}, onblock(Host, IONe.new($client, $db).get_vm_host(self.id))
         datacenter = get_vcenter_dc(host)
         begin
             datastore = recursive_find_ds(datacenter.datastoreFolder, ds_name, true).first
@@ -383,7 +400,7 @@ class OpenNebula::VirtualMachine
     # Gets the datastore, where VM allocated is
     # @return [String] DS name
     def get_vms_vcenter_ds
-        query, host = {}, onblock(Host, IONe.new($client).get_vm_host(self.id))
+        query, host = {}, onblock(Host, IONe.new($client, $db).get_vm_host(self.id))
         datastores = get_vcenter_dc(host).datastoreFolder.children
         
         self.info!
@@ -404,7 +421,7 @@ class OpenNebula::VirtualMachine
     def hot_resize(spec = {:name => nil})
         return false if !self.hotAddEnabled?
         begin
-            host = onblock(Host, IONe.new($client).get_vm_host(self.id))
+            host = onblock(Host, IONe.new($client, $db).get_vm_host(self.id))
             datacenter = get_vcenter_dc(host)
 
             vm = recursive_find_vm(datacenter.vmFolder, spec[:name].nil? ? "one-#{self.info! || self.id}-#{self.name}" : spec[:name]).first
@@ -425,7 +442,7 @@ class OpenNebula::VirtualMachine
     # @return [Hash | String] Returns limits Hash if success or exception message if fails
     def hotAddEnabled?(name = nil)
         begin
-            host = onblock(:h, IONe.new($client).get_vm_host(self.id))
+            host = onblock(:h, IONe.new($client, $db).get_vm_host(self.id))
             datacenter = get_vcenter_dc(host)
 
             vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
@@ -444,7 +461,7 @@ class OpenNebula::VirtualMachine
     # @return [true | String]
     def hotResourcesControlConf(spec = {:cpu => true, :ram => true, :name => nil})
         begin
-            host, name = onblock(Host, IONe.new($client).get_vm_host(self.id)), spec[:name]
+            host, name = onblock(Host, IONe.new($client, $db).get_vm_host(self.id)), spec[:name]
             datacenter = get_vcenter_dc(host)
 
             vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first
@@ -479,7 +496,7 @@ class OpenNebula::VirtualMachine
     # @return [Hash | String] Returns limits Hash if success or exception message if fails
     def getResourcesAllocationLimits(name = nil)
         begin
-            host = onblock(Host, IONe.new($client).get_vm_host(self.id))
+            host = onblock(Host, IONe.new($client, $db).get_vm_host(self.id))
             datacenter = get_vcenter_dc(host)
 
             vm = recursive_find_vm(datacenter.vmFolder, name.nil? ? "one-#{self.info! || self.id}-#{self.name}" : name).first

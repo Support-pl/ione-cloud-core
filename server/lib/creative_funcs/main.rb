@@ -16,7 +16,7 @@ class IONe
     #       Object set to true:     777, OpenNebula::User(777)
     #   Error:                      "[one.user.allocation] Error ...", maybe caused if user with given name already exists
     #   Error:                      0
-    def UserCreate(login, pass, groupid = nil, locale = nil, client:@client, object:false)
+    def UserCreate(login, pass, groupid = nil, locale = nil, client:@client, object:false, type:'vcenter')
         id = id_gen()
         LOG_CALL(id, true)
         defer { LOG_CALL(id, false, 'UserCreate') }
@@ -24,7 +24,7 @@ class IONe
         groupid = nil
         allocation_result =
             begin
-                user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [USERS_GROUP, groupid]) # Allocating new user with login:pass
+                user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [groupid, USERS_GROUP]) # Allocating new user with login:pass
             rescue => e
                 e.message
             end
@@ -32,7 +32,9 @@ class IONe
             LOG_DEBUG allocation_result.message #If allocation was successful, allocate method returned nil
             return 0
         end
-        user.update("SUNSTONE=[ LANG=\"#{locale || CONF['OpenNebula']['users-default-lang']}\" ]", true)
+        attributes = "SUNSTONE=[ LANG=\"#{locale || CONF['OpenNebula']['users-default-lang']}\" ]"
+        attributes += "AZURE_TOKEN=\"#{login}\"" if type == 'azure'
+        user.update(attributes, true)
         return user.id, user if object
         user.id
     end
@@ -228,13 +230,13 @@ class IONe
             end
 
             params['username'] = params['username'] || 'Administrator'
-
+            params['extra'] = params['extra'] || {'type' => 'vcenter'}
             ###################### Doing some important system stuff ###############################################################
             
             return nil if DEBUG
             LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}"
             
-            LOG_TEST "Params: #{params.inspect}" if DEBUG
+            LOG_DEBUG "Params: #{params.out}"
             
             trace << "Checking template:#{__LINE__ + 1}"
             onblock(:t, params['templateid']) do | t |
@@ -256,7 +258,10 @@ class IONe
             LOG_TEST "Creating new user for #{params['login']}"
             if params['nouser'].nil? || !params['nouser'] then
                 trace << "Creating new user:#{__LINE__ + 1}"
-                userid, user = UserCreate(params['login'], params['password'], params['groupid'].to_i, object:true) if params['test'].nil?
+                userid, user =
+                    UserCreate(
+                        params['login'], params['password'], USERS_GROUP, object:true,
+                        type: params['extra']['type'] ) if params['test'].nil?
                 LOG_ERROR "Error: UserAllocateError" if userid == 0
                 trace << "UserAllocateError:#{__LINE__ - 2}" if userid == 0
                 return {'error' => "UserAllocateError", 'trace' => trace} if userid == 0
@@ -274,28 +279,39 @@ class IONe
             onblock(:t, params['templateid']) do | t |
                 t.info!
                 specs = ""
-                unless t['/VMTEMPLATE/TEMPLATE/CAPACITY'] == 'FIXED' then
-                specs = "VCPU = #{params['cpu']}\n" \
-                        "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
-                        "DISK = [ \n" \
-                        "IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
-                        "SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n" \
-                        "OPENNEBULA_MANAGED = \"NO\"\t]"
+                if !t['/VMTEMPLATE/TEMPLATE/CAPACITY'] && t['/VMTEMPLATE/TEMPLATE/HYPERVISOR'].upcase == "VCENTER" then
+                    specs = "VCPU = #{params['cpu']}\n" \
+                            "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
+                            "DISK = [ \n" \
+                            "IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
+                            "SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n" \
+                            "OPENNEBULA_MANAGED = \"NO\"\t]"
 
+                elsif t['/VMTEMPLATE/TEMPLATE/HYPERVISOR'] == 'AZURE' then
+                    specs = "OS_DISK_SIZE = \"#{params['drive']}\"\n" \
+                            "SIZE = \"#{params['extra']['instance_size']}\"\n" \
+                            "VM_USER_NAME = \"#{params['username']}\"\n" \
+                            "PASSWORD = \"#{params['passwd']}\"\n" \
+                            "VCPU = #{params['cpu']}\n" \
+                            "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n"
+                end
                 trace << "Updating user quota:#{__LINE__ + 1}"
                 user.update_quota_by_vm(
                     'append' => true, 'cpu' => params['cpu'],
                     'ram' => params['ram'] * (params['units'] == 'GB' ? 1024 : 1),
                     'drive' => params['drive'] * (params['units'] == 'GB' ? 1024 : 1)
-                )
-                end
+                ) unless t['/VMTEMPLATE/TEMPLATE/CAPACITY'] == 'FIXED'
                 LOG_DEBUG "Resulting capacity template:\n" + specs
                 vmid = t.instantiate("#{params['login']}_vm", true, specs + "\n" + params['user-template'].to_s)
             end
 
             raise "Template instantiate Error: #{vmid.message}" if vmid.class != Fixnum
             
-            host = params['host'].nil? ? $default_host : params['host']
+            host =  if params['host'].nil? then
+                        JSON.parse(@db[:settings].as_hash(:name, :body)['NODES_DEFAULT'])[params['extra']['type'].upcase]
+                    else
+                        params['host']
+                    end
 
             LOG_TEST 'Configuring VM Template'
             trace << "Configuring VM Template:#{__LINE__ + 1}"            
@@ -307,28 +323,36 @@ class IONe
                 rescue
                     LOG_DEBUG "CHOWN error, params: #{userid}, #{vm}"
                 end
-                win = onblock(:t, params['templateid']).win?
-                LOG_DEBUG "Instantiating VM as#{win ? nil : ' not'} Windows"
-                trace << "Setting VM context:#{__LINE__ + 2}"
-                begin
-                    vm.updateconf(
-                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ", USERNAME = \"#{params['username']}\"" : nil} ]"
-                    )
-                rescue => e
-                    LOG_DEBUG "Context configuring error: #{e.message}"
-                end
-                    
-                trace << "Setting VM VNC settings:#{__LINE__ + 2}"
-                begin
-                    vm.updateconf(
-                        "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{(CONF['OpenNebula']['base-vnc-port'] + vmid).to_s}\", TYPE=\"VNC\" ]"
-                    ) # Configuring VNC
-                rescue => e
-                    LOG_DEBUG "VNC configuring error: #{e.message}"
+
+                if params['extra']['type'] == 'vcenter' then
+                    win = onblock(:t, params['templateid']).win?
+                    LOG_DEBUG "Instantiating VM as#{win ? nil : ' not'} Windows"
+                    trace << "Setting VM context:#{__LINE__ + 2}"
+                    begin
+                        vm.updateconf(
+                            "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ", USERNAME = \"#{params['username']}\"" : nil} ]"
+                        )
+                    rescue => e
+                        LOG_DEBUG "Context configuring error: #{e.message}"
+                    end
+
+                    trace << "Setting VM VNC settings:#{__LINE__ + 2}"
+                    begin
+                        vm.updateconf(
+                            "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{(CONF['OpenNebula']['base-vnc-port'] + vmid).to_s}\", TYPE=\"VNC\" ]"
+                        ) # Configuring VNC
+                    rescue => e
+                        LOG_DEBUG "VNC configuring error: #{e.message}"
+                    end
                 end
 
-                trace << "Deploying VM:#{__LINE__ + 1}"            
-                vm.deploy($default_host, false, ChooseDS(params['ds_type'])) if params['release']
+                if params['extra']['type'] == 'vcenter' then
+                    trace << "Deploying VM:#{__LINE__ + 1}"
+                    vm.deploy(host, false, ChooseDS(params['ds_type']))
+                else
+                    trace << "Deploying VM:#{__LINE__ + 1}"
+                    vm.deploy(host, false)
+                end if params['release']
                 # vm.deploy($default_host, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
             end
             ##### Creating and Configuring VM END #####            
@@ -400,7 +424,7 @@ class IONe
     #   All methods will receive creative methods params, new vm ID, and host, where VM was deployed
     class PostDeployActivities
         def initialize client
-            @ione = IONe.new(client)
+            @ione = IONe.new(client, $db)
         end
         include Deferable
         # Executes given playbooks at fresh-deployed vm

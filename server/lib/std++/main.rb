@@ -65,6 +65,11 @@ class Array
             el.to_sym
         end
     end
+    def get *indexes
+        indexes.collect do | index |
+            self[index]
+        end
+    end
 end
 
 # Ruby default String class

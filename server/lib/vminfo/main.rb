@@ -98,8 +98,7 @@ class IONe
     def get_vm_data(vm)
         vm = onblock(:vm, vm) if vm.class == Fixnum || vm.class == String
         vmid = vm.id
-        vm.info!
-        vm_hash = vm.to_hash['VM']
+        vm_hash = vm.to_hash!['VM']
         hostname, host_id = get_vm_host(vm, true)
         return {
             # "Name, owner, owner id, group id"
@@ -109,7 +108,14 @@ class IONe
             # VM specs
             'CPU' => vm_hash['TEMPLATE']['VCPU'], 'RAM' => vm_hash['TEMPLATE']['MEMORY'],
             'DS_TYPE' => begin DatastoresMonitoring('sys').detect{|el| el['id'] == get_vm_ds(vmid).to_i}['type'] rescue nil end,
-            'DRIVE' => begin vm_hash['TEMPLATE']['DISK']['SIZE'] rescue nil end,
+            'DRIVE' =>
+            begin
+                vm_hash['TEMPLATE']['DISK']['SIZE']
+            rescue TypeError
+                vm_hash['TEMPLATE']['DISK'].inject(0){|summ, disk| summ += disk['SIZE'].to_i }
+            rescue
+                nil
+            end,
             # VM creation hist
             'IMPORTED' => vm_hash['TEMPLATE']['IMPORTED'].nil? ? 'NO' : 'YES'
         }

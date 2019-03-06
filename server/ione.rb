@@ -2,6 +2,7 @@ require 'zmqjsonrpc'
 require 'yaml'
 require 'json'
 require 'ipaddr'
+require 'sequel'
 
 STARTUP_TIME = Time.now().to_i # IONe server start time
 
@@ -36,11 +37,33 @@ puts 'Setting up Environment(OpenNebula API)'
 ###########################################
 ONE_LOCATION=ENV["ONE_LOCATION"] # OpenNebula location
 if !ONE_LOCATION
-    RUBY_LIB_LOCATION="/usr/lib/one/ruby" # OpenNebula gem location
+    LOG_LOCATION = "/var/log/one"
+    VAR_LOCATION = "/var/lib/one"
+    ETC_LOCATION = "/etc/one"
+    SHARE_LOCATION = "/usr/share/one"
+    RUBY_LIB_LOCATION = "/usr/lib/one/ruby"
 else
-    RUBY_LIB_LOCATION=ONE_LOCATION+"/lib/ruby"
+    VAR_LOCATION = ONE_LOCATION + "/var"
+    LOG_LOCATION = ONE_LOCATION + "/var"
+    ETC_LOCATION = ONE_LOCATION + "/etc"
+    SHARE_LOCATION = ONE_LOCATION + "/share"
+    RUBY_LIB_LOCATION = ONE_LOCATION+"/lib/ruby"
 end
+
+SUNSTONE_AUTH             = VAR_LOCATION + "/.one/sunstone_auth"
+SUNSTONE_LOG              = LOG_LOCATION + "/sunstone.log"
+CONFIGURATION_FILE        = ETC_LOCATION + "/sunstone-server.conf"
+
+PLUGIN_CONFIGURATION_FILE = ETC_LOCATION + "/sunstone-plugins.yaml"
+LOGOS_CONFIGURATION_FILE  = ETC_LOCATION + "/sunstone-logos.yaml"
+
+SUNSTONE_ROOT_DIR         = File.dirname(__FILE__)
+
 $: << RUBY_LIB_LOCATION
+$: << RUBY_LIB_LOCATION+'/cloud'
+$: << SUNSTONE_ROOT_DIR
+$: << SUNSTONE_ROOT_DIR+'/models'
+
 require "opennebula"
 include OpenNebula
 ###########################################
@@ -49,6 +72,17 @@ CREDENTIALS = CONF['OpenNebula']['credentials']
 # XML_RPC endpoint where OpenNebula is listening
 ENDPOINT = CONF['OpenNebula']['endpoint']
 $client = Client.new(CREDENTIALS, ENDPOINT) # oneadmin auth-client
+
+require 'cloud/CloudAuth'
+
+ENV["ONE_CIPHER_AUTH"] = SUNSTONE_AUTH
+$conf = YAML.load_file(CONFIGURATION_FILE)
+$cloud_auth = CloudAuth.new($conf)
+require CONF['DataBase']['adapter']
+$db = Sequel.connect({
+        adapter: CONF['DataBase']['adapter'].to_sym,
+        user: CONF['DataBase']['user'], password: CONF['DataBase']['pass'],
+        database: CONF['DataBase']['database'], host: CONF['DataBase']['host']  })
 
 puts 'Including on_helper funcs'
 require "#{ROOT}/service/on_helper.rb"
@@ -84,8 +118,9 @@ class IONe
     include Deferable
     # IONe initializer, stores auth-client and version
     # @param [OpenNebula::Client] client 
-    def initialize(client)
+    def initialize(client, db)
         @client = client
+        @db = db
         @version = VERSION
     end
 end
@@ -158,7 +193,7 @@ $methods = IONe.instance_methods(false).map { | method | method.to_s }
 
 LOG "Initializing JSON-RPC Server..."
 puts 'Initializing JSON_RPC server and logic handler'
-server = ZmqJsonRpc::Server.new(IONe.new($client), "tcp://*:#{CONF['Server']['listen-port']}")
+server = ZmqJsonRpc::Server.new(IONe.new($client, $db), "tcp://*:#{CONF['Server']['listen-port']}")
 LOG_COLOR "Server initialized", 'none', 'green'
 
 # Signal.trap('CLD') do

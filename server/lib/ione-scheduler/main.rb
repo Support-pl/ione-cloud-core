@@ -33,7 +33,7 @@ end
 # Invokes scheduled action
 def Invoke(action)
     Unschedule(action['id'])
-    IONe.new($client).send(action['method'], *(JSON.parse(action['params'])))
+    IONe.new($client, $db).send(action['method'], *(JSON.parse(action['params'])))
 end
 
 Thread.new do
