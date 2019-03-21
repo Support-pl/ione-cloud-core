@@ -21,7 +21,6 @@ class IONe
         LOG_CALL(id, true)
         defer { LOG_CALL(id, false, 'UserCreate') }
         user = User.new(User.build_xml(0), client) # Generates user template using oneadmin user object
-        groupid = nil
         allocation_result =
             begin
                 user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [groupid, USERS_GROUP]) # Allocating new user with login:pass

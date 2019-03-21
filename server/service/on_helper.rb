@@ -207,6 +207,27 @@ class OpenNebula::User
         info!
         name
     end
+
+    def balance
+        to_hash!['USER']['TEMPLATE']['BALANCE']
+    end
+    def balance= num
+        update("BALANCE = #{num}", true)
+    end
+    def alert
+        alert_at = to_hash!['USER']['TEMPLATE']['ALERT'] || $db[:settings].where(:name => 'ALERT').to_a.last[:body]
+        return balance <= alert_at, alert_at
+    end
+    def alert= at
+        update("ALERT = #{at}", true)
+    end
+    def vms
+        vm_pool = VirtualMachinePool.new(@client, id)
+        vm_pool.info!
+        vm_pool.to_a
+    rescue
+        nil
+    end
 end
 
 # OpenNebula::Template class

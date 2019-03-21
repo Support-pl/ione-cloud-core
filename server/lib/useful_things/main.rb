@@ -80,7 +80,8 @@ class IONe
         { :vmid => vmid, :userid => userid, :ip => GetIP(vmid) }
     end
     # Returns host name, where VM has been deployed
-    # @param [Integer] vmid - VM ID
+    # @param [Integer] vm - VM ID
+    # @param [Boolean] hid - returns host id if true
     # @return [String | nil]
     # @example
     #   => String('example-node-vcenter') => Host was found

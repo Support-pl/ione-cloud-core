@@ -9,7 +9,7 @@ class IONe
     # @option params [Integer] :vmid VirtualMachine ID for blocking
     # @param [Boolean] log - logs process if true
     # @param [Array<String>] trace
-    # @return [nil | Array] Returns message and trace if Exception
+    # @return [NilClass | Array] Returns message and trace if Exception
     def Suspend(params, log = true, trace = ["Suspend method called:#{__LINE__}"])
         trace << "Generating sys objects:#{__LINE__ + 1}"
         LOG_STAT()
@@ -44,9 +44,41 @@ class IONe
     end
     # Suspends VirtualMachine only
     # @param [Integer] vmid - VirtualMachine ID
-    # @return [nil]
+    # @return [NilClass]
     def SuspendVM(vmid)
         onblock(VirtualMachine, vmid.to_i).suspend
+    end
+    # Suspends all given users VMs
+    # @param [Integer] uid - User ID
+    # @param [Array] vms - VMs filter
+    # @return [NilClass]
+    def SuspendUser uid, vms = []
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'SuspendUser') }
+        LOG "Suspend Query for User##{uid} received", "Suspend"
+
+        user = onblock :u, uid
+        user.vms.each do | vm |
+            next if vms.include? vm.id
+            begin
+                LOG "Suspending VM##{vm.id}", "Suspend"
+                vm.chmod(
+                    -1,  0, -1,
+                    -1, -1, -1,
+                    -1, -1, -1  )
+                vm.suspend
+            rescue => e
+                LOG "Error occured while suspending VM##{vm.id}\nCheck Debug log for error-codes and backtrace", "Suspend"
+                LOG_DEBUG e.message
+                LOG_DEBUG e.backtrace
+            end
+        end
+
+        nil
+    rescue => e
+        return e.message
     end
     # Unsuspends VirtualMachine and makes it uncontrollable for Owner(except Admins)
     # @note May be used as PowerON method like {#Resume}
@@ -79,6 +111,38 @@ class IONe
                 return e.message, trace
             end
         result
+    end
+    # Unsuspends all users VMs
+    # @param [Integer] uid - User ID
+    # @param [Array] vms - VMs filter
+    # @return [NilClass]
+    def UnsuspendUser uid, vms = []
+        LOG_STAT()
+        id = id_gen()
+        LOG_CALL(id, true, __method__)
+        defer { LOG_CALL(id, false, 'UnsuspendUser') }
+        LOG "Unsuspend Query for User##{uid} received", "Unsuspend"
+
+        user = onblock :u, uid
+        user.vms.each do | vm |
+            next if vms.include? vm.id
+            begin
+                LOG "Unsuspending VM##{vm.id}", "Unsuspend"
+                vm.chmod(
+                    -1,  1, -1,
+                    -1, -1, -1,
+                    -1, -1, -1  )
+                vm.resume
+            rescue => e
+                LOG "Error occured while unsuspending VM##{vm.id}\nCheck Debug log for error-codes and backtrace", "Unsuspend"
+                LOG_DEBUG e.message
+                LOG_DEBUG e.backtrace
+            end
+        end
+
+        nil
+    rescue => e
+        return e.message
     end
     # Reboots Virtual Machine
     # @param [Integer] vmid - VirtualMachine ID to reboot

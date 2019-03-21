@@ -169,11 +169,6 @@ class IONe
 
         return showback.data, showback.total_cost
     end
-    def GetMonitoringData uid, time, vms = []
-        user_monitoring = UserMonitoring.new(uid, vms)
-        user_monitoring.filter_by_time(time)
-        user_monitoring.monitoring
-    end
     def GetMonitoringShowbackData uid, time, vms = []
         user_monitoring = UserMonitoring.new(uid, vms)
         user_monitoring.filter_by_time(time)
@@ -181,5 +176,28 @@ class IONe
         user_monitoring.calculate
 
         user_monitoring.showback
+    end
+    
+    # Does very complicated things, don't think about it)))))
+    # @param [Hash] params
+    # @option params [Integer] 'uid' - UserID
+    # @option params [Integer] 'time' - Start point to collect Showback data
+    # @option params [Array<Integer>] 'vms' - VMs filter
+    # @option params [Float] 'balance' - New balance for User
+    def IaaS_Gate params
+        params['vms'] = params['vms'] || []
+        showback = GetMonitoringShowbackData(*params.get('uid', 'time', 'vms'))
+
+        user = onblock :u, params['uid']
+        user.balance = params['balance']
+        balance = user.balance
+        alert, alert_at = user.alert
+
+        return {
+            'showback' => showback,
+            'balance'  => balance,
+            'alert'    => alert,
+            'alert_at' => alert_at
+        }
     end
 end

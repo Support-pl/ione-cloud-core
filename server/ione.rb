@@ -3,6 +3,7 @@ require 'yaml'
 require 'json'
 require 'ipaddr'
 require 'sequel'
+require 'logger'
 
 STARTUP_TIME = Time.now().to_i # IONe server start time
 
@@ -193,7 +194,7 @@ $methods = IONe.instance_methods(false).map { | method | method.to_s }
 
 LOG "Initializing JSON-RPC Server..."
 puts 'Initializing JSON_RPC server and logic handler'
-server = ZmqJsonRpc::Server.new(IONe.new($client, $db), "tcp://*:#{CONF['Server']['listen-port']}")
+server = ZmqJsonRpc::Server.new(IONe.new($client, $db), "tcp://*:#{CONF['Server']['listen-port']}", Logger.new('/var/log/ione/rpc.log'))
 LOG_COLOR "Server initialized", 'none', 'green'
 
 # Signal.trap('CLD') do
