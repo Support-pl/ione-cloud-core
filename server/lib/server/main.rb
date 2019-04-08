@@ -38,7 +38,7 @@ class IONe
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'conf') }
-        CONF.privatise.out
+        CONF.privatize.out
     end
     # @api private
     def reboot(pa)
