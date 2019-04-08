@@ -303,4 +303,14 @@ class IONe
         params.to_sym!
         onblock(:vm, params[:vmid]).hot_resize(params)
     end
+    def user_exists uid
+        onblock(:u, uid).exists?
+    end
+    def UserDelete uid
+        u = onblock(:u, uid)
+        u.vms.each do | vm |
+            vm.terminate true
+        end
+        u.delete
+    end
 end

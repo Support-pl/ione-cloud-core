@@ -228,6 +228,15 @@ class OpenNebula::User
     rescue
         nil
     end
+    def exists?
+        self.info! == nil
+    end
+
+    class UserNotExistsError < StandardError
+        def initialize msg = "User not exists or error occurred while getting user."
+           super
+        end
+    end
 end
 
 # OpenNebula::Template class
@@ -570,7 +579,132 @@ class OpenNebula::VirtualMachine
     # Returns actual lcm state as string without calling info! method
     def lcm_state_str!
         self.info! || self.lcm_state_str
-    end    
+    end
+
+    def calculate_showback stime_req, etime_req
+        raise ShowbackError, ["Wrong Time-period given", stime_req, etime_req] if stime_req >= etime_req
+        
+        info!
+
+        stime, etime = stime_req, etime_req
+
+        stime = self['/VM/STIME'].to_i if self['/VM/STIME'].to_i > stime
+        etime = self['/VM/ETIME'].to_i if self['/VM/ETIME'].to_i > etime
+
+        requested_time = (etime - stime) / 3600.0
+
+        def action_type action
+            result = 
+                case action.to_i
+                when 1, 2, 5, 6, 9, 10, 19, 20
+                    false
+                else
+                    true
+                end
+            return result
+        end
+
+        history_records = to_hash['VM']['HISTORY_RECORDS']['HISTORY']
+        if history_records.nil? && state == 6 then
+            hr = History.new(id, @client)
+            return {
+                "work_time" => 0,
+                "time_period_requested" => etime_req - stime_req,
+                "time_period_corrected" => etime - stime,
+                "CPU" => 0,
+                "MEMORY" => 0,
+                "DISK" => 0,
+                "DISK_TYPE" => 'no_type',
+                "PUBLIC_IP" => 0,
+                "EXCEPTION" => "No Records",
+                "TOTAL" => 0
+            } if hr.info!.class == OpenNebula::History::NoRecordsError
+            history_records = hr.records.map {|record| record['HISTORY'].without('VM')}
+        end
+        history_records = history_records.class == Array ? history_records : [ history_records ]
+
+        timeline = []
+        history_records.each do | record |
+            timeline << {
+                'stime' => record['STIME'].to_i,
+                'etime' => record['ETIME'].to_i,
+                'state' => action_type(record['ACTION'])
+            }
+        end
+
+        index = 0
+        while index < timeline.length - 1 do
+            if timeline[index]['state'] == timeline[index + 1]['state'] then
+                timeline.insert(
+                    index + 1,
+                    {
+                        'stime' => timeline[index]['stime'] + 1,
+                        'etime' => timeline[index + 1]['stime'] - 1,
+                        'state' => !timeline[index]['state']
+                    }
+                )
+                index += 2
+            else
+                break
+            end
+        end
+
+        timeline[timeline.length - 1]['etime'] = etime if timeline.last['etime'] == 0
+        
+        work_time = 0
+        timeline.each do | record |
+            next unless record['state']
+            next if stime > record['etime']
+            work_time += (record['etime'] - record['stime'])
+            work_time -= (record['stime'] < stime && stime < record['etime'] ? stime - record['stime'] : 0)
+            work_time -= (record['etime'] > etime && etime > record['stime'] ? record['etime'] - etime : 0)
+        end
+        work_time = work_time / 3600.0
+
+        cpu, memory = self['/VM/TEMPLATE/CPU'].to_f, self['/VM/TEMPLATE/MEMORY'].to_f / 1024
+        disk = self['/VM/TEMPLATE/DISK/SIZE'].to_f / 1024
+        
+        public_ip = 0
+        nic = to_hash['VM']['TEMPLATE']['NIC']
+        if nic.class == Array then
+            nic.each do | el |
+                vnet = VirtualNetwork.new_with_id el['NETWORK_ID'], @client
+                vnet.info!
+                public_ip += vnet['/VNET/TEMPLATE/TYPE'] == 'PUBLIC' ? 1 : 0
+            end
+        elsif nic.class == Hash 
+            vnet = VirtualNetwork.new_with_id nic['NETWORK_ID'], @client
+            vnet.info!
+            public_ip += vnet['/VNET/TEMPLATE/TYPE'] == 'PUBLIC' ? 1 : 0
+        end
+
+        cpu_cost = cpu * work_time * self['/VM/TEMPLATE/CPU_COST'].to_f
+        memory_cost = memory * work_time * self['/VM/TEMPLATE/MEMORY_COST'].to_f
+        disk_cost = disk * requested_time * self['/VM/TEMPLATE/DISK_COST'].to_f
+        public_ip_cost = public_ip * requested_time * self['/VM/USER_TEMPLATE/PUBLIC_IP_COST'].to_f
+        
+        return {
+            "work_time" => work_time,
+            "time_period_requested" => etime_req - stime_req,
+            "time_period_corrected" => etime - stime,
+            "CPU" => cpu_cost,
+            "MEMORY" => memory_cost,
+            "DISK" => disk_cost,
+            "DISK_TYPE" => self['/VM/USER_TEMPLATE/DRIVE'],
+            "PUBLIC_IP" => public_ip_cost,
+            "TOTAL" => cpu_cost + memory_cost + disk_cost + public_ip_cost
+        }
+    end
+
+    class ShowbackError < StandardError
+
+        attr_reader :params
+
+        def initialize params = []
+            @params = params[1..(params.length - 1)]
+            super "#{params[0]}\nParams:#{@params.inspect}"
+        end
+    end
 end
 
 # OpenNebula::XMLElement class
@@ -579,4 +713,29 @@ class OpenNebula::XMLElement
     def to_hash!
         self.info! || self.to_hash
     end
+end
+
+class OpenNebula::History
+    require 'nori'
+
+    attr_reader :id, :records
+
+    def initialize id, client
+        @client = client
+        @id = id
+        @parser = Nori.new
+    end
+    def info
+        rc = System.new(@client).sql_query_command("SELECT body FROM history WHERE vid=#{@id}")
+        rc = @parser.parse rc
+        records = rc['SQL_COMMAND']['RESULT']['ROW']
+        records.map! {|record| @parser.parse(Base64.decode64(record['body64'])) }
+
+        @records = records
+    rescue
+        NoRecordsError.new "Error occurred while parsing"
+    end
+    alias_method :info!, :info
+
+    class NoRecordsError < StandardError; end
 end
