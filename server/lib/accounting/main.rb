@@ -177,6 +177,22 @@ class IONe
 
         user_monitoring.showback
     end
+    def CalculateShowback uid, stime, etime = Time.now.to_i
+        client = $cloud_auth.client(onblock(:u, uid).name!)
+
+        vm_pool = @db[:vm_pool].select(:oid).where(:uid => uid).to_a.map! {| vm | vm[:oid]}
+
+        showback = {}
+        vm_pool.each do | vm |
+            vm = onblock :vm, vm, client
+            showback[vm.id] = vm.calculate_showback(stime, etime).without('time_period_requested')
+        end
+
+        showback['TOTAL'] = showback.values.inject(0){| result, record | result += record['TOTAL'].to_i }
+        showback['time_period_requested'] = etime - stime
+
+        showback
+    end
     
     # Does very complicated things, don't think about it)))))
     # @param [Hash] params
@@ -186,7 +202,7 @@ class IONe
     # @option params [Float] 'balance' - New balance for User
     def IaaS_Gate params
         params['vms'] = params['vms'] || []
-        showback = GetMonitoringShowbackData(*params.get('uid', 'time', 'vms'))
+        showback = CalculateShowback(*params.get('uid', 'time'))
 
         user = onblock :u, params['uid']
         user.balance = params['balance']
@@ -198,6 +214,18 @@ class IONe
             'balance'  => balance,
             'alert'    => alert,
             'alert_at' => alert_at
+        }
+    rescue OpenNebula::VirtualMachine::ShowbackError => e
+        return {
+            'error'    => e.message,
+            'time'     => e.params,
+            'type'     => e.class
+        }
+    rescue OpenNebula::User::UserNotExistsError => e
+        return {
+            'error'    => e.message,
+            'uid'      => params['uid'],
+            'type'     => e.class
         }
     end
 end

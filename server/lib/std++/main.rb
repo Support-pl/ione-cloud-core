@@ -14,11 +14,11 @@ class Hash
     end
     # @!visibility private
     # Crypts all private keys data, such as passwords. Configurable
-    def privatise
+    def privatize
         result = {}
         self.each do |key, value|
             if value.class == Hash then
-                result[key] = value.privatise
+                result[key] = value.privatize
                 next
             elsif key.private? then
                 result[key] = Digest::MD5.hexdigest(Digest::MD5.hexdigest(Digest::MD5.hexdigest(value.to_s)))
@@ -51,6 +51,12 @@ class Hash
         keys.collect do | key |
             self[key]
         end
+    end
+
+    def without(*keys)
+        cpy = self.dup
+        keys.each { |key| cpy.delete(key) }
+        cpy
     end
 end
 

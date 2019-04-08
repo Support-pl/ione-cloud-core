@@ -23,7 +23,7 @@ class IONe
         user = User.new(User.build_xml(0), client) # Generates user template using oneadmin user object
         allocation_result =
             begin
-                user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [groupid, USERS_GROUP]) # Allocating new user with login:pass
+                user.allocate(login, pass, "core", groupid.nil? ? [USERS_GROUP] : [groupid]) # Allocating new user with login:pass
             rescue => e
                 e.message
             end
@@ -33,6 +33,7 @@ class IONe
         end
         attributes = "SUNSTONE=[ LANG=\"#{locale || CONF['OpenNebula']['users-default-lang']}\" ]"
         attributes += "AZURE_TOKEN=\"#{login}\"" if type == 'azure'
+        attributes += "BALANCE=\"0\"\nLABELS=\"IaaS\"" if groupid.to_i == $db[:settings].where(:name => 'IAAS_GROUP_ID').to_a.last[:body].to_i
         user.update(attributes, true)
         return user.id, user if object
         user.id
