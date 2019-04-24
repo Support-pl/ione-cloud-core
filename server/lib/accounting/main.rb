@@ -178,17 +178,18 @@ class IONe
         user_monitoring.showback
     end
     def CalculateShowback uid, stime, etime = Time.now.to_i
-        client = $cloud_auth.client(onblock(:u, uid).name!)
-
         vm_pool = @db[:vm_pool].select(:oid).where(:uid => uid).to_a.map! {| vm | vm[:oid]}
 
         showback = {}
         vm_pool.each do | vm |
-            vm = onblock :vm, vm, client
+            vm = onblock :vm, vm, @client
+            vm.info!
+
+            next if vm['/VM/ETIME'].to_i < stime && vm['/VM/ETIME'].to_i != 0
             showback[vm.id] = vm.calculate_showback(stime, etime).without('time_period_requested')
         end
 
-        showback['TOTAL'] = showback.values.inject(0){| result, record | result += record['TOTAL'].to_i }
+        showback['TOTAL'] = showback.values.inject(0){| result, record | result += record['TOTAL'].to_f }
         showback['time_period_requested'] = etime - stime
 
         showback

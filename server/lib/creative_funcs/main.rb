@@ -218,189 +218,190 @@ class IONe
         LOG_CALL(id = id_gen(), true, __method__)
         defer { LOG_CALL(id, false, 'CreateVMwithSpecs') }
         LOG_DEBUG params.merge!(:method => __method__.to_s).debug_out
-            trace << "Checking params types:#{__LINE__ + 1}"
+        # return {'userid' => 6666, 'vmid' => 6666, 'ip' => '127.0.0.1'}
+        trace << "Checking params types:#{__LINE__ + 1}"
             
             
-            params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
+        params['cpu'], params['ram'], params['drive'], params['iops'] = params.get('cpu', 'ram', 'drive', 'iops').map { |el| el.to_i }
 
-            begin
-                params['iops'] = params['iops'] == 0 ? CONF['vCenter']['drive-types'][params['ds-type']] : params['iops']
-            rescue
-                LOG_DEBUG "No vCenter configuration found"
+        begin
+            params['iops'] = params['iops'] == 0 ? CONF['vCenter']['drive-types'][params['ds-type']] : params['iops']
+        rescue
+            LOG_DEBUG "No vCenter configuration found"
+        end
+
+        params['username'] = params['username'] || 'Administrator'
+        params['extra'] = params['extra'] || {'type' => 'vcenter'}
+        ###################### Doing some important system stuff ###############################################################
+        
+        return nil if DEBUG
+        LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}"
+        
+        LOG_DEBUG "Params: #{params.out}"
+        
+        trace << "Checking template:#{__LINE__ + 1}"
+        onblock(:t, params['templateid']) do | t |
+            result = t.info!
+            if params['templateid'] == 0 || result != nil then
+                LOG_ERROR "Error: TemplateLoadError" 
+                return {'error' => "TemplateLoadError", 'trace' => (trace << "TemplateLoadError:#{__LINE__ - 1}")}
             end
+        end
+            
+        #####################################################################################################################
+        
+        #####   Initializing useful variables   #####
+        userid, vmid = 0, 0
+        ##### Initializing useful variables END #####
+        
+        
+        #####   Creating new User   #####
+        LOG_TEST "Creating new user for #{params['login']}"
+        if params['nouser'].nil? || !params['nouser'] then
+            trace << "Creating new user:#{__LINE__ + 1}"
+            userid, user =
+                UserCreate(
+                    params['login'], params['password'], USERS_GROUP, object:true,
+                    type: params['extra']['type'] ) if params['test'].nil?
+            LOG_ERROR "Error: UserAllocateError" if userid == 0
+            trace << "UserAllocateError:#{__LINE__ - 2}" if userid == 0
+            return {'error' => "UserAllocateError", 'trace' => trace} if userid == 0
+        else
+            userid, user = params['userid'], onblock(:u, params['userid'])
+        end
+        params['user_id'] = userid
+        LOG_TEST "New User account created"
 
-            params['username'] = params['username'] || 'Administrator'
-            params['extra'] = params['extra'] || {'type' => 'vcenter'}
-            ###################### Doing some important system stuff ###############################################################
-            
-            return nil if DEBUG
-            LOG_TEST "CreateVMwithSpecs for #{params['login']} Order Accepted! #{params['trial'] == true ? "VM is Trial" : nil}"
-            
-            LOG_DEBUG "Params: #{params.out}"
-            
-            trace << "Checking template:#{__LINE__ + 1}"
-            onblock(:t, params['templateid']) do | t |
-                result = t.info!
-                if params['templateid'] == 0 || result != nil then
-                    LOG_ERROR "Error: TemplateLoadError" 
-                    return {'error' => "TemplateLoadError", 'trace' => (trace << "TemplateLoadError:#{__LINE__ - 1}")}
-                end
+        ##### Creating new User END #####
+        
+        #####   Creating and Configuring VM   #####
+        LOG_TEST "Creating VM for #{params['login']}"
+        trace << "Creating new VM:#{__LINE__ + 1}"
+        onblock(:t, params['templateid']) do | t |
+            t.info!
+            specs = ""
+            if !t['/VMTEMPLATE/TEMPLATE/CAPACITY'] && t['/VMTEMPLATE/TEMPLATE/HYPERVISOR'].upcase == "VCENTER" then
+                specs = "VCPU = #{params['cpu']}\n" \
+                        "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
+                        "DISK = [ \n" \
+                        "IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
+                        "SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n" \
+                        "OPENNEBULA_MANAGED = \"NO\"\t]"
+
+            elsif t['/VMTEMPLATE/TEMPLATE/HYPERVISOR'] == 'AZURE' then
+                specs = "OS_DISK_SIZE = \"#{params['drive']}\"\n" \
+                        "SIZE = \"#{params['extra']['instance_size']}\"\n" \
+                        "VM_USER_NAME = \"#{params['username']}\"\n" \
+                        "PASSWORD = \"#{params['passwd']}\"\n" \
+                        "VCPU = #{params['cpu']}\n" \
+                        "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n"
             end
-            
-            #####################################################################################################################
-            
-            #####   Initializing useful variables   #####
-            userid, vmid = 0, 0
-            ##### Initializing useful variables END #####
-            
-            
-            #####   Creating new User   #####
-            LOG_TEST "Creating new user for #{params['login']}"
-            if params['nouser'].nil? || !params['nouser'] then
-                trace << "Creating new user:#{__LINE__ + 1}"
-                userid, user =
-                    UserCreate(
-                        params['login'], params['password'], USERS_GROUP, object:true,
-                        type: params['extra']['type'] ) if params['test'].nil?
-                LOG_ERROR "Error: UserAllocateError" if userid == 0
-                trace << "UserAllocateError:#{__LINE__ - 2}" if userid == 0
-                return {'error' => "UserAllocateError", 'trace' => trace} if userid == 0
-            else
-                userid, user = params['userid'], onblock(:u, params['userid'])
-            end
-            params['user_id'] = userid
-            LOG_TEST "New User account created"
+            trace << "Updating user quota:#{__LINE__ + 1}"
+            user.update_quota_by_vm(
+                'append' => true, 'cpu' => params['cpu'],
+                'ram' => params['ram'] * (params['units'] == 'GB' ? 1024 : 1),
+                'drive' => params['drive'] * (params['units'] == 'GB' ? 1024 : 1)
+            ) unless t['/VMTEMPLATE/TEMPLATE/CAPACITY'] == 'FIXED'
+            LOG_DEBUG "Resulting capacity template:\n" + specs
+            vmid = t.instantiate("#{params['login']}_vm", true, specs + "\n" + params['user-template'].to_s)
+        end
 
-            ##### Creating new User END #####
-            
-            #####   Creating and Configuring VM   #####
-            LOG_TEST "Creating VM for #{params['login']}"
-            trace << "Creating new VM:#{__LINE__ + 1}"
-            onblock(:t, params['templateid']) do | t |
-                t.info!
-                specs = ""
-                if !t['/VMTEMPLATE/TEMPLATE/CAPACITY'] && t['/VMTEMPLATE/TEMPLATE/HYPERVISOR'].upcase == "VCENTER" then
-                    specs = "VCPU = #{params['cpu']}\n" \
-                            "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n" \
-                            "DISK = [ \n" \
-                            "IMAGE_ID = \"#{t.to_hash['VMTEMPLATE']['TEMPLATE']['DISK']['IMAGE_ID']}\",\n" \
-                            "SIZE = \"#{params['drive'] * (params['units'] == 'GB' ? 1024 : 1)}\",\n" \
-                            "OPENNEBULA_MANAGED = \"NO\"\t]"
-
-                elsif t['/VMTEMPLATE/TEMPLATE/HYPERVISOR'] == 'AZURE' then
-                    specs = "OS_DISK_SIZE = \"#{params['drive']}\"\n" \
-                            "SIZE = \"#{params['extra']['instance_size']}\"\n" \
-                            "VM_USER_NAME = \"#{params['username']}\"\n" \
-                            "PASSWORD = \"#{params['passwd']}\"\n" \
-                            "VCPU = #{params['cpu']}\n" \
-                            "MEMORY = #{params['ram'] * (params['units'] == 'GB' ? 1024 : 1)}\n"
-                end
-                trace << "Updating user quota:#{__LINE__ + 1}"
-                user.update_quota_by_vm(
-                    'append' => true, 'cpu' => params['cpu'],
-                    'ram' => params['ram'] * (params['units'] == 'GB' ? 1024 : 1),
-                    'drive' => params['drive'] * (params['units'] == 'GB' ? 1024 : 1)
-                ) unless t['/VMTEMPLATE/TEMPLATE/CAPACITY'] == 'FIXED'
-                LOG_DEBUG "Resulting capacity template:\n" + specs
-                vmid = t.instantiate("#{params['login']}_vm", true, specs + "\n" + params['user-template'].to_s)
-            end
-
-            raise "Template instantiate Error: #{vmid.message}" if vmid.class != Fixnum
-            
-            host =  if params['host'].nil? then
-                        JSON.parse(@db[:settings].as_hash(:name, :body)['NODES_DEFAULT'])[params['extra']['type'].upcase]
-                    else
-                        params['host']
-                    end
-
-            LOG_TEST 'Configuring VM Template'
-            trace << "Configuring VM Template:#{__LINE__ + 1}"            
-            onblock(:vm, vmid) do | vm |
-                trace << "Changing VM owner:#{__LINE__ + 1}"
-                begin
-                    r = vm.chown(userid, USERS_GROUP)
-                    raise r.message unless r.nil?
-                rescue
-                    LOG_DEBUG "CHOWN error, params: #{userid}, #{vm}"
-                end
-
-                if params['extra']['type'] == 'vcenter' then
-                    win = onblock(:t, params['templateid']).win?
-                    LOG_DEBUG "Instantiating VM as#{win ? nil : ' not'} Windows"
-                    trace << "Setting VM context:#{__LINE__ + 2}"
-                    begin
-                        vm.updateconf(
-                            "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ", USERNAME = \"#{params['username']}\"" : nil} ]"
-                        )
-                    rescue => e
-                        LOG_DEBUG "Context configuring error: #{e.message}"
-                    end
-
-                    trace << "Setting VM VNC settings:#{__LINE__ + 2}"
-                    begin
-                        vm.updateconf(
-                            "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{(CONF['OpenNebula']['base-vnc-port'] + vmid).to_s}\", TYPE=\"VNC\" ]"
-                        ) # Configuring VNC
-                    rescue => e
-                        LOG_DEBUG "VNC configuring error: #{e.message}"
-                    end
-                end
-
-                if params['extra']['type'] == 'vcenter' then
-                    trace << "Deploying VM:#{__LINE__ + 1}"
-                    vm.deploy(host, false, ChooseDS(params['ds_type']))
+        raise "Template instantiate Error: #{vmid.message}" if vmid.class != Fixnum
+        
+        host =  if params['host'].nil? then
+                    JSON.parse(@db[:settings].as_hash(:name, :body)['NODES_DEFAULT'])[params['extra']['type'].upcase]
                 else
-                    trace << "Deploying VM:#{__LINE__ + 1}"
-                    vm.deploy(host, false)
-                end if params['release']
-                # vm.deploy($default_host, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
+                    params['host']
+                end
+
+        LOG_TEST 'Configuring VM Template'
+        trace << "Configuring VM Template:#{__LINE__ + 1}"            
+        onblock(:vm, vmid) do | vm |
+            trace << "Changing VM owner:#{__LINE__ + 1}"
+            begin
+                r = vm.chown(userid, USERS_GROUP)
+                raise r.message unless r.nil?
+            rescue
+                LOG_DEBUG "CHOWN error, params: #{userid}, #{vm}"
             end
+
+            if params['extra']['type'] == 'vcenter' then
+                win = onblock(:t, params['templateid']).win?
+                LOG_DEBUG "Instantiating VM as#{win ? nil : ' not'} Windows"
+                trace << "Setting VM context:#{__LINE__ + 2}"
+                begin
+                    vm.updateconf(
+                        "CONTEXT = [ NETWORK=\"YES\", PASSWORD = \"#{params['passwd']}\", SSH_PUBLIC_KEY = \"$USER[SSH_PUBLIC_KEY]\"#{ win ? ", USERNAME = \"#{params['username']}\"" : nil} ]"
+                    )
+                rescue => e
+                    LOG_DEBUG "Context configuring error: #{e.message}"
+                end
+
+                trace << "Setting VM VNC settings:#{__LINE__ + 2}"
+                begin
+                    vm.updateconf(
+                        "GRAPHICS = [ LISTEN=\"0.0.0.0\", PORT=\"#{(CONF['OpenNebula']['base-vnc-port'] + vmid).to_s}\", TYPE=\"VNC\" ]"
+                    ) # Configuring VNC
+                rescue => e
+                    LOG_DEBUG "VNC configuring error: #{e.message}"
+                end
+            end
+
+            if params['extra']['type'] == 'vcenter' then
+                trace << "Deploying VM:#{__LINE__ + 1}"
+                vm.deploy(host, false, ChooseDS(params['ds_type']))
+            else
+                trace << "Deploying VM:#{__LINE__ + 1}"
+                vm.deploy(host, false)
+            end if params['release']
+            # vm.deploy($default_host, false, params['datastore'].nil? ? ChooseDS(params['ds_type']): params['datastore']) if params['release']
+        end
             ##### Creating and Configuring VM END #####            
 
             #####   PostDeploy Activity define   #####
-            Thread.new do
+        Thread.new do
 
-                LOG_DEBUG "Starting PostDeploy Activities for VM#{vmid}"
+            LOG_DEBUG "Starting PostDeploy Activities for VM#{vmid}"
                 
-                onblock(:vm, vmid).wait_for_state
+            onblock(:vm, vmid).wait_for_state
 
-                LOG_DEBUG "VM is active now, let it go"
+            LOG_DEBUG "VM is active now, let it go"
 
-                postDeploy = PostDeployActivities.new @client
+            postDeploy = PostDeployActivities.new @client
 
-                #LimitsController
+            #LimitsController
 
-                LOG_DEBUG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}"
-                trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
-                postDeploy.LimitsController(params, vmid, host)
+            LOG_DEBUG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}"
+            trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
+            postDeploy.LimitsController(params, vmid, host)
 
-                #endLimitsController
-                #TrialController
+            #endLimitsController
+            #TrialController
 
-                if params['trial'] then
-                    trace << "Creating trial counter thread:#{__LINE__ + 1}"
-                    postDeploy.TrialController(params, vmid, host)
-                end
+            if params['trial'] then
+                trace << "Creating trial counter thread:#{__LINE__ + 1}"
+                postDeploy.TrialController(params, vmid, host)
+            end
 
-                #endTrialController
-                #AnsibleController
+            #endTrialController
+            #AnsibleController
 
-                if params['ansible'] && params['release'] then
-                    trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"
-                    postDeploy.AnsibleController(params, vmid, host)
-                end
+            if params['ansible'] && params['release'] then
+                trace << "Creating Ansible Installer thread:#{__LINE__ + 1}"
+                postDeploy.AnsibleController(params, vmid, host)
+            end
 
-                #endAnsibleController
+            #endAnsibleController
 
-            end if params['release']
-            ##### PostDeploy Activity define END #####
+        end if params['release']
+        ##### PostDeploy Activity define END #####
 
-            LOG_TEST 'Post-Deploy joblist defined, basic installation job ended'
-            return out = {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
-        rescue => e
-            out = { :exception => e.message, :trace => trace << 'END_TRACE' }
-            LOG_DEBUG out.debug_out
-            return out
+        LOG_TEST 'Post-Deploy joblist defined, basic installation job ended'
+        return out = {'userid' => userid, 'vmid' => vmid, 'ip' => GetIP(vmid)}
+    rescue => e
+        out = { :exception => e.message, :trace => trace << 'END_TRACE' }
+        LOG_DEBUG out.debug_out
+        return out
     end
     def ReinstallTestMethod(params, vmid)
         postDeploy = PostDeployActivities.new @client
@@ -432,8 +433,8 @@ class IONe
             LOG_CALL(id = id_gen(), true, __method__)
             onblock(:vm, vmid).wait_for_state
             sleep(60)
-            LOG_DEBUG "Ansible Local ID: #{params['ansible_local_id']}"
             unless params['ansible_local_id'].nil? then
+                LOG_DEBUG "Ansible Local ID: #{params['ansible_local_id']}"
                 LOG_DEBUG('Starting process')
                 install_process =
                 AnsiblePlaybookProcess.new(
@@ -449,8 +450,9 @@ class IONe
                 LOG_DEBUG "Runned"
                 params['ansible-service']
             else
+                LOG_DEBUG "Starting not local playbook"
                 Thread.new do
-                    AnsibleController(params.merge({
+                    @ione.AnsibleController(params.merge({
                         'super' => '', 'host' => "#{@ione.GetIP(vmid)}:#{CONF['OpenNebula']['users-vms-ssh-port']}", 'vmid' => vmid
                     }))
                 end

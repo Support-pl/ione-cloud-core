@@ -5,11 +5,11 @@ class IONe
     # @example
     #   ZmqJsonRpc::Client.new(uri, 50).Test('PING') => 'PONG' -> Service available
     #                                                => Exception -> Service down
-    def Test(msg)
+    def Test(msg, log = "Test")
         id = id_gen()
         LOG_CALL(id, true, __method__)
         defer { LOG_CALL(id, false, 'Test') }
-        LOG "Test message received, text: #{msg}", "Test" if msg != 'PING'
+        LOG "Test message received, text: #{msg}", log if msg != 'PING'
         if msg == "PING" then
             return "PONG"
         end

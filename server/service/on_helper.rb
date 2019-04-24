@@ -604,25 +604,55 @@ class OpenNebula::VirtualMachine
             return result
         end
 
-        history_records = to_hash['VM']['HISTORY_RECORDS']['HISTORY']
-        if history_records.nil? && state == 6 then
-            hr = History.new(id, @client)
-            return {
-                "work_time" => 0,
-                "time_period_requested" => etime_req - stime_req,
-                "time_period_corrected" => etime - stime,
-                "CPU" => 0,
-                "MEMORY" => 0,
-                "DISK" => 0,
-                "DISK_TYPE" => 'no_type',
-                "PUBLIC_IP" => 0,
-                "EXCEPTION" => "No Records",
-                "TOTAL" => 0
-            } if hr.info!.class == OpenNebula::History::NoRecordsError
-            history_records = hr.records.map {|record| record['HISTORY'].without('VM')}
+        ### Calculating PublicIP cost ###
+        public_ip = 0
+        nic = to_hash['VM']['TEMPLATE']['NIC']
+        if nic.class == Array then
+            nic.each do | el |
+                vnet = VirtualNetwork.new_with_id el['NETWORK_ID'], @client
+                vnet.info!
+                public_ip += vnet['/VNET/TEMPLATE/TYPE'] == 'PUBLIC' ? 1 : 0
+            end
+        elsif nic.class == Hash 
+            vnet = VirtualNetwork.new_with_id nic['NETWORK_ID'], @client
+            vnet.info!
+            public_ip += vnet['/VNET/TEMPLATE/TYPE'] == 'PUBLIC' ? 1 : 0
         end
+        public_ip_cost = public_ip * requested_time * self['/VM/USER_TEMPLATE/PUBLIC_IP_COST'].to_f
+        
+        ### Quick response for HOLD and PENDING vms ###
+        return {
+            "work_time" => 0,
+            "time_period_requested" => etime_req - stime_req,
+            "time_period_corrected" => etime - stime,
+            "CPU" => 0,
+            "MEMORY" => 0,
+            "DISK" => 0,
+            "DISK_TYPE" => self['/VM/USER_TEMPLATE/DRIVE'],
+            "PUBLIC_IP" => public_ip_cost,
+            "EXCEPTION" => "State #{state == 0 ? "HOLD" : "PENDING"}",
+            "TOTAL" => public_ip_cost
+        } if state == 0 || state == 1
+
+        ### Gettings History Records from DB ###
+        hr = History.new(id, @client)
+        return {
+            "work_time" => 0,
+            "time_period_requested" => etime_req - stime_req,
+            "time_period_corrected" => etime - stime,
+            "CPU" => 0,
+            "MEMORY" => 0,
+            "DISK" => 0,
+            "DISK_TYPE" => 'no_type',
+            "PUBLIC_IP" => 0,
+            "EXCEPTION" => "No Records",
+            "TOTAL" => 0
+        } if hr.info.class == OpenNebula::History::NoRecordsError ### Quick response if no History Records found ###
+        
+        history_records = hr.records.map {|record| record['HISTORY'].without('VM')}
         history_records = history_records.class == Array ? history_records : [ history_records ]
 
+        ### Generating Timeline ###
         timeline = []
         history_records.each do | record |
             timeline << {
@@ -648,41 +678,39 @@ class OpenNebula::VirtualMachine
                 break
             end
         end
+        timeline.insert(
+            0,
+            {
+                'stime' => stime,
+                'etime' => timeline[0]['stime'] - 1,
+                'state' => !timeline[0]['state']
+            }
+        ) unless timeline.first['state']
 
         timeline[timeline.length - 1]['etime'] = etime if timeline.last['etime'] == 0
-        
+        timeline[timeline.length - 1]['stime'] = timeline[timeline.length - 1]['etime'] - 1 unless timeline.last['state']
+        timeline[timeline.length - 2]['etime'] = timeline[timeline.length - 1]['stime'] - 1 unless timeline.last['state']
+
+        ### Calculating Work Time ###
         work_time = 0
         timeline.each do | record |
             next unless record['state']
             next if stime > record['etime']
-            work_time += (record['etime'] - record['stime'])
-            work_time -= (record['stime'] < stime && stime < record['etime'] ? stime - record['stime'] : 0)
-            work_time -= (record['etime'] > etime && etime > record['stime'] ? record['etime'] - etime : 0)
+            work_time += ( record['etime']  > etime ? etime : record['etime'] ) - ( record['stime'] > stime ? stime : record['stime'] )
         end
         work_time = work_time / 3600.0
 
-        cpu, memory = self['/VM/TEMPLATE/CPU'].to_f, self['/VM/TEMPLATE/MEMORY'].to_f / 1024
-        disk = self['/VM/TEMPLATE/DISK/SIZE'].to_f / 1024
-        
-        public_ip = 0
-        nic = to_hash['VM']['TEMPLATE']['NIC']
-        if nic.class == Array then
-            nic.each do | el |
-                vnet = VirtualNetwork.new_with_id el['NETWORK_ID'], @client
-                vnet.info!
-                public_ip += vnet['/VNET/TEMPLATE/TYPE'] == 'PUBLIC' ? 1 : 0
-            end
-        elsif nic.class == Hash 
-            vnet = VirtualNetwork.new_with_id nic['NETWORK_ID'], @client
-            vnet.info!
-            public_ip += vnet['/VNET/TEMPLATE/TYPE'] == 'PUBLIC' ? 1 : 0
-        end
+        ### Calculating Capacity ###
+        cpu     = self['/VM/TEMPLATE/CPU'].to_f
+        memory  = self['/VM/TEMPLATE/MEMORY'].to_f / 1024
+        disk    = self['/VM/TEMPLATE/DISK/SIZE'].to_f / 1024
 
-        cpu_cost = cpu * work_time * self['/VM/TEMPLATE/CPU_COST'].to_f
-        memory_cost = memory * work_time * self['/VM/TEMPLATE/MEMORY_COST'].to_f
-        disk_cost = disk * requested_time * self['/VM/TEMPLATE/DISK_COST'].to_f
-        public_ip_cost = public_ip * requested_time * self['/VM/USER_TEMPLATE/PUBLIC_IP_COST'].to_f
-        
+        ### Calculating Showback ###
+        cpu_cost        = cpu       * work_time      * self['/VM/TEMPLATE/CPU_COST'].to_f
+        memory_cost     = memory    * work_time      * self['/VM/TEMPLATE/MEMORY_COST'].to_f
+        disk_cost       = disk      * requested_time * self['/VM/TEMPLATE/DISK_COST'].to_f
+        public_ip_cost  = public_ip * requested_time * self['/VM/USER_TEMPLATE/PUBLIC_IP_COST'].to_f
+
         return {
             "work_time" => work_time,
             "time_period_requested" => etime_req - stime_req,
@@ -729,9 +757,15 @@ class OpenNebula::History
         rc = System.new(@client).sql_query_command("SELECT body FROM history WHERE vid=#{@id}")
         rc = @parser.parse rc
         records = rc['SQL_COMMAND']['RESULT']['ROW']
-        records.map! {|record| @parser.parse(Base64.decode64(record['body64'])) }
+        if records.class == Array then
+            records.map! {|record| @parser.parse(Base64.decode64(record['body64'])) }
+        else
+            records = [ @parser.parse(Base64.decode64(records['body64'])) ]
+        end
 
         @records = records
+
+        nil
     rescue
         NoRecordsError.new "Error occurred while parsing"
     end
