@@ -282,4 +282,9 @@ class IONe
         LOG "Snapshot revert-query accepted", 'SnapController' if log
         onblock(VirtualMachine, vmid.to_i).snapshot_revert(snapid.to_i)
     end
+
+    # temp
+    def SetVMResourcesLimits vmid, host, params
+        PostDeployActivities.new(@client).LimitsController(params, vmid, host)
+    end
 end

@@ -313,4 +313,8 @@ class IONe
         end
         u.delete
     end
+
+    def GetvCenterIOPsConf
+        CONF['vCenter']['drive-types']
+    end
 end
