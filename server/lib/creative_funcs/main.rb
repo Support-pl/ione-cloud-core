@@ -161,9 +161,9 @@ class IONe
 
                 #LimitsController
 
-                LOG_DEBUG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}"
-                trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
-                postDeploy.LimitsController(params, vmid, host)
+                #LOG_DEBUG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}"
+                #trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
+                #postDeploy.LimitsController(params, vmid, host)
 
                 #endLimitsController
                 #TrialController
@@ -371,9 +371,9 @@ class IONe
 
             #LimitsController
 
-            LOG_DEBUG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}"
-            trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
-            postDeploy.LimitsController(params, vmid, host)
+            #LOG_DEBUG "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}"
+            #trace << "Executing LimitsController for VM#{vmid} | Cluster type: #{ClusterType(host)}:#{__LINE__ + 1}"
+            #postDeploy.LimitsController(params, vmid, host)
 
             #endLimitsController
             #TrialController
