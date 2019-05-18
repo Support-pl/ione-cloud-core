@@ -177,7 +177,7 @@ class IONe
 
         user_monitoring.showback
     end
-    def CalculateShowback uid, stime, etime = Time.now.to_i
+    def CalculateShowback uid, stime, etime = Time.now.to_i, group_by_day = false
         vm_pool = @db[:vm_pool].select(:oid).where(:uid => uid).to_a.map! {| vm | vm[:oid]}
 
         showback = {}
@@ -186,7 +186,15 @@ class IONe
             vm.info!
 
             next if vm['/VM/ETIME'].to_i < stime && vm['/VM/ETIME'].to_i != 0
-            showback[vm.id] = vm.calculate_showback(stime, etime).without('time_period_requested')
+            begin
+                showback[vm.id] = vm.calculate_showback(stime, etime, group_by_day).without('time_period_requested', 'time_period_corrected')
+            rescue OpenNebula::VirtualMachine::ShowbackError => e
+                if e.message.include? "VM didn't exist in given time-period" then
+                    next
+                else
+                    raise e
+                end
+            end
         end
 
         showback['TOTAL'] = showback.values.inject(0){| result, record | result += record['TOTAL'].to_f }
