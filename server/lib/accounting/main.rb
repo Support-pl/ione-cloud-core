@@ -188,6 +188,7 @@ class IONe
             next if vm['/VM/ETIME'].to_i < stime && vm['/VM/ETIME'].to_i != 0
             begin
                 showback[vm.id] = vm.calculate_showback(stime, etime, group_by_day).without('time_period_requested', 'time_period_corrected')
+                showback['name'] = vm.name
             rescue OpenNebula::VirtualMachine::ShowbackError => e
                 if e.message.include? "VM didn't exist in given time-period" then
                     next
